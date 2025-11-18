@@ -1,0 +1,737 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
+import { fetchAssets } from "../../lib/portfolio";
+import PortfolioBuilder from "./MetricsBuilder";
+import ChartBuilder from "./ChartBuilder";
+import SavePortfolioModal from "./SavePortfolioModal";
+
+/**
+ * BuilderSection
+ * Takes a single prop: keepAssets (boolean).
+ * - If keepAssets === false (hard reload not after auth): reset local data and start empty.
+ * - Otherwise: restore from localStorage if available.
+ */
+export default function BuilderSection({ keepAssets = true }) {
+  const { data: sessionData } = useSession();
+  const isAuthed = !!sessionData?.user;
+
+  /* ===== Assets & weights with persistence ===== */
+  const [assetKeys, setAssetKeys] = useState([]);
+  const [assetMeta, setAssetMeta] = useState({});
+  const [loadingAssets, setLoadingAssets] = useState(true);
+  const [errAssets, setErrAssets] = useState("");
+
+  const LS_WEIGHTS = "dw-weights-v1";
+  const LS_EVER_COMPLETE = "dw-ever-complete"; // repurposed as "yield ever activated"
+  const LS_YIELD_ON = "dw-yield-on";
+
+  // If we shouldn't keep assets (hard reload without auth), clear storage *once* on mount.
+  useEffect(() => {
+    if (!keepAssets) {
+      try {
+        localStorage.removeItem(LS_WEIGHTS);
+        localStorage.removeItem(LS_EVER_COMPLETE);
+        localStorage.removeItem(LS_YIELD_ON);
+      } catch {}
+    }
+  }, [keepAssets]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setLoadingAssets(true);
+        setErrAssets("");
+        const api = await fetchAssets();
+        if (!alive) return;
+        const keys = Object.keys(api.assets || {});
+        setAssetKeys(keys);
+        setAssetMeta(api.assets || {});
+      } catch (e) {
+        if (!alive) return;
+        setErrAssets(e?.message || String(e));
+      } finally {
+        if (alive) setLoadingAssets(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const [weights, setWeights] = useState([]);
+
+  // initialize weights (empty or from storage) after assets are known
+  useEffect(() => {
+    if (!assetKeys.length) return;
+
+    // If keepAssets is false, always initialize to zeros (fresh)
+    if (!keepAssets) {
+      setWeights(Array(assetKeys.length).fill(0));
+      return;
+    }
+
+    // Otherwise try to restore from storage
+    try {
+      const raw = localStorage.getItem(LS_WEIGHTS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed?.keys) && Array.isArray(parsed?.weights)) {
+          const sameOrder =
+            parsed.keys.length === assetKeys.length &&
+            parsed.keys.every((k, i) => k === assetKeys[i]);
+          if (sameOrder) {
+            setWeights(parsed.weights.map((n) => (Number.isFinite(n) ? n : 0)));
+            return;
+          }
+        }
+      }
+    } catch {}
+
+    setWeights(Array(assetKeys.length).fill(0));
+  }, [assetKeys, keepAssets]);
+
+  // persist weights if we are keeping assets
+  useEffect(() => {
+    if (!assetKeys.length) return;
+    if (!keepAssets) return; // do not persist when we purposely reset
+    try {
+      localStorage.setItem(
+        LS_WEIGHTS,
+        JSON.stringify({ keys: assetKeys, weights })
+      );
+    } catch {}
+  }, [assetKeys, weights, keepAssets]);
+
+  const totalPointsUsed = useMemo(
+    () => weights.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0),
+    [weights]
+  );
+
+  /* ===== ETF completeness ===== */
+  const MAX_TOTAL_POINTS = 20;
+  const pointsForBar = Math.min(MAX_TOTAL_POINTS, totalPointsUsed);
+  const isETFComplete = pointsForBar === MAX_TOTAL_POINTS;
+  const pointsRemaining = Math.max(0, MAX_TOTAL_POINTS - pointsForBar);
+
+  /* ===== Save flow (modal) ===== */
+  const [saveOpen, setSaveOpen] = useState(false);
+  const { user } = useSession().data || {};
+  const userDisplay = user?.nickname || user?.name || user?.email || "User";
+
+  // helper: open Save modal with 1s delay (even if not signed in)
+  const saveTimerRef = useRef(null);
+  const openSaveWithDelay = () => {
+    try {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        setSaveOpen(true);
+      }, 1000); // 1 sec delay
+    } catch {}
+  };
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
+
+  async function handleConfirmSave({ comment }) {
+    const res = await fetch("/api/portfolios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nickname: userDisplay || "",
+        comment: comment || "",
+        assets: assetKeys,
+        weights: weights,
+      }),
+    });
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j?.error || "Failed to save");
+    }
+    const { portfolio } = await res.json();
+    return portfolio;
+  }
+
+  // Back from modal: close and remove "last added asset" (last with weight > 0)
+  function handleBackFromSave() {
+    setSaveOpen(false);
+    setWeights((prev) => {
+      const copy = [...prev];
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if ((copy[i] ?? 0) > 0) {
+          copy[i] = Math.max(0, (copy[i] ?? 0) - 1); // 👈 just -1 point
+          break;
+        }
+      }
+      return copy;
+    });
+    // yield stays ON, no change here
+  }
+
+  /* ===== Yield flow (new spec) ===== */
+  const [yieldOn, setYieldOn] = useState(false);
+  const [yieldEverActivated, setYieldEverActivated] = useState(false);
+
+  // restore yield state
+  useEffect(() => {
+    try {
+      const storedOn = localStorage.getItem(LS_YIELD_ON) === "1";
+      const storedEver = localStorage.getItem(LS_EVER_COMPLETE) === "1";
+      if (storedOn) {
+        setYieldOn(true);
+        setYieldEverActivated(true);
+      } else if (storedEver) {
+        // yield was turned on at least once in the past
+        setYieldEverActivated(true);
+      }
+    } catch {}
+  }, []);
+
+  // persist yieldOn state whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_YIELD_ON, yieldOn ? "1" : "0");
+    } catch {}
+  }, [yieldOn]);
+
+  // first-time activation from grey/intro button (only when ETF is complete)
+  function handleFirstYieldActivate() {
+    setYieldOn(true);
+    setYieldEverActivated(true);
+    try {
+      localStorage.setItem(LS_YIELD_ON, "1");
+      localStorage.setItem(LS_EVER_COMPLETE, "1");
+    } catch {}
+
+    // 1st fill: after user turns yield on, auto-open Save modal with 1s delay,
+    // even if not signed in
+    if (isETFComplete) {
+      openSaveWithDelay();
+    }
+  }
+
+  // generic toggle for subsequent visits (can toggle anytime once yieldEverActivated)
+  function handleToggleYield() {
+    // once ever activated, we never "forget" that
+    if (!yieldEverActivated) {
+      // safety: if somehow not set, treat first toggle as first activation
+      handleFirstYieldActivate();
+      return;
+    }
+    setYieldOn((prev) => !prev);
+  }
+
+  // clicking "Complete portfolio" (appears when ETF full + yield ON)
+  function handleCompletePortfolioClick() {
+    openSaveWithDelay();
+  }
+
+  /* ===== Height sync refs (kept for layout) ===== */
+  const splitRef = useRef(null);
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
+
+  // ===== Scroll hint for asset weights list =====
+  const listRef = useRef(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+
+    const check = () => {
+      const overflow = el.scrollHeight - el.clientHeight > 4;
+      const notAtBottom =
+        el.scrollTop < el.scrollHeight - el.clientHeight - 2;
+      setShowScrollHint(overflow && notAtBottom);
+    };
+
+    check(); // initial
+
+    el.addEventListener("scroll", check, { passive: true });
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(check)
+        : null;
+    if (ro) ro.observe(el);
+
+    window.addEventListener("resize", check, { passive: true });
+
+    const id = setTimeout(check, 0); // after layout
+
+    return () => {
+      el.removeEventListener("scroll", check);
+      ro && ro.disconnect();
+      window.removeEventListener("resize", check);
+      clearTimeout(id);
+    };
+  }, [assetKeys.length, JSON.stringify(weights)]);
+
+  const hasPortfolio =
+    (typeof totalPointsUsed === "number" && totalPointsUsed > 0) ||
+    (Array.isArray(weights) && weights.some((w) => Number(w) > 0));
+
+  return (
+    <main
+      className="container-main w-full flex flex-col overflow-hidden"
+      style={{ fontSize: "200%" }} // 2x all text
+    >
+      <div className="w-full flex-1 flex flex-col gap-6 min-h-0">
+        <h2 className="section-hero center font-bold tracking-tight leading-tight [font-size:clamp(1.5rem,2.5vw,2rem)] m-0">
+          header2 placeholder
+        </h2>
+
+        {errAssets && (
+          <div className="text-[clamp(.8rem,0.9vw,.9rem)] text-[var(--neg)] mt-2">
+            {errAssets}
+          </div>
+        )}
+        {loadingAssets && (
+          <div className="text-[clamp(.8rem,0.9vw,.9rem)] text-[var(--muted)] mt-2">
+            Loading assets…
+          </div>
+        )}
+
+        {!loadingAssets && (
+          <div
+            ref={splitRef}
+            className={[
+              "split",
+              hasPortfolio ? "has-portfolio" : "no-portfolio",
+              "relative",
+              "grid items-stretch content-stretch gap-4 min-h-0 w-full max-w-full box-border overflow-hidden",
+              "[grid-template-columns:var(--left-w)_minmax(0,1fr)]",
+              hasPortfolio ? "h-[872px]" : "h-[500px]",
+            ].join(" ")}
+            style={{
+              ["--left-w"]: hasPortfolio ? "30%" : "40%",
+            }}
+          >
+            {/* BLUE DIVIDER BETWEEN LEFT & RIGHT PANE, ANCHORED TO --left-w */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 bottom-0"
+              style={{
+                left: "calc(var(--left-w) + 0.5rem)", // left column width + half the gap (gap-4 = 1rem)
+                width: 0,
+                borderLeft: "8px solid var(--accent)",
+                zIndex: 10,
+              }}
+            />
+
+            {/* LEFT PANE */}
+            <aside
+              ref={leftRef}
+              className={[
+                "bg-white ",
+                "overflow-hidden min-h-0 w-full flex flex-col",
+                hasPortfolio
+                  ? "self-stretch [grid-row:1/span_3]"
+                  : "h-[500px] self-start [grid-row:auto]",
+                "rounded-none",
+              ].join(" ")}
+              style={{ contain: "content" }}
+            >
+              <div className="flex-none px-3 pt-3 pb-2 border-b border-[var(--border)]">
+                <h2 className="m-0 font-semibold tracking-[.2px] [font-size:clamp(.9rem,1.1vw,1rem)]">
+                  Asset weights
+                </h2>
+              </div>
+
+              <div className="relative flex-1 min-h-0">
+                <div
+                  ref={listRef}
+                  className="grid grid-cols-1 gap-3 px-3 py-3 min-h-0 h-full overflow-y-auto no-scrollbar pb-12 local-scroll-container"
+                >
+                  {assetKeys.map((key, idx) => {
+                    const current = weights[idx] ?? 0;
+                    const sumOthers = totalPointsUsed - current;
+                    const maxForThis = Math.max(
+                      current,
+                      Math.min(10, 20 - sumOthers)
+                    );
+                    return (
+                      <WeightInput
+                        key={`w-${key}`}
+                        label={`${assetMeta[key]?.name ?? key} weight`}
+                        nameOnly={assetMeta[key]?.name ?? key}
+                        accentColor={assetMeta[key]?.color || undefined}
+                        value={current}
+                        maxForThis={maxForThis}
+                        onChange={(desiredVal) =>
+                          setWeights((w) => {
+                            const copy = [...w];
+                            const others = copy.reduce(
+                              (a, b, j) =>
+                                j === idx
+                                  ? a
+                                  : a + (Number.isFinite(b) ? b : 0),
+                              0
+                            );
+                            const allowed = Math.max(
+                              copy[idx] ?? 0,
+                              Math.min(10, 20 - others)
+                            );
+                            const next = Math.max(
+                              0,
+                              Math.min(
+                                allowed,
+                                Number.isFinite(desiredVal) ? desiredVal : 0
+                              )
+                            );
+                            copy[idx] = next;
+                            return copy;
+                          })
+                        }
+                        /* pulse + when no asset is added at all */
+                        highlightPlus={!hasPortfolio}
+                      />
+                    );
+                  })}
+                </div>
+
+                {showScrollHint && (
+  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-10 flex items-end justify-center bg-gradient-to-t from-white via-white/85 to-transparent">
+    <div className="mb-2 flex flex-col items-center gap-2">
+      <span className="[font-size:clamp(.72rem,.9vw,.75rem)] font-bold tracking-wide text-[#111] uppercase">
+        Scroll for more
+      </span>
+
+      {/* Arrow styled like side nav arrow */}
+      <div className="animate-scrollBounce w-8 h-8 flex items-center justify-center text-xs font-bold">
+        <span className="leading-none">▼</span>
+      </div>
+    </div>
+  </div>
+)}
+
+              </div>
+            </aside>
+
+            {/* RIGHT PANE */}
+            <section
+              ref={rightRef}
+              className={[
+                "right-pane",
+                hasPortfolio ? "" : "is-empty",
+                "grid gap-4 min-h-0 self-stretch",
+                hasPortfolio
+                  ? "[grid-template-rows:500px_auto_300px]"
+                  : "[grid-template-rows:500px]",
+              ].join(" ")}
+            >
+              {hasPortfolio ? (
+                <>
+                  {/* Chart section (no border/shadow) */}
+                  <div
+                    className={[
+                      "bg-white",
+                      "rounded-none p-3 min-h-0 h-full flex flex-col",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center gap-3 mb-2 [font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]">
+                      {/* LEFT: ETF STATUS / FILL CTA */}
+                      <div className="flex-1 min-w-0">
+                        {!isETFComplete ? (
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-[var(--accent)] bg-[var(--accent-soft)] text-[11px] sm:text-xs font-extrabold tracking-wide text-[var(--accent-text)] uppercase">
+                            <span className="whitespace-nowrap">
+                              Fill ETF with{" "}
+                              <span className="text-blue-900">
+                                {pointsRemaining}
+                              </span>{" "}
+                              more points to complete
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-[var(--accent)] bg-[var(--accent-soft)] text-[11px] sm:text-xs font-extrabold tracking-wide text-[var(--accent-text)] uppercase">
+                            <span className="whitespace-nowrap">
+                              ETF complete · 20 / 20 points
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* RIGHT: YIELD INFO / BUTTONS */}
+                      <div className="flex items-center gap-2">
+                        {/* FIRST-TIME YIELD INTRO (only once, when ETF just complete and yield not yet activated) */}
+                        {isETFComplete && !yieldEverActivated ? (
+                          <div className="flex items-center gap-2 text-right">
+                            <span className="text-[10px] sm:text-xs text-[var(--accent-text)] whitespace-nowrap font-semibold">
+                              stillwater ETF uses assets to generate additional
+                              yield
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleFirstYieldActivate}
+                              className="relative inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-2.5 border border-[var(--accent)] bg-white text-[11px] sm:text-xs font-extrabold tracking-wide uppercase text-[var(--accent-text)] rounded-none shadow-[0_0_12px_rgba(37,99,235,0.45)]"
+                            >
+                              {/* Pulsating blue aura around the button */}
+                              <span
+                                className="pointer-events-none absolute inset-[-4px] rounded-none border border-blue-400/70 animate-ping"
+                                aria-hidden="true"
+                              />
+                              <span className="relative flex items-center gap-1">
+                                <span className="text-[15px] leading-none">
+                                  ⚡
+                                </span>
+                                <span>Turn yield on</span>
+                              </span>
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
+                        {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
+{yieldEverActivated && (
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={handleToggleYield}
+      className={[
+        "relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide rounded-none",
+        yieldOn
+          ? "bg-[#e5e7eb] text-[#374151]" // plain grey when yield is ON
+          : "bg-[var(--accent)] text-white shadow-[0_0_18px_rgba(37,99,235,0.9)]", // blue when OFF
+      ].join(" ")}
+      aria-label={yieldOn ? "Turn yield off" : "Turn yield on"}
+    >
+      {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
+      {isETFComplete && !yieldOn && (
+        <span
+          className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
+          aria-hidden="true"
+        />
+      )}
+
+      <span className="relative flex items-center gap-1">
+        <span className="text-[14px] leading-none">
+          {yieldOn ? "⬜" : "🟦"}
+        </span>
+        <span>{yieldOn ? "Turn yield off" : "Turn yield on"}</span>
+      </span>
+    </button>
+
+    {/* COMPLETE PORTFOLIO BUTTON:
+        appears when portfolio is full AND yield is ON.
+        Pulsates and opens Save modal after 1s. */}
+    {isETFComplete && yieldOn && (
+      <button
+        type="button"
+        onClick={handleCompletePortfolioClick}
+        className="relative inline-flex items-center justify-center px-3 py-1.5 border border-[#ff8a00] bg-[#fffaec] text-[10px] sm:text-xs font-extrabold uppercase tracking-wide rounded-none shadow-[0_0_14px_rgba(255,138,0,0.75)]"
+      >
+        <span
+          className="pointer-events-none absolute inset-[-3px] border border-[#ffb347] rounded-none animate-ping"
+          aria-hidden="true"
+        />
+        <span className="relative flex items-center gap-1">
+          <span className="text-[14px] leading-none">✅</span>
+          <span>Complete portfolio</span>
+        </span>
+      </button>
+    )}
+  </div>
+)}
+
+                        
+                      </div>
+                    </div>
+
+                    <div
+                      className="my-1"
+                      aria-label={`ETF completeness ${pointsForBar} of 20`}
+                    >
+           <div className="h-[8px] grid [grid-template-columns:repeat(20,minmax(0,1fr))] gap-1">
+  {Array.from({ length: 20 }).map((_, i) => (
+    <span
+      key={i}
+      className={[
+        "block w-full h-full rounded-none transition-colors",
+        i < pointsForBar
+          ? "bg-[var(--accent)]"
+          : "bg-[var(--bg)]",
+      ].join(" ")}
+      aria-hidden="true"
+    />
+  ))}
+</div>
+
+                      {isETFComplete && (
+                        <div
+                          className="mt-1.5 h-[2px] bg-[#ff8a00] opacity-35"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-0 w-full overflow-hidden flex-1 min-h-0 max-w-full">
+                      <ChartBuilder
+                        assets={assetKeys}
+                        weights={weights}
+                        showYield={yieldOn}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Text between chart and metrics */}
+                  <div className="text-center w-full text-[clamp(.9rem,1vw,1.1rem)] font-semibold flex items-center justify-center">
+                    If you invested $1000 5 years ago, you would have:
+                  </div>
+
+                  {/* Metrics section (no border/shadow) */}
+                  <div className="bg-white rounded-none p-3 h-[300px] overflow-auto flex flex-col">
+                    <PortfolioBuilder
+                      assets={assetKeys}
+                      weights={weights}
+                      showYield={yieldOn}
+                      detail
+                    />
+                  </div>
+                </>
+              ) : (
+                <div
+                  className="row-[1] h-full flex items-center justify-center text-center min-h-0 bg-white "
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="flex flex-col gap-2 items-center justify-center">
+                    <div className="font-extrabold [font-size:clamp(1.125rem,2.4vw,1.5rem)] tracking-[.2px] text-[var(--muted)] opacity-90 lowercase">
+                      <div className="flex flex-col items-center justify-center gap-1 text-center">
+                        <div className="[font-size:clamp(.8rem,.9vw,.85rem)] text-[var(--muted)] opacity-90">
+                          ← start building with adding assets
+                        </div>
+                        <div className="font-extrabold [font-size:clamp(1.25rem,2.8vw,1.75rem)] tracking-[.2px]">
+                          build your ETF for future rewards
+                        </div>
+                        <div className="[font-size:clamp(.8rem,.9vw,.85rem)] text-[var(--muted)] opacity-90">
+                          great ETF balances growth, stability and resilience
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+      </div>
+
+      <SavePortfolioModal
+        open={saveOpen}
+        onClose={() => setSaveOpen(false)}
+        onBack={handleBackFromSave}
+        onSave={handleConfirmSave}
+        assets={assetKeys}
+        weights={weights}
+        userDisplay={userDisplay}
+        assetMeta={assetMeta}
+      />
+    </main>
+  );
+}
+
+function WeightInput({
+  label,
+  value,
+  onChange,
+  accentColor,
+  nameOnly = "",
+  maxForThis = 10,
+  highlightPlus = false, // NEW: allows pulsing +
+}) {
+  const v0 = Number.isFinite(value) ? value : 0;
+  const v = Math.max(0, Math.min(10, Math.round(v0)));
+  const dec = () => onChange(Math.max(0, v - 1));
+  const inc = () => onChange(Math.min(maxForThis, v + 1));
+  const setTo = (n) =>
+    onChange(Math.max(0, Math.min(maxForThis, Math.round(n === v ? 0 : n))));
+  const incDisabled = v >= maxForThis;
+  const decDisabled = v <= 0;
+
+  return (
+    <div
+      style={accentColor ? { "--accent": accentColor } : undefined}
+      className="select-none"
+    >
+     <div className="mb-1">
+  <span
+    className="font-semibold [font-size:70%]"
+    style={{ color: "var(--accent, var(--text))" }}
+  >
+    {nameOnly || label}
+  </span>
+</div>
+
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+<button
+  type="button"
+  className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+  onClick={dec}
+  disabled={decDisabled}
+  aria-label={`Decrease ${label}`}
+  title="Decrease"
+>
+  <span className="relative -translate-y-[1px]">−</span>
+</button>
+
+
+
+        <div className="grid [grid-template-columns:repeat(10,minmax(0,1fr))] gap-1 items-center">
+          {Array.from({ length: 10 }).map((_, idx) => {
+            const i = idx + 1;
+            const disabled = i > maxForThis;
+            const filled = i <= v;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setTo(i)}
+                aria-label={`${label}: set to ${i}`}
+                disabled={disabled}
+                className={[
+  "h-[8px] w-full rounded-none transition-colors",
+  filled
+    ? "bg-[var(--accent)]" // solid 8px blue bar, same thickness as divider
+    : "bg-[var(--bg)] hover:bg-[var(--bg-alt)]",
+  disabled
+    ? "opacity-40 cursor-not-allowed"
+    : "cursor-pointer",
+  "focus:outline-none focus:ring-1 focus:ring-[var(--border)]",
+].join(" ")}
+
+              />
+            );
+          })}
+        </div>
+
+<button
+  type="button"
+  className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+  onClick={inc}
+  disabled={incDisabled}
+  aria-label={`Increase ${label}`}
+  title="Increase"
+>
+  <span
+    className={[
+      "relative -translate-y-[1px] transition-[text-shadow,transform]",
+      highlightPlus && !v
+        ? "[text-shadow:0_0_14px_rgba(37,99,235,0.95)] animate-pulse"
+        : "",
+    ].join(" ")}
+  >
+    +
+  </span>
+</button>
+
+
+
+      </div>
+    </div>
+  );
+}

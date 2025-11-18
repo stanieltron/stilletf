@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/* Global design tokens */
+:root {
+  --text: #111111;
+  --muted: #666666;
+  --border: #dddddd;
+  --border-soft: #eeeeee;
+  --pos: #20cf20;
+  --neg: #991111;
+
+  --bg: #ffffff;
+  --bg-alt: #fafafa;
+  --bg-dark: #000000;
+
+  --accent: #2563eb;
+  --accent-soft: #dbeafe;
+  --accent-strong: #1d4ed8;
+  --accent-text: #1e3a8a;
+
+  --chrome: #222222;
+  --footer-text: #dcdcdc;
+  --header-text: #f0f0f0;
+
+  --line: #e5e7eb;
+  --brand: #2563eb;
+}
+
+/* Shared design utilities */
+@layer utilities {
+  /* Sections */
+  .section {
+    @apply py-16;
+    background-color: var(--bg);
+    color: var(--text);
+  }
+
+  .section-compact {
+    @apply py-14;
+    background-color: var(--bg);
+    color: var(--text);
+  }
+
+  .section-dark {
+    @apply py-16;
+    background-color: var(--bg-dark);
+    color: var(--header-text);
+  }
+
+  /* Container */
+  .container-main {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Headings */
+  .heading-2 {
+    @apply font-semibold mb-12 tracking-tight;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+  }
+
+  .heading-3 {
+    @apply font-semibold mb-2 leading-tight;
+    font-size: clamp(1.125rem, 1.8vw, 1.5rem);
+  }
+
+  .heading-4 {
+    @apply font-semibold mb-2.5;
+    font-size: clamp(1.05rem, 1.2vw, 1.25rem);
+  }
+
+  .eyebrow {
+    @apply font-semibold uppercase tracking-[0.1em] mb-12;
+    font-size: 0.7rem;
+  }
+
+  @screen md {
+    .eyebrow {
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Body text */
+  .text-body {
+    @apply leading-relaxed;
+    font-size: clamp(.95rem, 0.8vw, 1rem);
+    color: var(--text);
+  }
+
+  .text-body-muted {
+    @apply leading-relaxed;
+    font-size: clamp(.95rem, 0.8vw, 1rem);
+    color: var(--muted);
+  }
+
+  .text-body-light {
+    @apply leading-relaxed;
+    font-size: clamp(.95rem, 0.8vw, 1rem);
+    color: #e5e7eb;
+  }
+
+  /* Cards */
+  .card {
+    @apply p-6 md:p-8 border min-w-0;
+    background-color: var(--bg-alt);
+    border-color: var(--border);
+  }
+
+  .card-strong {
+    @apply p-6 border-4 relative shadow-sm;
+    background-color: var(--bg);
+    border-color: var(--text);
+  }
+
+  .card-overlay {
+    @apply pointer-events-none absolute -inset-1 -z-10;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-block font-semibold uppercase px-3.5 py-1.5 tracking-[0.1em];
+    font-size: 0.7rem;
+    color: #ffffff;
+    background-color: var(--accent);
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply text-sm font-semibold py-3 px-6 transition-transform duration-300;
+    color: #ffffff;
+    background-color: var(--accent);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--accent-strong);
+    transform: translateY(-1px);
+  }
+
+  /* hide scrollbars but keep scroll behavior */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
+}
+}
+

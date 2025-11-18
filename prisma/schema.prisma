@@ -1,0 +1,67 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/* ---------- Users ---------- */
+model User {
+  id                 String   @id @default(uuid())
+  email              String?  @unique
+  name               String?
+  nickname           String?  @unique
+  walletAddress      String?  @unique
+  provider           String?
+  providerAccountId  String?
+  createdAt          DateTime @default(now())
+
+  portfolios         Portfolio[]
+  votes              Vote[]
+
+  @@index([email])
+  @@index([nickname])
+  @@index([provider, providerAccountId])
+}
+
+/* ---------- Portfolios saved by users ---------- */
+model Portfolio {
+  id         String   @id @default(uuid())
+  userId     String?          // nullable: allow anonymous save if you ever want
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  nickname   String?  // display name given by the user
+  comment    String?  // short comment
+
+  assets     String[] // keys needed to render Chart/Portfolio metrics
+  weights    Int[]    // 0..10 integers per asset
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  votes      Vote[]   // relation to votes
+
+  // convenient index for filtering by user
+  @@index([userId])
+}
+
+/* ---------- A user’s vote on a portfolio (once per user per portfolio) ---------- */
+model Vote {
+  id           String    @id @default(uuid())
+  portfolioId  String
+  userId       String
+  createdAt    DateTime  @default(now())
+
+  portfolio    Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // enforce "once per user per portfolio"
+  @@unique([portfolioId, userId])
+
+  // useful for quick lookups
+  @@index([userId])
+  @@index([portfolioId])
+}
