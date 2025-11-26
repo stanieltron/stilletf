@@ -3,9 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "next dev -p 1000",
+    "dev": "next dev -p 3000",
     "build": "prisma generate && next build",
-    "start": "next start -p 1000",
+    "start": "next start -p 3000",
     "lint": "next lint"
   },
   "dependencies": {

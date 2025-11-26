@@ -7,13 +7,14 @@ import Footer from "./components/Footer";
 import SignInModal from "./components/SignInModal";
 import HeroSection from "./components/HeroSection";
 import BuilderSection from "./components/BuilderSection";
+// Intro removed
 import MissionStatement from "./components/MissionStatement";
 import Roadmap from "./components/Roadmap";
 import Features from "./components/Features";
 import Benefits from "./components/Benefits";
 import Carousel from "./components/Carousel";
 
-/* --- helpers to detect reload/auth return (kept for keepAssets logic) --- */
+/* --- helpers to detect reload/auth return (for keepAssets logic) --- */
 function isReloadNavigation() {
   try {
     const nav =
@@ -26,6 +27,7 @@ function isReloadNavigation() {
     return false;
   }
 }
+
 function cameFromSignupOrAuth() {
   try {
     const url = new URL(window.location.href);
@@ -49,6 +51,7 @@ export default function Page() {
   // default to "fresh" – only later turn true if we detect a returning flow
   const [keepAssets, setKeepAssets] = useState(false);
 
+  // === keepAssets logic, unchanged ===
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!search) return;
@@ -75,9 +78,11 @@ export default function Page() {
   /* ===== sticky header height for layout ===== */
   const headerRef = useRef(null);
   const [headerH, setHeaderH] = useState(0);
+
   useEffect(() => {
     const measure = () =>
       setHeaderH(headerRef.current ? headerRef.current.offsetHeight || 0 : 0);
+
     measure();
     let ro = null;
     try {
@@ -85,9 +90,12 @@ export default function Page() {
         ro = new ResizeObserver(measure);
         ro.observe(headerRef.current);
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
     window.addEventListener("resize", measure, { passive: true });
     const id = setTimeout(measure, 0);
+
     return () => {
       if (ro && ro.disconnect) ro.disconnect();
       window.removeEventListener("resize", measure);
@@ -95,13 +103,14 @@ export default function Page() {
     };
   }, []);
 
-  /* ===== Section refs & nav state ===== */
+  /* ===== Sections & navigation ===== */
+
   const sectionRefs = useRef([]);
   const setSectionRef = (el, i) => {
     sectionRefs.current[i] = el;
   };
 
-  const [current, setCurrent] = useState(0); // currently active section index
+  const [current, setCurrent] = useState(0); // index of section currently "in view"
 
   const navSections = useMemo(
     () => [
@@ -132,7 +141,7 @@ export default function Page() {
     });
   };
 
-  // Keep "current" in sync with scroll position
+  // Highlight section that is currently in view (regular scrolling, no snapping)
   useEffect(() => {
     const handleScroll = () => {
       const sections = sectionRefs.current.filter(Boolean);
@@ -143,7 +152,7 @@ export default function Page() {
       let activeIndex = 0;
       sections.forEach((section, i) => {
         const top = section.offsetTop;
-        const height = section.offsetHeight;
+        const height = section.offsetHeight || 1;
         if (scrollPosition >= top && scrollPosition < top + height) {
           activeIndex = i;
         }
@@ -153,13 +162,14 @@ export default function Page() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-
     // initial sync
     handleScroll();
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, [headerH]);
 
+  // Sections should NOT be full-screen anymore – only as tall as content,
+  // but still padded down so they don't hide behind the fixed header.
   const sectionStyleBase = useMemo(
     () => ({
       paddingTop: `${headerH}px`,
@@ -173,12 +183,12 @@ export default function Page() {
       {/* Fixed header */}
       <div
         ref={headerRef}
-        className="fixed top-0 left-0 right-0 z-[9999] border-b...er]:bg-white/60 bg-white/80"
+        className="fixed top-0 left-0 right-0 z-[9999] border-b border-slate-200 bg-white/80 backdrop-blur transition-transform duration-300"
       >
         <Header />
       </div>
 
-      {/* Left-side section panel */}
+      {/* Left-side section panel (always visible now) */}
       <nav
         className="hidden md:flex fixed left-6 top-1/2 -translate-y-1/2 z-[9998] flex-col items-center gap-4"
         aria-label="Page sections"
@@ -231,7 +241,7 @@ export default function Page() {
             const nextIndex = Math.min(maxIndex, current + 1);
             if (nextIndex !== current) scrollToSection(nextIndex);
           }}
-          className={`w-8 h-8 flex items-center justify-center  text-xs font-bold transition-all ${
+          className={`w-8 h-8 flex items-center justify-center text-xs font-bold transition-all ${
             current >= (navSections[navSections.length - 1]?.index ?? current)
               ? "opacity-40 cursor-default"
               : "opacity-80 hover:opacity-100"
@@ -242,7 +252,7 @@ export default function Page() {
       </nav>
 
       <main className="flex-1 flex flex-col">
-        {/* Section 0: Hero + Builder */}
+        {/* Section 0: Hero + Builder (no full-screen, just content height) */}
         <section
           ref={(el) => setSectionRef(el, 0)}
           className="flex w-full justify-center"
@@ -288,7 +298,7 @@ export default function Page() {
         {/* Section 3: Features */}
         <section
           ref={(el) => setSectionRef(el, 3)}
-          className="flex w-full justifycenter"
+          className="flex w-full justify-center"
           style={{
             ...sectionStyleBase,
             background: "#fff7ed",
