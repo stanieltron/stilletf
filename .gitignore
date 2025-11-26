@@ -7,3 +7,4 @@ node_modules
 /.next
 /.idea
 /.DS_Store
+/contracts/.DS_Store
