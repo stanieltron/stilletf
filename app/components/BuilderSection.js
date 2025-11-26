@@ -1,11 +1,16 @@
 "use client";
 
+"use client";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { fetchAssets } from "../../lib/portfolio";
 import PortfolioBuilder from "./MetricsBuilder";
 import ChartBuilder from "./ChartBuilder";
-import SavePortfolioModal from "./SavePortfolioModal";
+import ShareModal from "./ShareModal";
+import ShareModalSignedIn from "./ShareModalSignedIn";
+
 
 /**
  * BuilderSection
@@ -16,6 +21,7 @@ import SavePortfolioModal from "./SavePortfolioModal";
 export default function BuilderSection({ keepAssets = true }) {
   const { data: sessionData } = useSession();
   const isAuthed = !!sessionData?.user;
+  const searchParams = useSearchParams();
 
   /* ===== Assets & weights with persistence ===== */
   const [assetKeys, setAssetKeys] = useState([]);
@@ -34,7 +40,7 @@ export default function BuilderSection({ keepAssets = true }) {
         localStorage.removeItem(LS_WEIGHTS);
         localStorage.removeItem(LS_EVER_COMPLETE);
         localStorage.removeItem(LS_YIELD_ON);
-      } catch {}
+      } catch { }
     }
   }, [keepAssets]);
 
@@ -63,13 +69,17 @@ export default function BuilderSection({ keepAssets = true }) {
 
   const [weights, setWeights] = useState([]);
 
+
   // initialize weights (empty or from storage) after assets are known
   useEffect(() => {
     if (!assetKeys.length) return;
 
-    // If keepAssets is false, always initialize to zeros (fresh)
+    // default: first asset has weight 1, others 0
+    const defaultOneAsset = assetKeys.map((_, i) => (i === 0 ? 1 : 0));
+
+    // If keepAssets is false, always initialize fresh
     if (!keepAssets) {
-      setWeights(Array(assetKeys.length).fill(0));
+      setWeights(defaultOneAsset);
       return;
     }
 
@@ -88,10 +98,12 @@ export default function BuilderSection({ keepAssets = true }) {
           }
         }
       }
-    } catch {}
+    } catch { }
 
-    setWeights(Array(assetKeys.length).fill(0));
+    // fallback: first asset 1, rest 0
+    setWeights(defaultOneAsset);
   }, [assetKeys, keepAssets]);
+
 
   // persist weights if we are keeping assets
   useEffect(() => {
@@ -102,7 +114,7 @@ export default function BuilderSection({ keepAssets = true }) {
         LS_WEIGHTS,
         JSON.stringify({ keys: assetKeys, weights })
       );
-    } catch {}
+    } catch { }
   }, [assetKeys, weights, keepAssets]);
 
   const totalPointsUsed = useMemo(
@@ -116,62 +128,38 @@ export default function BuilderSection({ keepAssets = true }) {
   const isETFComplete = pointsForBar === MAX_TOTAL_POINTS;
   const pointsRemaining = Math.max(0, MAX_TOTAL_POINTS - pointsForBar);
 
-  /* ===== Save flow (modal) ===== */
-  const [saveOpen, setSaveOpen] = useState(false);
-  const { user } = useSession().data || {};
+  /* ===== Share flow (panel with image) ===== */
+  const [shareOpen, setShareOpen] = useState(false);
+  const user = sessionData?.user || {};
   const userDisplay = user?.nickname || user?.name || user?.email || "User";
 
-  // helper: open Save modal with 1s delay (even if not signed in)
-  const saveTimerRef = useRef(null);
-  const openSaveWithDelay = () => {
+  // helper: open Share panel (can be triggered by yield completion or share button)
+  const shareTimerRef = useRef(null);
+  const openShareWithDelay = () => {
     try {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(() => {
-        setSaveOpen(true);
-      }, 1000); // 1 sec delay
+      if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
+      shareTimerRef.current = setTimeout(() => {
+        setShareOpen(true);
+      }, 0);
     } catch {}
   };
 
+  // clean up timer
   useEffect(() => {
     return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (shareTimerRef.current) clearTimeout(shareTimerRef.current);
     };
   }, []);
 
-  async function handleConfirmSave({ comment }) {
-    const res = await fetch("/api/portfolios", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nickname: userDisplay || "",
-        comment: comment || "",
-        assets: assetKeys,
-        weights: weights,
-      }),
-    });
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      throw new Error(j?.error || "Failed to save");
+  // if URL has ?share=1 (e.g. after signing in from share modal), auto-open the share modal
+  useEffect(() => {
+    if (!searchParams) return;
+    if (searchParams.get("share") === "1") {
+      setShareOpen(true);
     }
-    const { portfolio } = await res.json();
-    return portfolio;
-  }
+  }, [searchParams]);
 
-  // Back from modal: close and remove "last added asset" (last with weight > 0)
-  function handleBackFromSave() {
-    setSaveOpen(false);
-    setWeights((prev) => {
-      const copy = [...prev];
-      for (let i = copy.length - 1; i >= 0; i--) {
-        if ((copy[i] ?? 0) > 0) {
-          copy[i] = Math.max(0, (copy[i] ?? 0) - 1); // 👈 just -1 point
-          break;
-        }
-      }
-      return copy;
-    });
-    // yield stays ON, no change here
-  }
+
 
   /* ===== Yield flow (new spec) ===== */
   const [yieldOn, setYieldOn] = useState(false);
@@ -189,14 +177,14 @@ export default function BuilderSection({ keepAssets = true }) {
         // yield was turned on at least once in the past
         setYieldEverActivated(true);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   // persist yieldOn state whenever it changes
   useEffect(() => {
     try {
       localStorage.setItem(LS_YIELD_ON, yieldOn ? "1" : "0");
-    } catch {}
+    } catch { }
   }, [yieldOn]);
 
   // first-time activation from grey/intro button (only when ETF is complete)
@@ -206,14 +194,15 @@ export default function BuilderSection({ keepAssets = true }) {
     try {
       localStorage.setItem(LS_YIELD_ON, "1");
       localStorage.setItem(LS_EVER_COMPLETE, "1");
-    } catch {}
+    } catch { }
 
-    // 1st fill: after user turns yield on, auto-open Save modal with 1s delay,
+    // 1st fill: after user turns yield on, auto-open Share panel with 1s delay,
     // even if not signed in
     if (isETFComplete) {
-      openSaveWithDelay();
+      openShareWithDelay();
     }
   }
+
 
   // generic toggle for subsequent visits (can toggle anytime once yieldEverActivated)
   function handleToggleYield() {
@@ -228,7 +217,7 @@ export default function BuilderSection({ keepAssets = true }) {
 
   // clicking "Complete portfolio" (appears when ETF full + yield ON)
   function handleCompletePortfolioClick() {
-    openSaveWithDelay();
+    openShareWithDelay();
   }
 
   /* ===== Height sync refs (kept for layout) ===== */
@@ -275,6 +264,16 @@ export default function BuilderSection({ keepAssets = true }) {
   const hasPortfolio =
     (typeof totalPointsUsed === "number" && totalPointsUsed > 0) ||
     (Array.isArray(weights) && weights.some((w) => Number(w) > 0));
+
+  // number of assets with non-zero weight
+  const numActiveAssets = Array.isArray(weights)
+    ? weights.filter((w) => Number(w) > 0).length
+    : 0;
+
+  // used only for blinking logic on "+"
+  //  - true when we have 0 or 1 active asset
+  //  - false when >1 (no blinking)
+  const max1asset = numActiveAssets <= 1;
 
   return (
     <main
@@ -356,59 +355,69 @@ export default function BuilderSection({ keepAssets = true }) {
                       Math.min(10, 20 - sumOthers)
                     );
                     return (
-                      <WeightInput
-                        key={`w-${key}`}
-                        label={`${assetMeta[key]?.name ?? key} weight`}
-                        nameOnly={assetMeta[key]?.name ?? key}
-                        accentColor={assetMeta[key]?.color || undefined}
-                        value={current}
-                        maxForThis={maxForThis}
-                        onChange={(desiredVal) =>
-                          setWeights((w) => {
-                            const copy = [...w];
-                            const others = copy.reduce(
-                              (a, b, j) =>
-                                j === idx
-                                  ? a
-                                  : a + (Number.isFinite(b) ? b : 0),
-                              0
-                            );
-                            const allowed = Math.max(
-                              copy[idx] ?? 0,
-                              Math.min(10, 20 - others)
-                            );
-                            const next = Math.max(
-                              0,
-                              Math.min(
-                                allowed,
-                                Number.isFinite(desiredVal) ? desiredVal : 0
-                              )
-                            );
-                            copy[idx] = next;
-                            return copy;
-                          })
-                        }
-                        /* pulse + when no asset is added at all */
-                        highlightPlus={!hasPortfolio}
-                      />
+
+
+<WeightInput
+  key={`w-${key}`}
+  label={`${assetMeta[key]?.name ?? key} weight`}
+  nameOnly={assetMeta[key]?.name ?? key}
+  accentColor={assetMeta[key]?.color || undefined}
+  value={current}
+  maxForThis={maxForThis}
+  pointsRemaining={pointsRemaining}   // 👈 NEW
+  onChange={(desiredVal) =>
+    setWeights((w) => {
+      const copy = [...w];
+      const others = copy.reduce(
+        (a, b, j) =>
+          j === idx
+            ? a
+            : a + (Number.isFinite(b) ? b : 0),
+        0
+      );
+      const allowed = Math.max(
+        copy[idx] ?? 0,
+        Math.min(10, 20 - others)
+      );
+      const next = Math.max(
+        0,
+        Math.min(
+          allowed,
+          Number.isFinite(desiredVal) ? desiredVal : 0
+        )
+      );
+      copy[idx] = next;
+      return copy;
+    })
+  }
+  /* pulse + when no asset is added at all */
+  highlightPlus={max1asset}
+  highlightMinus={
+    numActiveAssets === 1 &&
+    idx === 0 &&
+    Number(current) > 0
+  }
+/>
+
+
                     );
                   })}
                 </div>
 
                 {showScrollHint && (
-  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-10 flex items-end justify-center bg-gradient-to-t from-white via-white/85 to-transparent">
-    <div className="mb-2 flex flex-col items-center gap-2">
-      <span className="[font-size:clamp(.72rem,.9vw,.75rem)] font-bold tracking-wide text-[#111] uppercase">
-        Scroll for more
-      </span>
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-10 flex items-end justify-center bg-gradient-to-t from-white via-white/85 to-transparent">
+                    <div className="mb-2 flex flex-col items-center gap-2">
+                      <span className="[font-size:clamp(.72rem,.9vw,.75rem)] font-bold tracking-wide text-[#111] uppercase">
+                        Scroll for more
+                      </span>
 
-      {/* Arrow styled like side nav arrow */}
-      <div className="animate-scrollBounce w-8 h-8 flex items-center justify-center text-xs font-bold">
-        <span className="leading-none">▼</span>
-      </div>
-    </div>
-  </div>
-)}
+                      {/* Arrow styled like side nav arrow */}
+                      <div className="animate-scrollBounce w-8 h-8 flex items-center justify-center text-xs font-bold">
+                        <span className="leading-none">▼</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
               </div>
             </aside>
@@ -487,99 +496,92 @@ export default function BuilderSection({ keepAssets = true }) {
 
                         {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
                         {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
-{yieldEverActivated && (
-  <div className="flex items-center gap-2">
-    <button
-      type="button"
-      onClick={handleToggleYield}
-      className={[
-        "relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide rounded-none",
-        yieldOn
-          ? "bg-[#e5e7eb] text-[#374151]" // plain grey when yield is ON
-          : "bg-[var(--accent)] text-white shadow-[0_0_18px_rgba(37,99,235,0.9)]", // blue when OFF
-      ].join(" ")}
-      aria-label={yieldOn ? "Turn yield off" : "Turn yield on"}
-    >
-      {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
-      {isETFComplete && !yieldOn && (
-        <span
-          className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
-          aria-hidden="true"
-        />
-      )}
+                        {yieldEverActivated && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={handleToggleYield}
+                              className={[
+                                "relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide rounded-none",
+                                yieldOn
+                                  ? "bg-[#e5e7eb] text-[#374151]" // plain grey when yield is ON
+                                  : "bg-[var(--accent)] text-white shadow-[0_0_18px_rgba(37,99,235,0.9)]", // blue when OFF
+                              ].join(" ")}
+                              aria-label={yieldOn ? "Turn yield off" : "Turn yield on"}
+                            >
+                              {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
+                              {isETFComplete && !yieldOn && (
+                                <span
+                                  className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
+                                  aria-hidden="true"
+                                />
+                              )}
 
-      <span className="relative flex items-center gap-1">
-        <span className="text-[14px] leading-none">
-          {yieldOn ? "⬜" : "🟦"}
-        </span>
-        <span>{yieldOn ? "Turn yield off" : "Turn yield on"}</span>
-      </span>
-    </button>
+                              <span className="relative flex items-center gap-1">
+                                <span className="text-[14px] leading-none">
+                                  {yieldOn ? "⬜" : "🟦"}
+                                </span>
+                                <span>{yieldOn ? "Turn yield off" : "Turn yield on"}</span>
+                              </span>
+                            </button>
 
-    {/* COMPLETE PORTFOLIO BUTTON:
+                            {/* COMPLETE PORTFOLIO BUTTON:
         appears when portfolio is full AND yield is ON.
         Pulsates and opens Save modal after 1s. */}
-    {isETFComplete && yieldOn && (
-      <button
-        type="button"
-        onClick={handleCompletePortfolioClick}
-        className="relative inline-flex items-center justify-center px-3 py-1.5 border border-[#ff8a00] bg-[#fffaec] text-[10px] sm:text-xs font-extrabold uppercase tracking-wide rounded-none shadow-[0_0_14px_rgba(255,138,0,0.75)]"
-      >
-        <span
-          className="pointer-events-none absolute inset-[-3px] border border-[#ffb347] rounded-none animate-ping"
-          aria-hidden="true"
-        />
-        <span className="relative flex items-center gap-1">
-          <span className="text-[14px] leading-none">✅</span>
-          <span>Complete portfolio</span>
-        </span>
-      </button>
-    )}
-  </div>
-)}
+                            {isETFComplete && yieldOn && (
+                              <button
+                                type="button"
+                                onClick={handleCompletePortfolioClick}
+                                className="relative inline-flex items-center justify-center px-3 py-1.5 border border-[#ff8a00] bg-[#fffaec] text-[10px] sm:text-xs font-extrabold uppercase tracking-wide rounded-none shadow-[0_0_14px_rgba(255,138,0,0.75)]"
+                              >
+                                <span
+                                  className="pointer-events-none absolute inset-[-3px] border border-[#ffb347] rounded-none animate-ping"
+                                  aria-hidden="true"
+                                />
+                                <span className="relative flex items-center gap-1">
+                                  <span className="text-[14px] leading-none">✅</span>
+                                  <span>Complete portfolio</span>
+                                </span>
+                              </button>
+                            )}
+                          </div>
+                        )}
 
-                        
+
                       </div>
                     </div>
 
-                    <div
-                      className="my-1"
-                      aria-label={`ETF completeness ${pointsForBar} of 20`}
-                    >
-           <div className="h-[8px] grid [grid-template-columns:repeat(20,minmax(0,1fr))] gap-1">
-  {Array.from({ length: 20 }).map((_, i) => (
-    <span
-      key={i}
-      className={[
-        "block w-full h-full rounded-none transition-colors",
-        i < pointsForBar
-          ? "bg-[var(--accent)]"
-          : "bg-[var(--bg)]",
-      ].join(" ")}
+               <div
+  className="my-1"
+  aria-label={`ETF completeness ${pointsForBar} of 20`}
+>
+  <div className="relative h-[8px] w-full bg-gray-300 overflow-hidden rounded-none">
+    <div
+      className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width]"
+      style={{ width: `${(pointsForBar / MAX_TOTAL_POINTS) * 100}%` }}
       aria-hidden="true"
     />
-  ))}
+  </div>
+
+  {isETFComplete && (
+    <div
+      className="mt-1.5 h-[2px] bg-[#ff8a00] opacity-35"
+      aria-hidden="true"
+    />
+  )}
 </div>
-
-                      {isETFComplete && (
-                        <div
-                          className="mt-1.5 h-[2px] bg-[#ff8a00] opacity-35"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </div>
-
-                    <div className="mt-0 w-full overflow-hidden flex-1 min-h-0 max-w-full">
-                      <ChartBuilder
-                        assets={assetKeys}
-                        weights={weights}
-                        showYield={yieldOn}
-                      />
-                    </div>
+<div className="mt-0 w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
+  <ChartBuilder
+    assets={assetKeys}
+    weights={weights}
+    showYield={yieldOn}
+    size="l"           
+  />
+</div>
                   </div>
 
                   {/* Text between chart and metrics */}
-                  <div className="text-center w-full text-[clamp(.9rem,1vw,1.1rem)] font-semibold flex items-center justify-center">
+                  <div className="text-center w-full text-[clamp(1.1rem,1vw,1.1rem)] font-bold flex items-center justify-center">
                     If you invested $1000 5 years ago, you would have:
                   </div>
 
@@ -621,16 +623,21 @@ export default function BuilderSection({ keepAssets = true }) {
         )}
       </div>
 
-      <SavePortfolioModal
-        open={saveOpen}
-        onClose={() => setSaveOpen(false)}
-        onBack={handleBackFromSave}
-        onSave={handleConfirmSave}
-        assets={assetKeys}
-        weights={weights}
-        userDisplay={userDisplay}
-        assetMeta={assetMeta}
-      />
+        {(() => {
+        const ActiveShareModal = isAuthed ? ShareModalSignedIn : ShareModal;
+        return (
+          <ActiveShareModal
+            open={shareOpen}
+            onClose={() => setShareOpen(false)}
+            assets={assetKeys}
+            weights={weights}
+            showYield={yieldOn}
+            userDisplay={userDisplay}
+            assetMeta={assetMeta}
+          />
+        );
+      })()}
+
     </main>
   );
 }
@@ -642,96 +649,123 @@ function WeightInput({
   accentColor,
   nameOnly = "",
   maxForThis = 10,
-  highlightPlus = false, // NEW: allows pulsing +
+  pointsRemaining = 0,          // 👈 NEW
+  highlightPlus = false,        // pulsing +
+  highlightMinus = false,       // pulsing − (for "1 default asset" state)
 }) {
   const v0 = Number.isFinite(value) ? value : 0;
   const v = Math.max(0, Math.min(10, Math.round(v0)));
+
   const dec = () => onChange(Math.max(0, v - 1));
   const inc = () => onChange(Math.min(maxForThis, v + 1));
   const setTo = (n) =>
     onChange(Math.max(0, Math.min(maxForThis, Math.round(n === v ? 0 : n))));
+
   const incDisabled = v >= maxForThis;
   const decDisabled = v <= 0;
+
+  // --- progress bar math (10 units per asset) ---
+  const maxUnits = 10;
+  const coloredPct = (v / maxUnits) * 100;
+
+  // how many more points we can still put into THIS asset
+  // (limited by both global remaining points and per-asset cap)
+  const freeHere = Math.max(0, Math.min(pointsRemaining, maxForThis - v));
+  const freePct = (freeHere / maxUnits) * 100;
+
+  const handleBarClick = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = (event.clientX - rect.left) / rect.width;
+    const desired = Math.round(ratio * maxUnits);
+    setTo(desired);
+  };
 
   return (
     <div
       style={accentColor ? { "--accent": accentColor } : undefined}
       className="select-none"
     >
-     <div className="mb-1">
-  <span
-    className="font-semibold [font-size:70%]"
-    style={{ color: "var(--accent, var(--text))" }}
-  >
-    {nameOnly || label}
-  </span>
-</div>
+      <div className="mb-1">
+        <span
+          className="font-semibold [font-size:70%]"
+          style={{ color: "var(--accent, var(--text))" }}
+        >
+          {nameOnly || label}
+        </span>
+      </div>
 
       <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-<button
-  type="button"
-  className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
-  onClick={dec}
-  disabled={decDisabled}
-  aria-label={`Decrease ${label}`}
-  title="Decrease"
->
-  <span className="relative -translate-y-[1px]">−</span>
-</button>
+        {/* − button */}
+        <button
+          type="button"
+          className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+          onClick={dec}
+          disabled={decDisabled}
+          aria-label={`Decrease ${label}`}
+          title="Decrease"
+        >
+          <span
+            className={[
+              "relative -translate-y-[1px] transition-[text-shadow,transform]",
+              highlightMinus
+                ? "[text-shadow:0_0_14px_rgba(37,99,235,0.95)] animate-pulse"
+                : "",
+            ].join(" ")}
+          >
+            −
+          </span>
+        </button>
 
+        {/* middle: progress bar instead of 10 steps */}
+        <button
+          type="button"
+          onClick={handleBarClick}
+          className="relative h-[8px] w-full rounded-none bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
+          aria-label={`${label}: current ${v} of 10`}
+          title={`${v} / 10`}
+        >
+          {/* filled value */}
+          <span
+            className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width]"
+            style={{ width: `${coloredPct}%` }}
+            aria-hidden="true"
+          />
 
+          {/* free grey part (from remaining global points) */}
+          {freeHere > 0 && (
+            <span
+              className="absolute inset-y-0 bg-gray-300"
+              style={{
+                left: `${coloredPct}%`,
+                width: `${freePct}%`,
+              }}
+              aria-hidden="true"
+            />
+          )}
+        </button>
 
-        <div className="grid [grid-template-columns:repeat(10,minmax(0,1fr))] gap-1 items-center">
-          {Array.from({ length: 10 }).map((_, idx) => {
-            const i = idx + 1;
-            const disabled = i > maxForThis;
-            const filled = i <= v;
-            return (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setTo(i)}
-                aria-label={`${label}: set to ${i}`}
-                disabled={disabled}
-                className={[
-  "h-[8px] w-full rounded-none transition-colors",
-  filled
-    ? "bg-[var(--accent)]" // solid 8px blue bar, same thickness as divider
-    : "bg-[var(--bg)] hover:bg-[var(--bg-alt)]",
-  disabled
-    ? "opacity-40 cursor-not-allowed"
-    : "cursor-pointer",
-  "focus:outline-none focus:ring-1 focus:ring-[var(--border)]",
-].join(" ")}
-
-              />
-            );
-          })}
-        </div>
-
-<button
-  type="button"
-  className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
-  onClick={inc}
-  disabled={incDisabled}
-  aria-label={`Increase ${label}`}
-  title="Increase"
->
-  <span
-    className={[
-      "relative -translate-y-[1px] transition-[text-shadow,transform]",
-      highlightPlus && !v
-        ? "[text-shadow:0_0_14px_rgba(37,99,235,0.95)] animate-pulse"
-        : "",
-    ].join(" ")}
-  >
-    +
-  </span>
-</button>
-
-
-
+        {/* + button */}
+        <button
+          type="button"
+          className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+          onClick={inc}
+          disabled={incDisabled}
+          aria-label={`Increase ${label}`}
+          title="Increase"
+        >
+          <span
+            className={[
+              "relative -translate-y-[1px] transition-[text-shadow,transform]",
+              highlightPlus
+                ? "[text-shadow:0_0_14px_rgba(37,99,235,0.95)] animate-pulse"
+                : "",
+            ].join(" ")}
+          >
+            +
+          </span>
+        </button>
       </div>
     </div>
   );
 }
+

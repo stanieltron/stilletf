@@ -108,7 +108,7 @@ export default function Header() {
             Still-ETFs
           </Link>
           <Link href="/useretfs" className="text-inherit no-underline">
-            Users-ETFs
+            Leaderboard
           </Link>
         </nav>
 
@@ -116,7 +116,7 @@ export default function Header() {
         <div className="justify-self-end relative" ref={menuRef}>
           {!isAuthed ? (
             <button
-              className="border border-[var(--border)] bg-white rounded-lg px-2.5 py-1.5 font-bold cursor-pointer leading-none text-black"
+              className="border border-[var(--border)] bg-white px-2.5 py-1.5 font-bold cursor-pointer leading-none text-black"
               onClick={openSignIn}
             >
               Sign in
@@ -125,7 +125,7 @@ export default function Header() {
             <>
               <button
                 onClick={() => setOpen((v) => !v)}
-                className="border border-[var(--border)] rounded-lg px-2.5 py-1.5 font-bold cursor-pointer leading-none bg-transparent text-orange-400"
+                className=" px-2.5 py-1.5 font-bold cursor-pointer leading-none bg-transparent text-orange-400"
                 aria-haspopup="true"
                 aria-expanded={open ? "true" : "false"}
                 title="Account"
@@ -135,26 +135,26 @@ export default function Header() {
 
               {open && (
                 <div
-                  className="absolute right-0 mt-2 w-56 rounded-md border border-[var(--border)] bg-white text-black shadow-lg z-50"
+                  className="absolute right-0 mt-2 w-56 border border-[var(--border)] bg-white text-black shadow-lg z-50"
                   role="menu"
                   aria-label="Account menu"
                 >
                   <div className="p-2 grid gap-2">
                     <button
-                      className="w-full text-left px-3 py-2 rounded-md hover:bg-[var(--bg-alt)] font-semibold"
+                      className="w-full text-left px-3 py-2 hover:bg-[var(--bg-alt)] font-semibold"
                       onClick={connectMetamask}
                     >
                       Connect MetaMask
                     </button>
                     <Link
                       href="/useretfs"
-                      className="block px-3 py-2 rounded-md hover:bg-[var(--bg-alt)] font-semibold no-underline text-black"
+                      className="block px-3 py-2 hover:bg-[var(--bg-alt)] font-semibold no-underline text-black"
                       onClick={() => setOpen(false)}
                     >
                       My ETFs
                     </Link>
                     <button
-                      className="w-full text-left px-3 py-2 rounded-md hover:bg-[var(--bg-alt)] font-semibold text-[var(--neg)]"
+                      className="w-full text-left px-3 py-2 hover:bg-[var(--bg-alt)] font-semibold text-[var(--neg)]"
                       onClick={() => { setOpen(false); signOut(); }}
                     >
                       Log out

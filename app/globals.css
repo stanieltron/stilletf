@@ -145,5 +145,21 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;             /* Chrome, Safari, Opera */
 }
+
+@keyframes logo-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* move left by half the width since we duplicated the list */
+    transform: translateX(-50%);
+  }
+}
+
+.animate-logo-scroll {
+    animation: logo-scroll 25s linear infinite;
+  }
+
+
 }
 
