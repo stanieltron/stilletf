@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -88,7 +89,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
         
         name = _name;
         symbol = _symbol;
-        decimals = 18; // Standard, can be adjusted to match UA decimals
+        decimals = IERC20Metadata(_UA).decimals();
     }
 
     // ============ Core Staking Functions ============
@@ -267,8 +268,9 @@ contract StakingVault is ReentrancyGuard, Ownable {
      * @return Price per share (scaled to 1e18)
      */
     function sharePrice() external view returns (uint256) {
-        if (_totalSupply == 0) return 1e18;
-        return (totalAssets() * 1e18) / _totalSupply;
+        uint256 scale = 10 ** decimals;
+        if (_totalSupply == 0) return scale;
+        return (totalAssets() * scale) / _totalSupply;
     }
 
     /**

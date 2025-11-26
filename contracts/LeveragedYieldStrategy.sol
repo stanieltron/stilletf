@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -53,6 +54,7 @@ interface IPool {
 interface IAaveOracle {
     function getAssetPrice(address asset) external view returns (uint256);
     function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory);
+    function BASE_CURRENCY_UNIT() external view returns (uint256);
 }
 
 // Fluid Lending Protocol Interface
@@ -103,6 +105,8 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
     IERC20 public immutable UA; // Underlying asset (e.g., WETH) used as collateral
     IERC20 public immutable borrowedAsset; // Asset to borrow (e.g., wstETH)
     IERC20 public immutable USDC; // Yield token for rewards
+    uint8 public immutable uaDecimals;
+    uint8 public immutable borrowedDecimals;
     IPool public immutable aavePool; // Aave V3 Pool
     IFluidLending public immutable fluidLending; // Fluid lending protocol
     ISwapRouter public immutable swapRouter; // For swapping rewards to USDC
@@ -110,10 +114,10 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
     IRewardsController public immutable rewardsController;
 
     // ============ Position State ============
-    uint256 public totalCollateral; // Total UA deposited as collateral in Aave
-    uint256 public totalBorrowed; // Total borrowed asset amount
-    uint256 public totalStakedInFluid; // Total amount staked in Fluid
-    uint256 public totalDebt; // Total debt in USD terms
+    uint256 public totalCollateral; // Total UA deposited as collateral in Aave (derived)
+    uint256 public totalBorrowed; // Total borrowed asset amount (derived)
+    uint256 public totalStakedInFluid; // Total amount staked in Fluid (derived)
+    uint256 public totalDebt; // Total debt in base currency
 
     // ============ Leverage Parameters ============
     uint256 public constant OPTIMAL_LTV = 7500; // 75% optimal borrowing ratio
@@ -125,6 +129,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
     
     // ============ Yield Tracking ============
     uint256 public lastHarvestBlock;
+    uint256 public immutable baseCurrencyUnit; // oracle base currency unit (e.g., 1e8)
     address[] public rewardAssets; // Assets for reward claiming
 
     // ============ Events ============
@@ -166,11 +171,15 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         UA = IERC20(_UA);
         borrowedAsset = IERC20(_borrowedAsset);
         USDC = IERC20(_USDC);
+        uaDecimals = IERC20Metadata(_UA).decimals();
+        borrowedDecimals = IERC20Metadata(_borrowedAsset).decimals();
         aavePool = IPool(_aavePool);
         fluidLending = IFluidLending(_fluidLending);
         swapRouter = ISwapRouter(_swapRouter);
         aaveOracle = IAaveOracle(_aaveOracle);
         rewardsController = IRewardsController(_rewardsController);
+        baseCurrencyUnit = IAaveOracle(_aaveOracle).BASE_CURRENCY_UNIT();
+        require(baseCurrencyUnit > 0, "Invalid base unit");
         
         // Initialize reward assets array
         rewardAssets.push(_UA);
@@ -178,6 +187,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         rewardAssets.push(_USDC);
         
         lastHarvestBlock = block.number;
+        _syncAccounting();
     }
 
     // ============ Core Strategy Functions ============
@@ -188,17 +198,21 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      */
     function deposit(uint256 amountUA) external onlyVault nonReentrant {
         // 1. Supply UA as collateral to Aave V3
+        UA.safeApprove(address(aavePool), 0);
         UA.safeApprove(address(aavePool), amountUA);
         aavePool.supply(address(UA), amountUA, address(this), 0);
         totalCollateral += amountUA;
         
         // 2. Calculate how much to borrow based on OPTIMAL_LTV
-        uint256 collateralValueUSD = aaveOracle.getAssetPrice(address(UA)) * amountUA / 1e18;
-        uint256 targetBorrowValueUSD = (collateralValueUSD * OPTIMAL_LTV) / 10000;
+        uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
+        require(uaPrice > 0, "UA price zero");
+        uint256 collateralValueBase = (amountUA * uaPrice) / (10 ** uaDecimals);
+        uint256 targetBorrowValueBase = (collateralValueBase * OPTIMAL_LTV) / 10000;
         
         // 3. Calculate amount of borrowedAsset (e.g., wstETH) to borrow
         uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-        uint256 amountToBorrow = (targetBorrowValueUSD * 1e18) / borrowedAssetPrice;
+        require(borrowedAssetPrice > 0, "Borrow price zero");
+        uint256 amountToBorrow = (targetBorrowValueBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
         
         // 4. Borrow the asset from Aave (variable rate = 2)
         if (amountToBorrow > 0) {
@@ -206,6 +220,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             totalBorrowed += amountToBorrow;
             
             // 5. Stake borrowed asset in Fluid lending
+            borrowedAsset.safeApprove(address(fluidLending), 0);
             borrowedAsset.safeApprove(address(fluidLending), amountToBorrow);
             uint256 stakedAmount = fluidLending.stake(address(borrowedAsset), amountToBorrow);
             totalStakedInFluid += stakedAmount;
@@ -214,7 +229,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         }
         
         // 6. Update debt tracking
-        _updateDebtTracking();
+        _syncAccounting();
         
         emit Deposited(amountUA);
     }
@@ -225,6 +240,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      * @param to Address to send withdrawn UA
      */
     function withdraw(uint256 amountUA, address to) external onlyVault nonReentrant {
+        _syncAccounting();
         // Calculate proportional unwinding needed
         uint256 shareToWithdraw = (amountUA * 1e18) / totalCollateral;
         
@@ -237,6 +253,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             totalStakedInFluid -= amountToUnstake;
             
             // 3. Repay debt to Aave
+            borrowedAsset.safeApprove(address(aavePool), 0);
             borrowedAsset.safeApprove(address(aavePool), unstakedAmount);
             uint256 repaidAmount = aavePool.repay(address(borrowedAsset), unstakedAmount, 2, address(this));
             totalBorrowed = totalBorrowed > repaidAmount ? totalBorrowed - repaidAmount : 0;
@@ -249,7 +266,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         totalCollateral -= amountUA;
         
         // 5. Update debt tracking
-        _updateDebtTracking();
+        _syncAccounting();
         
         emit Withdrawn(amountUA, to);
     }
@@ -259,6 +276,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      * @dev Permissionless - anyone can call when LTV deviates by 5%
      */
     function rebalance() external nonReentrant {
+        _syncAccounting();
         require(needsRebalance(), "NO_REBALANCE_NEEDED");
         
         uint256 currentLTV = getCurrentLTV();
@@ -271,6 +289,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             _increaseBorrowing();
         }
         
+        _syncAccounting();
         emit Rebalanced(totalCollateral, totalDebt, getCurrentLTV());
     }
 
@@ -334,12 +353,9 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      * @return Current LTV in basis points
      */
     function getCurrentLTV() public view returns (uint256) {
-        if (totalCollateral == 0) return 0;
-        
-        uint256 collateralValueUSD = aaveOracle.getAssetPrice(address(UA)) * totalCollateral / 1e18;
-        if (collateralValueUSD == 0) return 0;
-        
-        return (totalDebt * 10000) / collateralValueUSD;
+        (uint256 collateralBase, uint256 debtBase) = _getAccountData();
+        if (collateralBase == 0) return 0;
+        return (debtBase * 10000) / collateralBase;
     }
 
     /**
@@ -348,24 +364,22 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      */
     function totalAssets() external view returns (uint256) {
         // Net value = Collateral - Debt (in UA terms)
-        uint256 collateralValue = totalCollateral;
-        
-        // Calculate debt in UA terms
         uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
-        if (uaPrice == 0) return collateralValue;
-        
-        uint256 debtInUA = (totalDebt * 1e18) / uaPrice;
-        
-        // Add value from Fluid staking (if any yield accumulated)
-        uint256 fluidValue = fluidLending.balanceOf(address(borrowedAsset), address(this));
-        if (fluidValue > totalBorrowed) {
-            uint256 profit = fluidValue - totalBorrowed;
-            uint256 profitInUA = (profit * aaveOracle.getAssetPrice(address(borrowedAsset))) / uaPrice;
-            collateralValue += profitInUA;
+        if (uaPrice == 0) return 0;
+
+        (uint256 collateralBase, uint256 debtBase) = _getAccountData();
+        uint256 collateralInUA = (collateralBase * (10 ** uaDecimals)) / uaPrice;
+        uint256 debtInUA = (debtBase * (10 ** uaDecimals)) / uaPrice;
+
+        uint256 stakedBorrowed = fluidLending.balanceOf(address(borrowedAsset), address(this));
+        uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+        if (borrowedPrice > 0 && stakedBorrowed > totalBorrowed) {
+            uint256 profit = stakedBorrowed - totalBorrowed;
+            collateralInUA += (profit * borrowedPrice) / uaPrice;
         }
-        
-        if (collateralValue > debtInUA) {
-            return collateralValue - debtInUA;
+
+        if (collateralInUA > debtInUA) {
+            return collateralInUA - debtInUA;
         }
         return 0; // Underwater position
     }
@@ -393,16 +407,15 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      * @notice Reduce borrowing to decrease LTV back to optimal
      */
     function _reduceBorrowing() internal {
-        // Calculate target debt based on OPTIMAL_LTV
-        uint256 collateralValueUSD = aaveOracle.getAssetPrice(address(UA)) * totalCollateral / 1e18;
-        uint256 targetDebtUSD = (collateralValueUSD * OPTIMAL_LTV) / 10000;
+        (uint256 collateralBase, ) = _getAccountData();
+        uint256 targetDebtBase = (collateralBase * OPTIMAL_LTV) / 10000;
         
-        if (totalDebt > targetDebtUSD) {
-            uint256 excessDebtUSD = totalDebt - targetDebtUSD;
+        if (totalDebt > targetDebtBase) {
+            uint256 excessDebtBase = totalDebt - targetDebtBase;
             
-            // Calculate how much borrowed asset to repay
             uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-            uint256 amountToRepay = (excessDebtUSD * 1e18) / borrowedAssetPrice;
+            require(borrowedAssetPrice > 0, "Borrow price zero");
+            uint256 amountToRepay = (excessDebtBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
             
             // Unstake from Fluid
             if (amountToRepay > 0 && totalStakedInFluid > 0) {
@@ -417,23 +430,22 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             }
         }
         
-        _updateDebtTracking();
+        _syncAccounting();
     }
 
     /**
      * @notice Increase borrowing to reach optimal LTV
      */
     function _increaseBorrowing() internal {
-        // Calculate target debt based on OPTIMAL_LTV
-        uint256 collateralValueUSD = aaveOracle.getAssetPrice(address(UA)) * totalCollateral / 1e18;
-        uint256 targetDebtUSD = (collateralValueUSD * OPTIMAL_LTV) / 10000;
+        (uint256 collateralBase, ) = _getAccountData();
+        uint256 targetDebtBase = (collateralBase * OPTIMAL_LTV) / 10000;
         
-        if (targetDebtUSD > totalDebt) {
-            uint256 additionalDebtUSD = targetDebtUSD - totalDebt;
+        if (targetDebtBase > totalDebt) {
+            uint256 additionalDebtBase = targetDebtBase - totalDebt;
             
-            // Calculate how much to borrow
             uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-            uint256 amountToBorrow = (additionalDebtUSD * 1e18) / borrowedAssetPrice;
+            require(borrowedAssetPrice > 0, "Borrow price zero");
+            uint256 amountToBorrow = (additionalDebtBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
             
             // Borrow from Aave
             if (amountToBorrow > 0) {
@@ -447,15 +459,14 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             }
         }
         
-        _updateDebtTracking();
+        _syncAccounting();
     }
 
     /**
      * @notice Update debt tracking from lending protocol
      */
     function _updateDebtTracking() internal {
-        (, uint256 totalDebtBase, , , , ) = aavePool.getUserAccountData(address(this));
-        totalDebt = totalDebtBase; // Already in USD terms
+        _syncAccounting();
     }
 
     /**
@@ -519,5 +530,28 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      */
     function emergencyWithdraw(address token, uint256 amount) external onlyOwner {
         IERC20(token).safeTransfer(owner(), amount);
+    }
+
+    // ============ Internal Helpers ============
+
+    function _getAccountData() internal view returns (uint256 collateralBase, uint256 debtBase) {
+        (collateralBase, debtBase, , , , ) = aavePool.getUserAccountData(address(this));
+    }
+
+    function _syncAccounting() internal {
+        (uint256 collateralBase, uint256 debtBase) = _getAccountData();
+        totalDebt = debtBase;
+
+        uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
+        if (uaPrice > 0) {
+            totalCollateral = (collateralBase * (10 ** uaDecimals)) / uaPrice;
+        }
+
+        uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+        if (borrowedPrice > 0) {
+            totalBorrowed = (debtBase * (10 ** borrowedDecimals)) / borrowedPrice;
+        }
+
+        totalStakedInFluid = fluidLending.balanceOf(address(borrowedAsset), address(this));
     }
 }
