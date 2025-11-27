@@ -23,22 +23,21 @@ contract MockFluidVault is ERC4626, ERC20Permit {
     }
 
     /**
-     * @notice Donate ETH (or stETH) into the vault; ETH is auto-converted to stETH via submit.
+     * @notice Donate ETH yield directly to the vault (no shares minted); ETH is auto-converted to stETH via submit.
      */
-    function donateAssets() external payable returns (uint256 shares) {
-        uint256 stAmount = msg.value;
-        if (msg.value > 0) {
-            stAmount = IStETH(address(asset())).submit{value: msg.value}(address(0));
-        }
-        require(stAmount > 0, "Zero assets");
-        // If caller prefers to send stETH directly, allow standard transfer
-        uint256 direct = IERC20(asset()).allowance(msg.sender, address(this));
-        if (direct > 0) {
-            IERC20(asset()).transferFrom(msg.sender, address(this), direct);
-            stAmount += direct;
-        }
-        shares = previewDeposit(stAmount);
-        _deposit(msg.sender, msg.sender, stAmount, shares);
+    function donateYieldWithETH() external payable {
+        require(msg.value > 0, "Zero assets");
+        IStETH(address(asset())).submit{value: msg.value}(address(0));
+        // no shares minted → boosts totalAssets for existing share holders
+    }
+
+    /**
+     * @notice Donate stETH yield directly to the vault (no shares minted).
+     */
+    function donateYield(uint256 assets) external {
+        require(assets > 0, "Zero assets");
+        IERC20(asset()).transferFrom(msg.sender, address(this), assets);
+        // no shares minted → boosts totalAssets for existing share holders
     }
 
     receive() external payable {}

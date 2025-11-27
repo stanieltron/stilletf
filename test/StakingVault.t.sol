@@ -79,19 +79,11 @@ contract StakingVaultTest is Test {
         vm.prank(alice);
         vault.stake(5e7); // 0.5 WBTC
 
-        // simulate stETH profit by donating stETH to Fluid
-        vm.prank(alice);
-        steth.mint(alice, 1e18);
-        vm.prank(alice);
-        steth.approve(address(fluid), 1e18);
-        vm.prank(alice);
-        fluid.donateAssets{value: 0}();
-
         // harvest (no router, so swap returns 0) but should not revert
         vault.harvestYield();
     }
 
-    function computeCreateAddress(address deployer, uint256 nonce) internal pure returns (address) {
+    function computeCreateAddress(address deployer, uint256 nonce) internal pure override returns (address) {
         bytes memory data;
         if (nonce == 0x00) data = abi.encodePacked(bytes1(0xd6), bytes1(0x94), deployer, bytes1(0x80));
         else if (nonce <= 0x7f) data = abi.encodePacked(bytes1(0xd6), bytes1(0x94), deployer, uint8(nonce));

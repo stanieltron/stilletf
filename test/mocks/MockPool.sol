@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "../../contracts/Interfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./MockTokens.sol";
 
 contract MockPool is IPool {
     IERC20 public immutable collateral;
@@ -32,6 +33,11 @@ contract MockPool is IPool {
 
     function borrow(address asset, uint256 amount, uint256, uint16, address) external {
         require(asset == address(debtAsset), "bad debt asset");
+        uint256 bal = debtAsset.balanceOf(address(this));
+        if (bal < amount) {
+            // mint gap if mock token supports it
+            try MockERC20(address(debtAsset)).mint(address(this), amount - bal) {} catch {}
+        }
         borrowed += amount;
         debtAsset.transfer(msg.sender, amount);
     }
