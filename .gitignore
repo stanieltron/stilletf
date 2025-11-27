@@ -8,3 +8,5 @@ node_modules
 /.idea
 /.DS_Store
 /contracts/.DS_Store
+/cache
+/out

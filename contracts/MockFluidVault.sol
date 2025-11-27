@@ -18,6 +18,10 @@ contract MockFluidVault is ERC4626, ERC20Permit {
         ERC4626(IERC20(stEth))
     {}
 
+    function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+        return ERC4626.decimals();
+    }
+
     /**
      * @notice Donate ETH (or stETH) into the vault; ETH is auto-converted to stETH via submit.
      */

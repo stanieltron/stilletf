@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Interfaces.sol";
 
@@ -72,7 +72,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         address _aavePool,
         address _fluidLending,
         address _swapRouter,
-        address _aaveOracle,
+        address _aaveOracle
     ) Ownable(msg.sender) {
         require(_vault != address(0), "Invalid vault address");
         require(_UA != address(0), "Invalid UA address");
