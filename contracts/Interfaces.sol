@@ -8,6 +8,11 @@ interface IWETH {
     function balanceOf(address) external view returns (uint256);
 }
 
+// Minimal stETH interface (Lido)
+interface IStETH {
+    function submit(address referral) external payable returns (uint256);
+}
+
 // Aave V3 Pool interface (subset)
 interface IPool {
     function supply(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) external;
