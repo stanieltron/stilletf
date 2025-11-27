@@ -80,8 +80,15 @@ contract StakingVaultTest is Test {
         vm.prank(alice);
         vault.stake(5e7); // 0.5 WBTC
 
-        // harvest (no router, so swap returns 0) but should not revert
+        // donate yield to strategy via Fluid vault to simulate profits
+        vm.deal(address(this), 1 ether);
+        fluid.donateYieldWithETH{value: 1 ether}();
+
+        // harvest should distribute rewards
         vault.harvestYield();
+
+        uint256 pending = vault.pendingRewards(alice);
+        assertGt(pending, 0, "no rewards accrued");
     }
 
     function computeCreateAddress(address deployer, uint256 nonce) internal pure override returns (address) {

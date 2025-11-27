@@ -77,8 +77,15 @@ contract YieldStrategyTest is Test {
         ua.approve(address(strategy), type(uint256).max);
         strategy.deposit(5e7);
 
+        // donate real yield (ETH -> stETH) to fluid vault
+        vm.deal(address(this), 1 ether);
+        fluid.donateYieldWithETH{value: 1 ether}();
+
+        uint256 usdcBefore = usdc.balanceOf(address(strategy));
         uint256 harvested = strategy.harvestYield();
-        // mock router returns amountIn; with no profit harvested can be zero but should not revert
-        assertEq(harvested, 0, "unexpected harvest");
+        uint256 usdcAfter = usdc.balanceOf(address(strategy));
+
+        assertGt(harvested, 0, "no harvest");
+        assertGt(usdcAfter, usdcBefore, "no usdc gained");
     }
 }

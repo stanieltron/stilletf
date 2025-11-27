@@ -67,6 +67,7 @@ export default function BTCETFPage() {
     totalAssets: 0n,
     totalSupply: 0n,
     sharePrice: 0n,
+    decimals: DEFAULT_WBTC_DECIMALS,
   });
   const [userStats, setUserStats] = useState({
     shares: 0n,
@@ -190,7 +191,7 @@ export default function BTCETFPage() {
     try {
       setLoading(true);
       setErr("");
-      const [shares, totalAssets, totalSupply, sharePrice, pendingRewards, walletBalance] =
+      const [shares, totalAssets, totalSupply, sharePrice, pendingRewards, walletBalance, vaultDecimals] =
         await Promise.all([
           nextVault.balanceOf(address),
           nextVault.totalAssets(),
@@ -198,10 +199,11 @@ export default function BTCETFPage() {
           nextVault.sharePrice(),
           nextVault.getPendingRewards(address),
           nextWbtc.balanceOf(address),
+          nextVault.decimals(),
         ]);
       const vaultValue =
         totalSupply === 0n ? 0n : (shares * totalAssets) / totalSupply;
-      setVaultStats({ totalAssets, totalSupply, sharePrice });
+      setVaultStats({ totalAssets, totalSupply, sharePrice, decimals: Number(vaultDecimals) || wbtcDecimals });
       setUserStats({ shares, vaultValue, pendingRewards, walletBalance });
     } catch (e) {
       console.error(e);
@@ -337,7 +339,7 @@ export default function BTCETFPage() {
               <div className="text-right">
                 <p className="text-sm text-slate-500">Share price</p>
                 <p className="text-2xl font-bold text-[#f97316]">
-                  {formatBigAmount(vaultStats.sharePrice, 18, { maximumFractionDigits: 6 })} WBTC
+                  {formatBigAmount(vaultStats.sharePrice, vaultStats.decimals, { maximumFractionDigits: 6 })} WBTC
                 </p>
               </div>
             </div>
@@ -411,7 +413,7 @@ export default function BTCETFPage() {
                   </button>
                 </div>
                 <div className="text-sm text-slate-600">
-                  Total assets: {formatBigAmount(vaultStats.totalAssets, wbtcDecimals, { maximumFractionDigits: 4 })} BTC
+                  Total assets: {formatBigAmount(vaultStats.totalAssets, vaultStats.decimals, { maximumFractionDigits: 4 })} BTC
                 </div>
               </div>
             </div>
