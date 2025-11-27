@@ -6,19 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-interface ILeveragedYieldStrategy {
-    function deposit(uint256 amountUA) external;
-    function withdraw(uint256 amountUA, address to) external;
-    function harvestYield() external returns (uint256 amountUSDC);
-    function rebalance() external;
-    function needsRebalance() external view returns (bool);
-    function totalAssets() external view returns (uint256);
-}
-
-interface IBTCStaking {
-    function notifyRewardAmount(uint256 amount) external;
-}
+import "./Interfaces.sol";
 
 /**
  * @title StakingVault
@@ -31,7 +19,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
     // ============ Immutables ============
     IERC20 public immutable UA; // Underlying asset (e.g., WETH)
     IERC20 public immutable USDC; // Reward token
-    ILeveragedYieldStrategy public immutable strategy;
+    IYieldStrategy public immutable strategy;
     address public immutable btcStakingContract;
 
     // ============ ERC-20 Share Token State ============
@@ -76,7 +64,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
         address _btcStakingContract,
         string memory _name,
         string memory _symbol
-    ) {
+    ) Ownable(msg.sender) {
         require(_UA != address(0), "Invalid UA address");
         require(_USDC != address(0), "Invalid USDC address");
         require(_strategy != address(0), "Invalid strategy address");
@@ -84,7 +72,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
 
         UA = IERC20(_UA);
         USDC = IERC20(_USDC);
-        strategy = ILeveragedYieldStrategy(_strategy);
+        strategy = IYieldStrategy(_strategy);
         btcStakingContract = _btcStakingContract;
         
         name = _name;

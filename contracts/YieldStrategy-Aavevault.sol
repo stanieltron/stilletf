@@ -6,98 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
-// Aave V3 Interfaces
-interface IPool {
-    function supply(
-        address asset,
-        uint256 amount,
-        address onBehalfOf,
-        uint16 referralCode
-    ) external;
-    
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256);
-    
-    function borrow(
-        address asset,
-        uint256 amount,
-        uint256 interestRateMode,
-        uint16 referralCode,
-        address onBehalfOf
-    ) external;
-    
-    function repay(
-        address asset,
-        uint256 amount,
-        uint256 rateMode,
-        address onBehalfOf
-    ) external returns (uint256);
-    
-    function getUserAccountData(address user)
-        external
-        view
-        returns (
-            uint256 totalCollateralBase,
-            uint256 totalDebtBase,
-            uint256 availableBorrowsBase,
-            uint256 currentLiquidationThreshold,
-            uint256 ltv,
-            uint256 healthFactor
-        );
-}
-
-// Aave Oracle Interface
-interface IAaveOracle {
-    function getAssetPrice(address asset) external view returns (uint256);
-    function getAssetsPrices(address[] calldata assets) external view returns (uint256[] memory);
-    function BASE_CURRENCY_UNIT() external view returns (uint256);
-}
-
-// Fluid Lending Protocol Interface
-interface IFluidLending {
-    function stake(address token, uint256 amount) external returns (uint256 shares);
-    function unstake(address token, uint256 shares) external returns (uint256 amount);
-    function claimRewards(address user) external returns (uint256 rewards);
-    function balanceOf(address token, address user) external view returns (uint256);
-    function getPendingRewards(address user) external view returns (uint256);
-}
-
-// Uniswap V3 Swap Router Interface
-interface ISwapRouter {
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        address recipient;
-        uint256 deadline;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
-    }
-    
-    function exactInputSingle(ExactInputSingleParams calldata params)
-        external
-        payable
-        returns (uint256 amountOut);
-}
-
-// Rewards Interface
-interface IRewardsController {
-    function claimAllRewards(address[] calldata assets, address to)
-        external
-        returns (address[] memory rewardsList, uint256[] memory claimedAmounts);
-}
+import "./Interfaces.sol";
 
 /**
- * @title LeveragedYieldStrategy
+ * @title YieldStrategy
  * @notice Strategy that uses UA as collateral to borrow wstETH and stake in Fluid
  * @dev Implements automated rebalancing and yield harvesting from Fluid lending
  */
-contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
+contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     using SafeERC20 for IERC20;
 
     // ============ Immutables ============
@@ -111,7 +27,6 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
     IFluidLending public immutable fluidLending; // Fluid lending protocol
     ISwapRouter public immutable swapRouter; // For swapping rewards to USDC
     IAaveOracle public immutable aaveOracle; // Aave's price aaveOracle
-    IRewardsController public immutable rewardsController;
 
     // ============ Position State ============
     uint256 public totalCollateral; // Total UA deposited as collateral in Aave (derived)
@@ -130,7 +45,6 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
     // ============ Yield Tracking ============
     uint256 public lastHarvestBlock;
     uint256 public immutable baseCurrencyUnit; // oracle base currency unit (e.g., 1e8)
-    address[] public rewardAssets; // Assets for reward claiming
 
     // ============ Events ============
     event Deposited(uint256 amountUA);
@@ -156,11 +70,12 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         address _fluidLending,
         address _swapRouter,
         address _aaveOracle,
-        address _rewardsController
-    ) {
+    ) Ownable(msg.sender) {
         require(_vault != address(0), "Invalid vault address");
         require(_UA != address(0), "Invalid UA address");
         require(_borrowedAsset != address(0), "Invalid borrowed asset");
+        // borrowed asset must be WETH-compatible to unwrap
+        require(_borrowedAsset.code.length > 0, "Borrowed asset not a contract");
         require(_USDC != address(0), "Invalid USDC address");
         require(_aavePool != address(0), "Invalid Aave pool");
         require(_fluidLending != address(0), "Invalid Fluid lending");
@@ -169,7 +84,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
 
         vault = _vault;
         UA = IERC20(_UA);
-        borrowedAsset = IERC20(_borrowedAsset);
+        borrowedAsset = IERC20(_borrowedAsset); // fixed borrowed asset (e.g., WETH) set at deploy time
         USDC = IERC20(_USDC);
         uaDecimals = IERC20Metadata(_UA).decimals();
         borrowedDecimals = IERC20Metadata(_borrowedAsset).decimals();
@@ -177,15 +92,10 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         fluidLending = IFluidLending(_fluidLending);
         swapRouter = ISwapRouter(_swapRouter);
         aaveOracle = IAaveOracle(_aaveOracle);
-        rewardsController = IRewardsController(_rewardsController);
         baseCurrencyUnit = IAaveOracle(_aaveOracle).BASE_CURRENCY_UNIT();
         require(baseCurrencyUnit > 0, "Invalid base unit");
         
         // Initialize reward assets array
-        rewardAssets.push(_UA);
-        rewardAssets.push(_borrowedAsset);
-        rewardAssets.push(_USDC);
-        
         lastHarvestBlock = block.number;
         _syncAccounting();
     }
@@ -198,8 +108,8 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      */
     function deposit(uint256 amountUA) external onlyVault nonReentrant {
         // 1. Supply UA as collateral to Aave V3
-        UA.safeApprove(address(aavePool), 0);
-        UA.safeApprove(address(aavePool), amountUA);
+        require(UA.approve(address(aavePool), 0), "UA approve reset failed");
+        require(UA.approve(address(aavePool), amountUA), "UA approve failed");
         aavePool.supply(address(UA), amountUA, address(this), 0);
         totalCollateral += amountUA;
         
@@ -219,13 +129,13 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             aavePool.borrow(address(borrowedAsset), amountToBorrow, 2, 0, address(this));
             totalBorrowed += amountToBorrow;
             
-            // 5. Stake borrowed asset in Fluid lending
-            borrowedAsset.safeApprove(address(fluidLending), 0);
-            borrowedAsset.safeApprove(address(fluidLending), amountToBorrow);
-            uint256 stakedAmount = fluidLending.stake(address(borrowedAsset), amountToBorrow);
-            totalStakedInFluid += stakedAmount;
+            // 5. Deposit borrowed asset into ERC4626 vault
+            require(borrowedAsset.approve(address(fluidLending), 0), "Borrowed approve reset failed");
+            require(borrowedAsset.approve(address(fluidLending), amountToBorrow), "Borrowed approve failed");
+            uint256 mintedShares = fluidLending.deposit(amountToBorrow, address(this));
+            totalStakedInFluid += mintedShares;
             
-            emit BorrowedAndStaked(amountToBorrow, stakedAmount);
+            emit BorrowedAndStaked(amountToBorrow, mintedShares);
         }
         
         // 6. Update debt tracking
@@ -249,12 +159,12 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         
         // 2. Unstake from Fluid
         if (amountToUnstake > 0) {
-            uint256 unstakedAmount = fluidLending.unstake(address(borrowedAsset), amountToUnstake);
+            uint256 unstakedAmount = fluidLending.redeem(amountToUnstake, address(this), address(this));
             totalStakedInFluid -= amountToUnstake;
             
             // 3. Repay debt to Aave
-            borrowedAsset.safeApprove(address(aavePool), 0);
-            borrowedAsset.safeApprove(address(aavePool), unstakedAmount);
+            require(borrowedAsset.approve(address(aavePool), 0), "Repay approve reset failed");
+            require(borrowedAsset.approve(address(aavePool), unstakedAmount), "Repay approve failed");
             uint256 repaidAmount = aavePool.repay(address(borrowedAsset), unstakedAmount, 2, address(this));
             totalBorrowed = totalBorrowed > repaidAmount ? totalBorrowed - repaidAmount : 0;
             
@@ -299,36 +209,31 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      * @return amountUSDC Amount of USDC harvested
      */
     function harvestYield() external nonReentrant returns (uint256 amountUSDC) {
-        // 1. Claim rewards from Fluid lending
-        uint256 fluidRewards = fluidLending.claimRewards(address(this));
-        if (fluidRewards > 0) {
-            // Assuming Fluid rewards are in a token that needs to be swapped to USDC
-            amountUSDC += _swapToUSDC(address(borrowedAsset), fluidRewards);
-        }
-        
-        // 2. Claim rewards from Aave (if any)
-        if (address(rewardsController) != address(0)) {
-            (address[] memory rewardsList, uint256[] memory amounts) = 
-                rewardsController.claimAllRewards(rewardAssets, address(this));
-            
-            for (uint256 i = 0; i < rewardsList.length; i++) {
-                if (amounts[i] > 0) {
-                    if (rewardsList[i] == address(USDC)) {
-                        amountUSDC += amounts[i];
-                    } else {
-                        amountUSDC += _swapToUSDC(rewardsList[i], amounts[i]);
-                    }
-                }
-            }
-        }
-        
-        // 3. Transfer harvested USDC to vault
+        // Calculate profit in borrowed asset (e.g., WETH) inside the vault
+        uint256 shares = fluidLending.balanceOf(address(this));
+        if (shares == 0) return 0;
+
+        uint256 assetsInVault = fluidLending.convertToAssets(shares);
+        if (assetsInVault <= totalBorrowed) return 0;
+
+        uint256 profitAssets = assetsInVault - totalBorrowed;
+        uint256 sharesToRedeem = fluidLending.convertToShares(profitAssets);
+        if (sharesToRedeem == 0) return 0;
+        if (sharesToRedeem > shares) sharesToRedeem = shares;
+
+        uint256 redeemedAssets = fluidLending.redeem(sharesToRedeem, address(this), address(this));
+        totalStakedInFluid = shares - sharesToRedeem;
+
+        // Swap profit (borrowed asset) to USDC
+        amountUSDC = _swapToUSDC(address(borrowedAsset), redeemedAssets);
+
         if (amountUSDC > 0) {
             USDC.safeTransfer(vault, amountUSDC);
             emit YieldHarvested(amountUSDC);
         }
-        
+
         lastHarvestBlock = block.number;
+        _syncAccounting();
         return amountUSDC;
     }
 
@@ -371,7 +276,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         uint256 collateralInUA = (collateralBase * (10 ** uaDecimals)) / uaPrice;
         uint256 debtInUA = (debtBase * (10 ** uaDecimals)) / uaPrice;
 
-        uint256 stakedBorrowed = fluidLending.balanceOf(address(borrowedAsset), address(this));
+        uint256 stakedBorrowed = fluidLending.convertToAssets(fluidLending.balanceOf(address(this)));
         uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
         if (borrowedPrice > 0 && stakedBorrowed > totalBorrowed) {
             uint256 profit = stakedBorrowed - totalBorrowed;
@@ -398,7 +303,7 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
      * @return Amount of borrowed asset staked in Fluid
      */
     function getFluidStakedAmount() external view returns (uint256) {
-        return fluidLending.balanceOf(address(borrowedAsset), address(this));
+        return fluidLending.balanceOf(address(this));
     }
 
     // ============ Internal Functions ============
@@ -419,12 +324,14 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             
             // Unstake from Fluid
             if (amountToRepay > 0 && totalStakedInFluid > 0) {
-                uint256 toUnstake = amountToRepay > totalStakedInFluid ? totalStakedInFluid : amountToRepay;
-                uint256 unstaked = fluidLending.unstake(address(borrowedAsset), toUnstake);
-                totalStakedInFluid -= toUnstake;
+                uint256 sharesToRedeem = fluidLending.convertToShares(amountToRepay);
+                if (sharesToRedeem > totalStakedInFluid) sharesToRedeem = totalStakedInFluid;
+                uint256 unstaked = fluidLending.redeem(sharesToRedeem, address(this), address(this));
+                totalStakedInFluid -= sharesToRedeem;
                 
                 // Repay to Aave
-                borrowedAsset.safeApprove(address(aavePool), unstaked);
+                require(borrowedAsset.approve(address(aavePool), 0), "Rebalance repay reset failed");
+                require(borrowedAsset.approve(address(aavePool), unstaked), "Rebalance repay approve failed");
                 aavePool.repay(address(borrowedAsset), unstaked, 2, address(this));
                 totalBorrowed -= unstaked;
             }
@@ -453,8 +360,9 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
                 totalBorrowed += amountToBorrow;
                 
                 // Stake in Fluid
-                borrowedAsset.safeApprove(address(fluidLending), amountToBorrow);
-                uint256 staked = fluidLending.stake(address(borrowedAsset), amountToBorrow);
+                require(borrowedAsset.approve(address(fluidLending), 0), "Stake approve reset failed");
+                require(borrowedAsset.approve(address(fluidLending), amountToBorrow), "Stake approve failed");
+                uint256 staked = fluidLending.deposit(amountToBorrow, address(this));
                 totalStakedInFluid += staked;
             }
         }
@@ -479,7 +387,8 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
         if (token == address(USDC)) return amount;
         if (amount == 0) return 0;
         
-        IERC20(token).safeApprove(address(swapRouter), amount);
+        require(IERC20(token).approve(address(swapRouter), 0), "Swap approve reset failed");
+        require(IERC20(token).approve(address(swapRouter), amount), "Swap approve failed");
         
         // Use Aave oracle for minimum output calculation
         uint256 tokenPrice = aaveOracle.getAssetPrice(token);
@@ -512,11 +421,12 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
     function emergencyUnwind() external onlyOwner {
         // Unstake everything from Fluid
         if (totalStakedInFluid > 0) {
-            uint256 unstaked = fluidLending.unstake(address(borrowedAsset), totalStakedInFluid);
+            uint256 unstaked = fluidLending.redeem(totalStakedInFluid, address(this), address(this));
             totalStakedInFluid = 0;
             
             // Repay as much debt as possible
-            borrowedAsset.safeApprove(address(aavePool), unstaked);
+            require(borrowedAsset.approve(address(aavePool), 0), "Emergency repay reset failed");
+            require(borrowedAsset.approve(address(aavePool), unstaked), "Emergency repay approve failed");
             aavePool.repay(address(borrowedAsset), unstaked, 2, address(this));
             totalBorrowed = 0;
         }
@@ -552,6 +462,21 @@ contract LeveragedYieldStrategy is ReentrancyGuard, Ownable {
             totalBorrowed = (debtBase * (10 ** borrowedDecimals)) / borrowedPrice;
         }
 
-        totalStakedInFluid = fluidLending.balanceOf(address(borrowedAsset), address(this));
+        totalStakedInFluid = fluidLending.balanceOf(address(this));
     }
+
+    /**
+     * @notice Unwrap borrowed WETH to native ETH and send to recipient
+     * @dev Only owner; useful for off-chain operations that require native ETH
+     */
+    function unwrapBorrowedToEth(uint256 amount, address to) external onlyOwner nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        uint256 bal = IERC20(address(borrowedAsset)).balanceOf(address(this));
+        require(amount > 0 && bal >= amount, "Insufficient WETH");
+        IWETH(address(borrowedAsset)).withdraw(amount);
+        (bool ok, ) = payable(to).call{value: amount}("");
+        require(ok, "ETH transfer failed");
+    }
+
+    receive() external payable {}
 }
