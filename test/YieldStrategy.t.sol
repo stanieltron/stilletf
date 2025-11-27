@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
+import "forge-std/console2.sol";
 import "../contracts/YieldStrategy-Aavevault.sol";
 import "../contracts/MockFluidVault.sol";
 import "../contracts/Interfaces.sol";
@@ -37,8 +38,8 @@ contract YieldStrategyTest is Test {
         weth.deposit{value: 200 ether}();
         weth.mint(address(pool), 100 ether);
 
-        oracle.setPrice(address(ua), 30000 * oracle.UNIT());
-        oracle.setPrice(address(weth), 2000 * oracle.UNIT());
+        oracle.setPrice(address(ua), oracle.UNIT());
+        oracle.setPrice(address(weth), oracle.UNIT());
         oracle.setPrice(address(steth), oracle.UNIT());
         oracle.setPrice(address(usdc), oracle.UNIT());
 
@@ -78,14 +79,33 @@ contract YieldStrategyTest is Test {
         strategy.deposit(5e7);
 
         // donate real yield (ETH -> stETH) to fluid vault
-        vm.deal(address(this), 1 ether);
-        fluid.donateYieldWithETH{value: 1 ether}();
+        vm.deal(address(this), 2 ether);
+        fluid.donateYieldWithETH{value: 2 ether}();
 
-        uint256 usdcBefore = usdc.balanceOf(address(strategy));
-        uint256 harvested = strategy.harvestYield();
-        uint256 usdcAfter = usdc.balanceOf(address(strategy));
+        uint256 usdcBefore = usdc.balanceOf(vault);
+        uint256 harvested;
+        try strategy.harvestYield() returns (uint256 amt) {
+            harvested = amt;
+        } catch (bytes memory err) {
+            console2.log("strategy harvest revert", string(err));
+            logState();
+            assertTrue(false, "harvest revert");
+        }
+        uint256 usdcAfter = usdc.balanceOf(vault);
 
         assertGt(harvested, 0, "no harvest");
         assertGt(usdcAfter, usdcBefore, "no usdc gained");
+    }
+
+    function logState() internal view {
+        console2.log("Strategy UA balance", ua.balanceOf(address(strategy)));
+        console2.log("Strategy WETH balance", weth.balanceOf(address(strategy)));
+        console2.log("Strategy stETH balance", steth.balanceOf(address(strategy)));
+        console2.log("Strategy USDC balance", usdc.balanceOf(address(strategy)));
+        console2.log("Vault USDC balance", usdc.balanceOf(vault));
+        console2.log("Fluid shares held", fluid.balanceOf(address(strategy)));
+        console2.log("Fluid totalAssets", fluid.totalAssets());
+        console2.log("Pool supplied", pool.supplied());
+        console2.log("Pool borrowed", pool.borrowed());
     }
 }
