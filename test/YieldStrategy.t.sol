@@ -39,7 +39,7 @@ contract YieldStrategyTest is Test {
 
         oracle.setPrice(address(ua), 30000 * oracle.UNIT());
         oracle.setPrice(address(weth), 2000 * oracle.UNIT());
-        oracle.setPrice(address(steth), 2000 * oracle.UNIT());
+        oracle.setPrice(address(steth), oracle.UNIT());
         oracle.setPrice(address(usdc), oracle.UNIT());
 
         strategy = new YieldStrategy(

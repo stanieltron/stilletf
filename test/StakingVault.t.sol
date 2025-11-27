@@ -42,7 +42,8 @@ contract StakingVaultTest is Test {
 
         oracle.setPrice(address(ua), 30000 * oracle.UNIT()); // 30k
         oracle.setPrice(address(weth), 2000 * oracle.UNIT()); // 2k
-        oracle.setPrice(address(steth), 2000 * oracle.UNIT());
+        // Keep stETH price flat to avoid synthetic profit in tests
+        oracle.setPrice(address(steth), oracle.UNIT());
         oracle.setPrice(address(usdc), oracle.UNIT()); // assume 1 USDC = $1
 
         router = new MockRouter();
