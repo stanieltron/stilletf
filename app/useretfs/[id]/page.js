@@ -4,8 +4,8 @@ import PortfolioDetailClient from "./ClientPortfolioDetail";
 
 export async function generateMetadata({ params }) {
   const id = params.id;
-  let title = "Skill-ETF portfolio";
-  let description = "User-created portfolio on Stillwater Skill-ETFs.";
+  let title = "Still-ETF ";
+  let description = "User-created portfolio on Stillwater ETFs.";
 
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
