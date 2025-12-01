@@ -5,7 +5,7 @@ import Link from "next/link";
 export default function HeroSection({ ctaHref = "/?auth=1", onCtaClick }) {
   return (
     <section className="section border-b-0 !py-0">
-      <div className="container-main border-b-8 border-[var(--accent)] pb-12 !pl-0">
+      <div className="container-main border-b-8 border-[var(--accent)] pb-12 ">
         <h1 className="font-bold mb-4 tracking-tight leading-tight [font-size:clamp(2rem,4vw,3rem)]">
           Tokenized Wealth
         </h1>

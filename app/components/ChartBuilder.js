@@ -259,7 +259,7 @@ export default function ChartBuilder({
         tickLine={false}
         tick={{ fill: "var(--muted)", fontSize: 12 }}
       />
-      <Tooltip
+      {/* <Tooltip
         formatter={(val, name) => [fmtUSD(val), name]}
         labelFormatter={(i) => chartData.years[i]}
         wrapperStyle={{ outline: "none" }}
@@ -269,7 +269,7 @@ export default function ChartBuilder({
           borderRadius: 12,
           color: "var(--text)",
         }}
-      />
+      /> */}
 
       {!legendOff && (
         <Legend
