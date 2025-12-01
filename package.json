@@ -6,7 +6,8 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy": "forge script script/DeployStakingVault.s.sol:DeployStakingVault --rpc-url https://sepolia.gateway.tenderly.co --broadcast"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
