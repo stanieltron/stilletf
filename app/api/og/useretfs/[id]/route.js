@@ -1,19 +1,18 @@
-// app/api/og/useretfs/[id]/route.js
 import { ImageResponse } from "next/og";
 
 export const contentType = "image/png";
 
 export async function GET(req, { params }) {
   const id = params?.id ?? "unknown";
+  const url = new URL(req.url);
+  const origin = url.origin;
 
   let title = "STILL ETF portfolio";
   let description = "User-created ETF portfolio on STILL.";
   let entries = [];
 
   try {
-    const { origin } = new URL(req.url);
-
-    // Call your existing API – same host
+    // This mirrors what your page.js does, but in the OG route
     const res = await fetch(`${origin}/api/portfolios/${id}`, {
       cache: "no-store",
     });
@@ -25,6 +24,7 @@ export async function GET(req, { params }) {
       if (p.nickname) title = p.nickname;
       if (p.comment) description = p.comment;
 
+      // Adapt these to your actual portfolio shape
       const assets = Array.isArray(p.assets) ? p.assets : [];
       const weights = Array.isArray(p.weights) ? p.weights : [];
 
@@ -39,7 +39,7 @@ export async function GET(req, { params }) {
     }
   } catch (e) {
     console.error("OG useretfs fetch error:", e);
-    // fall back to defaults; we still render an image
+    // Non-fatal: we still render a default card below
   }
 
   return new ImageResponse(
@@ -51,41 +51,84 @@ export async function GET(req, { params }) {
           boxSizing: "border-box",
           padding: 40,
           backgroundColor: "#ffffff",
-          display: "grid",
-          gridTemplateColumns: "260px minmax(0, 1fr)",
-          columnGap: 40,
-          rowGap: 64,
+          display: "flex",              // NO GRID
+          flexDirection: "row",
           fontFamily:
             'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
           color: "#000000",
         }}
       >
-        {/* LEFT: logo-ish block (you can swap this for a real <img> later) */}
+        {/* LEFT COLUMN: logo “block” */}
         <div
           style={{
-            borderRadius: 24,
-            border: "1px solid #e5e7eb",
-            background: "radial-gradient(circle at top, #0f172a, #020617)",
-            color: "white",
+            width: 260,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
+            justifyContent: "space-between",
+            marginRight: 40,
           }}
         >
-          <div style={{ fontSize: 40, fontWeight: 700, marginBottom: 12 }}>
-            STILL
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <img
+              src={`${origin}/logos/stilllogo.png`}
+              alt="STILL logo"
+              width={220}
+              height={220}
+              style={{ objectFit: "contain" }}
+            />
           </div>
-          <div style={{ fontSize: 24, opacity: 0.9, marginBottom: 24 }}>
-            ETF
+
+          {/* Simple “QR card” block instead of remote QR fetch */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                width: 220,
+                height: 220,
+                borderRadius: 16,
+                border: "1px solid #e5e7eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+                color: "#64748b",
+              }}
+            >
+              stilletf.com
+            </div>
+            <span
+              style={{
+                marginTop: 8,
+                fontSize: 11,
+                color: "#64748b",
+              }}
+            >
+              stilletf.com
+            </span>
           </div>
-          <div style={{ fontSize: 16, opacity: 0.8 }}>stilletf.com</div>
         </div>
 
-        {/* RIGHT: chart-like block + tagline + metrics */}
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {/* Chart-ish area */}
+        {/* RIGHT COLUMN */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* “Chart” area */}
           <div
             style={{
               width: "100%",
@@ -121,12 +164,13 @@ export async function GET(req, { params }) {
               {description}
             </div>
 
+            {/* Bars to mimic ChartBuilder allocations */}
             <div
               style={{
                 marginTop: 16,
                 display: "flex",
                 flexDirection: "column",
-                gap: 6,
+                // gap not strictly required, we can simulate with margins
               }}
             >
               {entries.length === 0 ? (
@@ -140,8 +184,8 @@ export async function GET(req, { params }) {
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
                       fontSize: 14,
+                      marginTop: idx === 0 ? 0 : 6,
                     }}
                   >
                     <div
@@ -150,6 +194,7 @@ export async function GET(req, { params }) {
                         height: 10,
                         borderRadius: 999,
                         backgroundColor: "#e5e7eb",
+                        marginRight: 8,
                       }}
                     />
                     <span style={{ minWidth: 70 }}>{a.symbol}</span>
@@ -160,6 +205,8 @@ export async function GET(req, { params }) {
                         borderRadius: 999,
                         backgroundColor: "#e5e7eb",
                         overflow: "hidden",
+                        marginLeft: 8,
+                        marginRight: 8,
                       }}
                     >
                       <div
@@ -184,7 +231,7 @@ export async function GET(req, { params }) {
             </div>
           </div>
 
-          {/* Tagline – same vibe as your ShareModal card */}
+          {/* Tagline – same text as in ShareModal hidden card */}
           <p
             style={{
               marginTop: 40,
@@ -193,6 +240,7 @@ export async function GET(req, { params }) {
               fontSize: 22,
               fontWeight: 600,
               lineHeight: 1.3,
+              color: "#000000",
             }}
           >
             I created this portfolio on{" "}
@@ -200,7 +248,7 @@ export async function GET(req, { params }) {
             do better?
           </p>
 
-          {/* Chip-style metrics area */}
+          {/* “Metrics” chips – similar spirit to MetricsBuilder */}
           <div
             style={{
               flex: 1,
@@ -216,7 +264,7 @@ export async function GET(req, { params }) {
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
-                  gap: 8,
+                  // again, can just use margins
                 }}
               >
                 {entries.map((a, idx) => (
@@ -227,6 +275,8 @@ export async function GET(req, { params }) {
                       borderRadius: 999,
                       border: "1px solid #e5e7eb",
                       backgroundColor: "#f9fafb",
+                      marginRight: 8,
+                      marginBottom: 8,
                     }}
                   >
                     {a.symbol} · {a.weight.toFixed(1)}%
