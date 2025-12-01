@@ -2,12 +2,12 @@
   "name": "my-portfolio-app",
   "private": true,
   "version": "1.0.0",
-  "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "prisma generate && next build",
-    "start": "next start -p 3000",
-    "lint": "next lint"
-  },
+ "scripts": {
+  "dev": "next dev -p 3000",
+  "build": "prisma generate && next build",
+  "start": "prisma migrate deploy && next start -p 3000",
+  "lint": "next lint"
+},
   "dependencies": {
     "@prisma/client": "^6.19.0",
     "html-to-image": "^1.11.13",
