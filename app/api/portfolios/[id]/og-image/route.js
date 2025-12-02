@@ -1,6 +1,6 @@
 // app/api/portfolios/[id]/og-image/route.js
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../../lib/prisma";
+import { prisma } from "../../../../lib/prisma";
 
 export async function POST(req, { params }) {
   const { id } = params;
@@ -10,12 +10,11 @@ export async function POST(req, { params }) {
     const body = await req.json().catch(() => null);
     const image = body?.image;
 
-    console.log("[OG API] POST /api/portfolios/", portfolioId, "body image len:", image?.length);
-
     if (typeof image !== "string" || !image.startsWith("data:image/")) {
       return NextResponse.json({ error: "Invalid image" }, { status: 400 });
     }
 
+    // data:image/png;base64,AAAA...
     const match = image.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
     if (!match) {
       return NextResponse.json({ error: "Invalid data URL" }, { status: 400 });
@@ -32,8 +31,6 @@ export async function POST(req, { params }) {
         ogImageMime: mime,
       },
     });
-
-    console.log("[OG API] updated portfolio", portfolioId);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

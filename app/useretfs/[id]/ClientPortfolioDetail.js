@@ -177,7 +177,7 @@ export default function ClientPortfolioDetail({ id }) {
             </div>
           </aside>
 
-          {/* Right pane: chart + metrics + OG image */}
+          {/* Right pane: chart + metrics */}
           <section className="grid gap-8 min-h-0 self-start">
             {/* Chart area */}
             <div className="flex flex-col overflow-visible border border-black rounded-none bg-white p-8">
@@ -204,24 +204,6 @@ export default function ClientPortfolioDetail({ id }) {
                 showYield={true}
                 detail
               />
-            </div>
-
-            {/* Saved share image preview */}
-            <div className="min-h-0 min-w-0 flex flex-col overflow-hidden border border-black rounded-none bg-white p-8">
-              <h3 className="mt-0 mb-4 text-xl md:text-2xl font-semibold tracking-tight">
-                Share image
-              </h3>
-              <p className="text-sm text-neutral-600 mb-4">
-                This is the image generated when the portfolio was saved and
-                used for social sharing.
-              </p>
-              <div className="w-full flex items-center justify-center bg-neutral-100 border border-dashed border-neutral-300 py-4">
-                <img
-                  src={`/api/portfolio-og/${p.id}`}
-                  alt="Portfolio share preview"
-                  className="max-w-full h-auto"
-                />
-              </div>
             </div>
           </section>
         </div>

@@ -1,70 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import * as htmlToImage from "html-to-image";
 import ChartBuilder from "./ChartBuilder";
 import MetricsBuilder from "./MetricsBuilder";
 import Link from "next/link";
-
-// Helper: generate a basic OG image on the client and upload it
-async function generateAndUploadSimpleOgImage(portfolioId) {
-  if (typeof document === "undefined") return false;
-
-  console.log("[OG] generating simple image for portfolio", portfolioId);
-
-  const width = 1200;
-  const height = 675;
-  const label = `ETF-${portfolioId}`;
-
-  try {
-    // Create an off-screen canvas
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      console.error("[OG] no canvas context");
-      return false;
-    }
-
-    // Red background
-    ctx.fillStyle = "#ff0000";
-    ctx.fillRect(0, 0, width, height);
-
-    // White centered text
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font =
-      "bold 64px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-    ctx.fillText(label, width / 2, height / 2);
-
-    // Convert to PNG data URL
-    const dataUrl = canvas.toDataURL("image/png");
-
-    console.log("[OG] dataUrl length", dataUrl.length);
-
-    // Send to server to store in DB
-    const res = await fetch(`/api/portfolios/${portfolioId}/og-image`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: dataUrl }),
-    });
-
-    console.log("[OG] upload response", res.status);
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("[OG] upload failed:", res.status, text);
-      return false;
-    }
-
-    return true;
-  } catch (err) {
-    console.error("[OG] error generating/uploading image", err);
-    return false;
-  }
-}
 
 export default function ShareModalSignedIn({
   open,
@@ -81,12 +21,19 @@ export default function ShareModalSignedIn({
   const [saved, setSaved] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
 
+  // For OG generation
+  const captureRef = useRef(null);
+  const [chartReady, setChartReady] = useState(false);
+  const [generatingOg, setGeneratingOg] = useState(false);
+
   useEffect(() => {
     if (open) {
       setSaving(false);
       setError(null);
       setSaved(false);
       setShareUrl("");
+      setChartReady(false);
+      setGeneratingOg(false);
     }
   }, [open]);
 
@@ -98,6 +45,45 @@ export default function ShareModalSignedIn({
   const fullShareText = shareUrl
     ? `${baseShareText}\n\n${shareUrl}`
     : baseShareText;
+
+  const handleCaptureChartReady = () => {
+    setChartReady(true);
+  };
+
+  // Capture the hidden card and upload PNG to the OG-image API
+  const doCaptureAndUpload = async (portfolioId) => {
+    if (!captureRef.current) return;
+
+    try {
+      // small delay so ChartBuilder/MetricsBuilder finish rendering
+      if (!chartReady) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      const dataUrl = await htmlToImage.toPng(captureRef.current, {
+        width: 1200,
+        height: 675,
+        pixelRatio: 2,
+      });
+
+      await fetch(`/api/portfolios/${portfolioId}/og-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+    } catch (err) {
+      console.error("[OG] error capturing/uploading real image", err);
+    }
+  };
+
+  const generateOgImageForPortfolio = async (portfolioId) => {
+    setGeneratingOg(true);
+    try {
+      await doCaptureAndUpload(portfolioId);
+    } finally {
+      setGeneratingOg(false);
+    }
+  };
 
   async function handleSave() {
     setError(null);
@@ -125,8 +111,6 @@ export default function ShareModalSignedIn({
         throw new Error("Saved, but missing portfolio id from server.");
       }
 
-      console.log("[OG] saved portfolio", portfolio.id);
-
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
       const url = origin
@@ -136,13 +120,10 @@ export default function ShareModalSignedIn({
       setShareUrl(url);
       setSaved(true);
 
-      // 🔥 Generate simple OG image *right here* after Save
-      const ok = await generateAndUploadSimpleOgImage(portfolio.id);
-      if (!ok) {
-        console.warn("[OG] generation/upload failed");
-      } else {
-        console.log("[OG] generation/upload succeeded");
-      }
+      // 🔥 Generate the REAL OG image (logo + QR + chart + metrics)
+      generateOgImageForPortfolio(portfolio.id).catch((err) => {
+        console.error("[OG] failed to generate real OG image", err);
+      });
     } catch (e) {
       console.error(e);
       setError(e.message || "Could not save portfolio.");
@@ -226,7 +207,6 @@ export default function ShareModalSignedIn({
               )}
             </div>
 
-            {/* PRE-SAVED STATE */}
             {!saved && (
               <div className="mt-4 flex flex-col gap-3">
                 <p className="text-base text-[var(--muted)]">
@@ -244,7 +224,6 @@ export default function ShareModalSignedIn({
               </div>
             )}
 
-            {/* SAVED STATE */}
             {saved && shareUrl && (
               <div className="flex flex-col gap-3 mt-4">
                 <p className="text-sm text-[var(--muted)]">
@@ -278,25 +257,34 @@ export default function ShareModalSignedIn({
                   <button
                     type="button"
                     onClick={handleShareTelegram}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold">
+                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                  >
                     <span className="text-xl leading-none">✈️</span>
                     <span>Telegram</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleShareLinkedIn}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold">
+                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                  >
                     <span className="text-xl font-bold leading-none">in</span>
                     <span>LinkedIn</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleShareReddit}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold">
+                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                  >
                     <span className="text-2xl font-bold leading-none">r</span>
                     <span>Reddit</span>
                   </button>
                 </div>
+
+                {generatingOg && (
+                  <p className="text-xs text-[var(--muted)]">
+                    Generating share image in the background…
+                  </p>
+                )}
               </div>
             )}
 
@@ -305,7 +293,7 @@ export default function ShareModalSignedIn({
             )}
           </div>
 
-          {/* MIDDLE: chart + metrics */}
+          {/* MIDDLE: chart + metrics preview (live) */}
           <div className="flex-[1.4] flex flex-col gap-4">
             <div className="border border-[var(--border)] bg-white text-black p-4 flex flex-col gap-3">
               <h3 className="text-lg font-semibold mt-0 mb-1">
@@ -360,6 +348,79 @@ export default function ShareModalSignedIn({
             </div>
           </div>
         </div>
+
+        {/* 🔒 HIDDEN LIVE CARD – SAME layout as ShareModal.js, used ONLY for OG capture */}
+        {open && (
+          <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+            <div
+              ref={captureRef}
+              className="bg-white overflow-hidden"
+              style={{
+                width: "1200px",
+                height: "675px",
+                boxSizing: "border-box",
+                padding: "40px",
+              }}
+            >
+              <div className="w-full h-full grid grid-cols-[260px_minmax(0,1fr)] gap-x-40 gap-y-16">
+                {/* LEFT: logo + QR */}
+                <div className="flex flex-col items-center justify-between">
+                  <div className="flex items-center justify-center">
+                    <img
+                      src="/logos/stilllogo.png"
+                      alt="stillwater logo"
+                      className="w-[220px] h-[220px] object-contain"
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <img
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fstilletf.com"
+                      alt="stilletf.com QR"
+                      className="w-[220px] h-[220px]"
+                    />
+                    <span className="mt-2 text-[11px] text-slate-500">
+                      stilletf.com
+                    </span>
+                  </div>
+                </div>
+
+                {/* RIGHT: chart + tagline + metrics */}
+                <div className="flex flex-col">
+                  <div className="w-full" style={{ height: 260 }}>
+                    <ChartBuilder
+                      assets={assets}
+                      weights={weights}
+                      showYield={true}
+                      size="l"
+                      fixed
+                      width={800}
+                      height={260}
+                      animated={false}
+                      yieldOnly={true}
+                      onReady={handleCaptureChartReady}
+                      legendOff={true}
+                    />
+                  </div>
+
+                  <p className="mt-10 mb-6 text-center text-[22px] font-semibold leading-snug text-black">
+                    I created this portfolio on{" "}
+                    <span className="font-bold">stilletf.com</span> — can you
+                    do better?
+                  </p>
+
+                  <div className="flex-1 min-h-[160px] text-[14px] text-black">
+                    <MetricsBuilder
+                      assets={assets}
+                      weights={weights}
+                      showYield={true}
+                      assetMeta={assetMeta}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
