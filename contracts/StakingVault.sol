@@ -229,7 +229,12 @@ contract StakingVault is ReentrancyGuard, Ownable {
      * @return Pending USDC rewards
      */
     function getPendingRewards(address account) external view returns (uint256) {
-        uint256 pending = (_balances[account] * accRewardPerShare) / ACC_PRECISION - rewardDebt[account];
+        uint256 currentAcc = accRewardPerShare;
+        uint256 balance = USDC.balanceOf(address(this));
+        if (_totalSupply > 0 && balance > lastRewardBalance) {
+            currentAcc += ((balance - lastRewardBalance) * ACC_PRECISION) / _totalSupply;
+        }
+        uint256 pending = (_balances[account] * currentAcc) / ACC_PRECISION - rewardDebt[account];
         return pendingRewards[account] + pending;
     }
 

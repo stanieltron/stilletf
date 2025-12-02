@@ -10,7 +10,7 @@ const HOW_IT_WORKS_HREF = "/how-it-works";
 const DEFAULT_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || "11155111";
 const DEFAULT_WBTC_DECIMALS = Number(process.env.NEXT_PUBLIC_WBTC_DECIMALS || 8);
 const REWARD_DECIMALS = Number(process.env.NEXT_PUBLIC_REWARD_DECIMALS || 6);
-const REWARD_SYMBOL = process.env.NEXT_PUBLIC_REWARD_SYMBOL || "USDT";
+const REWARD_SYMBOL = process.env.NEXT_PUBLIC_REWARD_SYMBOL || "USDC";
 
 const STAKING_VAULT_ABI = [
   "function stake(uint256 amountUA) external returns (uint256)",
@@ -42,6 +42,14 @@ function formatBigAmount(value, decimals, options = {}) {
     }).format(asNum);
   } catch {
     return "0";
+  }
+}
+
+async function safeRead(promise, fallback) {
+  try {
+    return await promise;
+  } catch {
+    return fallback;
   }
 }
 
@@ -240,13 +248,13 @@ export default function BTCETFPage() {
       const [network, shares, totalAssetsRaw, totalSupply, sharePrice, pendingRewards, walletBal, vaultDecimals] =
         await Promise.all([
           provider.getNetwork(),
-          nextVault.balanceOf(address),
-          nextVault.totalAssets(),
-          nextVault.totalSupply(),
-          nextVault.sharePrice(),
-          nextVault.getPendingRewards(address),
-          nextWbtc.balanceOf(address),
-          nextVault.decimals(),
+          safeRead(nextVault.balanceOf(address), 0n),
+          safeRead(nextVault.totalAssets(), 0n),
+          safeRead(nextVault.totalSupply(), 0n),
+          safeRead(nextVault.sharePrice(), 0n),
+          safeRead(nextVault.getPendingRewards(address), 0n),
+          safeRead(nextWbtc.balanceOf(address), 0n),
+          safeRead(nextVault.decimals(), BigInt(wbtcDecimals)),
         ]);
       if (network.chainId?.toString() !== DEFAULT_CHAIN_ID) {
         setErr(`Wrong network. Connect to chain ${DEFAULT_CHAIN_ID}.`);

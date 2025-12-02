@@ -73,6 +73,24 @@ contract YieldStrategyTest is Test {
         assertGt(shares, 0, "no fluid shares");
     }
 
+    function testDepositReflectsSuppliedAndNetAssets() public {
+        uint256 depositAmount = 5e7; // 0.5 WBTC
+        ua.transfer(address(strategy), depositAmount);
+        ua.approve(address(strategy), type(uint256).max);
+        strategy.deposit(depositAmount);
+
+        // Supplied collateral should match deposit
+        (uint256 collateralBase, uint256 debtBase,, , ,) = pool.getUserAccountData(address(this));
+        assertGt(collateralBase, 0, "collateral not recorded");
+        assertEq(pool.supplied(), depositAmount, "pool supplied mismatch");
+
+        // Net assets should roughly equal deposited UA (no profit yet)
+        uint256 totalAssets = strategy.totalAssets();
+        // Allow a tiny tolerance for rounding (0.000001 WBTC = 1e2 units with 8 decimals)
+        assertApproxEqAbs(totalAssets, depositAmount, 1e2, "net assets not close to deposit");
+        assertGt(debtBase, 0, "debt not recorded");
+    }
+
     function testHarvestCalculatesProfit() public {
         ua.transfer(address(strategy), 5e7);
         ua.approve(address(strategy), type(uint256).max);
@@ -123,6 +141,27 @@ contract YieldStrategyTest is Test {
         assertGt(usdcAfter, usdcBefore, "no usdc harvested");
         assertGt(sharesAfter, 0, "all shares redeemed unexpectedly");
         assertLt(sharesAfter, sharesBefore, "shares did not decrease");
+    }
+
+    function testHarvestDoesNotDrainPrincipal() public {
+        // Deposit and borrow to create debt
+        ua.transfer(address(strategy), 1e8); // 1 WBTC
+        ua.approve(address(strategy), type(uint256).max);
+        strategy.deposit(1e8);
+
+        uint256 sharesBefore = fluid.balanceOf(address(strategy));
+        assertGt(sharesBefore, 0, "no fluid shares before harvest");
+
+        // Donate yield
+        vm.deal(address(this), 1 ether);
+        fluid.donateYieldWithETH{value: 1 ether}();
+
+        // Harvest should only redeem profit, not principal
+        strategy.harvestYield();
+
+        uint256 sharesAfter = fluid.balanceOf(address(strategy));
+        assertGt(sharesAfter, 0, "principal drained");
+        assertLt(sharesAfter, sharesBefore, "shares did not decrease after harvest");
     }
 
     function logState() internal view {

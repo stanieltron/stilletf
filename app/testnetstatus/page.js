@@ -77,6 +77,7 @@ const STRATEGY_ABI = [
   "function totalDebt() view returns (uint256)",
   "function getFluidStakedAmount() view returns (uint256)",
   "function harvestYield() returns (uint256)",
+  "function vault() view returns (address)",
 ];
 
 function fmt(v, decimals = 18, fraction = 4) {
@@ -336,7 +337,7 @@ export default function TestnetStatusPage() {
   async function fetchVault(provider) {
     const vault = new Contract(addresses.vault, VAULT_ABI, provider);
     try {
-      const [decimals, totalAssets, totalSupply, sharePrice, strategyBal, uaInVault] =
+      const [decimals, totalAssets, totalSupply, sharePrice, strategyBal, uaInVault, usdcInVault] =
         await Promise.all([
           vault.decimals(),
           vault.totalAssets(),
@@ -344,6 +345,7 @@ export default function TestnetStatusPage() {
           vault.sharePrice(),
           vault.balanceOf(addresses.strategy).catch(() => 0n),
           new Contract(addresses.wbtc, ERC20_ABI, provider).balanceOf(addresses.vault),
+          new Contract(addresses.usdc, ERC20_ABI, provider).balanceOf(addresses.vault).catch(() => 0n),
         ]);
       return {
         decimals,
@@ -352,6 +354,7 @@ export default function TestnetStatusPage() {
         sharePrice,
         strategyShares: strategyBal,
         uaBalance: uaInVault,
+        usdcBalance: usdcInVault,
       };
     } catch {
       return null;
@@ -370,6 +373,7 @@ export default function TestnetStatusPage() {
         fluidShares,
         wethBal,
         stethBal,
+        usdcBal,
       ] = await Promise.all([
         strat.totalAssets(),
         strat.totalCollateral(),
@@ -379,6 +383,7 @@ export default function TestnetStatusPage() {
         strat.getFluidStakedAmount(),
         new Contract(addresses.weth, ERC20_ABI, provider).balanceOf(addresses.strategy),
         new Contract(addresses.steth, ERC20_ABI, provider).balanceOf(addresses.strategy),
+        new Contract(addresses.usdc, ERC20_ABI, provider).balanceOf(addresses.strategy),
       ]);
       return {
         totalAssets,
@@ -389,6 +394,7 @@ export default function TestnetStatusPage() {
         fluidShares,
         wethBal,
         stethBal,
+        usdcBal,
       };
     } catch {
       return null;
@@ -600,6 +606,7 @@ export default function TestnetStatusPage() {
                 <Row label="totalSupply (WBTC shares)" value={fmt(data.vault.totalSupply, data.tokens?.wbtc?.decimals ?? 8)} />
                 <Row label="sharePrice (WBTC)" value={fmt(data.vault.sharePrice, data.vault.decimals ?? 18)} />
                 <Row label="UA in vault (WBTC)" value={fmt(data.vault.uaBalance, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="USDC balance" value={fmt(data.vault.usdcBalance, data.tokens?.usdc?.decimals ?? 6)} />
               </>
             ) : (
               <span className="text-slate-500">Unavailable</span>
@@ -636,6 +643,7 @@ export default function TestnetStatusPage() {
                 />
                 <Row label="WETH balance" value={fmt(data.strategy.wethBal, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="stETH balance" value={fmt(data.strategy.stethBal, data.tokens?.steth?.decimals ?? 18)} />
+                <Row label="USDC balance" value={fmt(data.strategy.usdcBal, data.tokens?.usdc?.decimals ?? 6)} />
                 <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/70 p-3">
                   <div className="text-xs text-slate-600">
                     <div className="font-semibold text-slate-800">Harvest yield</div>

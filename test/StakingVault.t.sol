@@ -102,6 +102,22 @@ contract StakingVaultTest is Test {
         assertGt(pending, 0, "no rewards accrued");
     }
 
+    function testDirectRewardShowsInPendingAndClaim() public {
+        vm.prank(alice);
+        vault.stake(5e7); // 0.5 WBTC
+
+        // Simulate strategy sending USDC directly to vault
+        usdc.mint(address(vault), 2e6);
+
+        uint256 pendingView = vault.getPendingRewards(alice);
+        assertGt(pendingView, 0, "pending view not reflecting direct USDC");
+
+        vm.prank(alice);
+        uint256 claimed = vault.claim();
+        assertEq(claimed, pendingView, "claimed amount mismatch");
+        assertEq(usdc.balanceOf(alice), claimed, "user did not receive USDC");
+    }
+
     function testDepositThenWithdrawExactAmount() public {
         uint256 depositAmount = 5e7; // 0.5 WBTC with 8 decimals
 

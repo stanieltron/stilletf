@@ -226,25 +226,27 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
      * @return amountUSDC Amount of USDC harvested
      */
     function harvestYield() external nonReentrant returns (uint256 amountUSDC) {
+        // Use fresh debt data to avoid draining principal when tracking is stale
+        ( , uint256 debtBase) = _getAccountData();
+
         _syncAccounting();
-        // Calculate profit in borrowed asset (e.g., WETH) inside the vault
         uint256 shares = fluidLending.balanceOf(address(this));
         if (shares == 0) return 0;
 
-        uint256 assetsInVault = fluidLending.convertToAssets(shares);
+        uint256 assetsInVault = fluidLending.convertToAssets(shares); // stETH units
         uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
         uint256 debtPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
         if (stEthPrice == 0 || debtPrice == 0) return 0;
 
-        uint256 assetsValueBase = (assetsInVault * stEthPrice) / baseCurrencyUnit;
-        if (assetsValueBase <= totalDebt) return 0;
+        // Compute profit in base terms
+        uint256 stakedBase = (assetsInVault * stEthPrice) / (10 ** stEthDecimals);
+        if (stakedBase <= debtBase) return 0;
 
-        uint256 profitBase = assetsValueBase - totalDebt;
-        uint256 profitAssets = (profitBase * baseCurrencyUnit) / stEthPrice;
-        if (profitAssets == 0) return 0;
+        uint256 profitBase = stakedBase - debtBase;
+        uint256 harvestBase = (profitBase * (MAX_BPS - HARVEST_BUFFER_BPS)) / MAX_BPS;
+        if (harvestBase == 0) return 0;
 
-        // Keep a buffer to cover accrued interest; harvest only the net portion
-        uint256 harvestAssets = (profitAssets * (MAX_BPS - HARVEST_BUFFER_BPS)) / MAX_BPS;
+        uint256 harvestAssets = (harvestBase * (10 ** stEthDecimals)) / stEthPrice;
         if (harvestAssets == 0) return 0;
 
         uint256 sharesToRedeem = fluidLending.convertToShares(harvestAssets);
@@ -303,23 +305,18 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         if (uaPrice == 0) return 0;
 
         (uint256 collateralBase, uint256 debtBase) = _getAccountData();
-        uint256 collateralInUA = (collateralBase * (10 ** uaDecimals)) / uaPrice;
-        uint256 debtInUA = (debtBase * (10 ** uaDecimals)) / uaPrice;
-
         uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
+        uint256 stakedBase = 0;
         if (stEthPrice > 0) {
             uint256 stakedAssets = fluidLending.convertToAssets(fluidLending.balanceOf(address(this)));
-            uint256 stakedBase = (stakedAssets * stEthPrice) / baseCurrencyUnit;
-            if (stakedBase > debtBase) {
-                uint256 profitBase = stakedBase - debtBase;
-                collateralInUA += (profitBase * baseCurrencyUnit) / uaPrice;
-            }
+            stakedBase = (stakedAssets * stEthPrice) / (10 ** stEthDecimals);
         }
 
-        if (collateralInUA > debtInUA) {
-            return collateralInUA - debtInUA;
-        }
-        return 0; // Underwater position
+        uint256 equityBase = collateralBase + stakedBase;
+        if (debtBase > equityBase) return 0;
+        equityBase -= debtBase;
+
+        return (equityBase * (10 ** uaDecimals)) / uaPrice;
     }
 
     /**
