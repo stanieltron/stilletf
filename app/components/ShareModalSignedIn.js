@@ -7,41 +7,63 @@ import Link from "next/link";
 
 // Helper: generate a basic OG image on the client and upload it
 async function generateAndUploadSimpleOgImage(portfolioId) {
-  if (typeof document === "undefined") return;
+  if (typeof document === "undefined") return false;
+
+  console.log("[OG] generating simple image for portfolio", portfolioId);
 
   const width = 1200;
   const height = 675;
   const label = `ETF-${portfolioId}`;
 
-  // Create an off-screen canvas
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  try {
+    // Create an off-screen canvas
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.error("[OG] no canvas context");
+      return false;
+    }
 
-  // Red background
-  ctx.fillStyle = "#ff0000";
-  ctx.fillRect(0, 0, width, height);
+    // Red background
+    ctx.fillStyle = "#ff0000";
+    ctx.fillRect(0, 0, width, height);
 
-  // White centered text
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font =
-    "bold 64px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-  ctx.fillText(label, width / 2, height / 2);
+    // White centered text
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font =
+      "bold 64px system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+    ctx.fillText(label, width / 2, height / 2);
 
-  // Convert to PNG data URL
-  const dataUrl = canvas.toDataURL("image/png");
+    // Convert to PNG data URL
+    const dataUrl = canvas.toDataURL("image/png");
 
-  // Send to server to store in DB
-  await fetch(`/api/portfolios/${portfolioId}/og-image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: dataUrl }),
-  });
+    console.log("[OG] dataUrl length", dataUrl.length);
+
+    // Send to server to store in DB
+    const res = await fetch(`/api/portfolios/${portfolioId}/og-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: dataUrl }),
+    });
+
+    console.log("[OG] upload response", res.status);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("[OG] upload failed:", res.status, text);
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.error("[OG] error generating/uploading image", err);
+    return false;
+  }
 }
 
 export default function ShareModalSignedIn({
@@ -103,6 +125,8 @@ export default function ShareModalSignedIn({
         throw new Error("Saved, but missing portfolio id from server.");
       }
 
+      console.log("[OG] saved portfolio", portfolio.id);
+
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
       const url = origin
@@ -113,9 +137,12 @@ export default function ShareModalSignedIn({
       setSaved(true);
 
       // 🔥 Generate simple OG image *right here* after Save
-      generateAndUploadSimpleOgImage(portfolio.id).catch((err) => {
-        console.error("Failed to generate/upload OG image", err);
-      });
+      const ok = await generateAndUploadSimpleOgImage(portfolio.id);
+      if (!ok) {
+        console.warn("[OG] generation/upload failed");
+      } else {
+        console.log("[OG] generation/upload succeeded");
+      }
     } catch (e) {
       console.error(e);
       setError(e.message || "Could not save portfolio.");
@@ -251,24 +278,21 @@ export default function ShareModalSignedIn({
                   <button
                     type="button"
                     onClick={handleShareTelegram}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
-                  >
+                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold">
                     <span className="text-xl leading-none">✈️</span>
                     <span>Telegram</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleShareLinkedIn}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
-                  >
+                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold">
                     <span className="text-xl font-bold leading-none">in</span>
                     <span>LinkedIn</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleShareReddit}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
-                  >
+                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold">
                     <span className="text-2xl font-bold leading-none">r</span>
                     <span>Reddit</span>
                   </button>
