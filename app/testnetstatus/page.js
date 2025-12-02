@@ -76,6 +76,7 @@ const STRATEGY_ABI = [
   "function totalStakedInFluid() view returns (uint256)",
   "function totalDebt() view returns (uint256)",
   "function getFluidStakedAmount() view returns (uint256)",
+  "function harvestYield() returns (uint256)",
 ];
 
 function fmt(v, decimals = 18, fraction = 4) {
@@ -119,6 +120,8 @@ export default function TestnetStatusPage() {
   const [donationEth, setDonationEth] = useState("");
   const [txMessage, setTxMessage] = useState("");
   const [donating, setDonating] = useState(false);
+  const [harvestLoading, setHarvestLoading] = useState(false);
+  const [harvestEstimate, setHarvestEstimate] = useState(null);
 
   const ready = useMemo(
     () =>
@@ -198,7 +201,7 @@ export default function TestnetStatusPage() {
         provider.getNetwork(),
       ]);
 
-      const [oracleData, tokenData, fluidData, vaultData, strategyData, poolData] =
+      const [oracleData, tokenData, fluidData, vaultData, strategyData, poolData, harvestEst] =
         await Promise.all([
           fetchOracle(provider),
           fetchTokens(provider),
@@ -206,6 +209,7 @@ export default function TestnetStatusPage() {
           fetchVault(provider),
           fetchStrategy(provider),
           fetchPool(provider),
+          estimateHarvest(provider),
         ]);
 
       setData({
@@ -218,6 +222,7 @@ export default function TestnetStatusPage() {
         strategy: strategyData,
         pool: poolData,
       });
+      setHarvestEstimate(harvestEst);
     } catch (e) {
       console.error(e);
       setErr("Failed to load status. Connect wallet and check addresses.");
@@ -390,6 +395,18 @@ export default function TestnetStatusPage() {
     }
   }
 
+  async function estimateHarvest(provider) {
+    if (!provider) return null;
+    const strat = new Contract(addresses.strategy, STRATEGY_ABI, provider);
+    try {
+      // Static call to harvestYield to get the return value without state changes
+      const estimate = await strat.harvestYield.staticCall();
+      return estimate;
+    } catch {
+      return null;
+    }
+  }
+
   async function fetchPool(provider) {
     const pool = new Contract(addresses.pool, POOL_ABI, provider);
     try {
@@ -446,6 +463,37 @@ export default function TestnetStatusPage() {
       setErr(e?.message || "Donation failed.");
     } finally {
       setDonating(false);
+    }
+  }
+
+  async function triggerHarvest() {
+    if (!signer || !walletAddress) {
+      setErr("Connect your wallet to harvest.");
+      return;
+    }
+    if (!addresses.strategy) {
+      setErr("Strategy address is not configured.");
+      return;
+    }
+    try {
+      setHarvestLoading(true);
+      setErr("");
+      setTxMessage("Harvesting yield...");
+      const network = await signer.provider.getNetwork();
+      if (network.chainId?.toString() !== DEFAULT_CHAIN_ID) {
+        throw new Error(`Switch to chain ${DEFAULT_CHAIN_ID} to harvest.`);
+      }
+      const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      const tx = await strat.harvestYield();
+      await tx.wait();
+      setTxMessage("Harvest complete.");
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Harvest failed.");
+    } finally {
+      setHarvestLoading(false);
+      setTxMessage("");
     }
   }
 
@@ -588,6 +636,24 @@ export default function TestnetStatusPage() {
                 />
                 <Row label="WETH balance" value={fmt(data.strategy.wethBal, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="stETH balance" value={fmt(data.strategy.stethBal, data.tokens?.steth?.decimals ?? 18)} />
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+                  <div className="text-xs text-slate-600">
+                    <div className="font-semibold text-slate-800">Harvest yield</div>
+                    <div>
+                      Est. harvestable:{" "}
+                      {harvestEstimate != null
+                        ? `${fmt(harvestEstimate, data.tokens?.usdc?.decimals ?? 6, 6)} USDC`
+                        : "–"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={triggerHarvest}
+                    disabled={!walletAddress || harvestLoading}
+                    className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {harvestLoading ? "Harvesting..." : "Harvest"}
+                  </button>
+                </div>
               </>
             ) : (
               <span className="text-slate-500">Unavailable</span>
