@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import * as htmlToImage from "html-to-image";
 import ChartBuilder from "./ChartBuilder";
 import MetricsBuilder from "./MetricsBuilder";
 import Link from "next/link";
@@ -14,6 +15,10 @@ export default function ShareModalSignedIn({
   userDisplay = "",
   assetMeta = {},
 }) {
+  const captureRef = useRef(null);
+  const [chartReady, setChartReady] = useState(false);
+  const [generatingOg, setGeneratingOg] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -27,6 +32,8 @@ export default function ShareModalSignedIn({
       setError(null);
       setSaved(false);
       setShareUrl("");
+      setChartReady(false);
+      setGeneratingOg(false);
     }
   }, [open]);
 
@@ -38,6 +45,39 @@ export default function ShareModalSignedIn({
   const fullShareText = shareUrl
     ? `${baseShareText}\n\n${shareUrl}`
     : baseShareText;
+
+  const handleCaptureChartReady = () => {
+    setChartReady(true);
+  };
+
+  async function captureAndUploadOgImage(portfolioId) {
+    if (!captureRef.current) return;
+
+    setGeneratingOg(true);
+    try {
+      // small delay in case chart needs a tick
+      if (!chartReady) {
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      const dataUrl = await htmlToImage.toPng(captureRef.current, {
+        width: 1200,
+        height: 675,
+        pixelRatio: 2,
+      });
+
+      await fetch(`/api/portfolios/${portfolioId}/og-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataUrl }),
+      });
+    } catch (err) {
+      console.error("Error generating/uploading OG image", err);
+      // best-effort: don't block UX
+    } finally {
+      setGeneratingOg(false);
+    }
+  }
 
   async function handleSave() {
     setError(null);
@@ -73,6 +113,11 @@ export default function ShareModalSignedIn({
 
       setShareUrl(url);
       setSaved(true);
+
+      // 🔥 capture + upload OG image (best-effort)
+      captureAndUploadOgImage(portfolio.id).catch((err) => {
+        console.error("Failed to create OG image", err);
+      });
     } catch (e) {
       console.error(e);
       setError(e.message || "Could not save portfolio.");
@@ -293,6 +338,79 @@ export default function ShareModalSignedIn({
             </div>
           </div>
         </div>
+
+        {/* HIDDEN LIVE CARD – captured at 1200×675 (same as ShareModal) */}
+        {open && (
+          <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+            <div
+              ref={captureRef}
+              className="bg-white overflow-hidden"
+              style={{
+                width: "1200px",
+                height: "675px",
+                boxSizing: "border-box",
+                padding: "40px",
+              }}
+            >
+              <div className="w-full h-full grid grid-cols-[260px_minmax(0,1fr)] gap-x-40 gap-y-16">
+                {/* LEFT: logo + QR */}
+                <div className="flex flex-col items-center justify-between">
+                  <div className="flex items-center justify-center">
+                    <img
+                      src="/logos/stilllogo.png"
+                      alt="stillwater logo"
+                      className="w-[220px] h-[220px] object-contain"
+                    />
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <img
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fstilletf.com"
+                      alt="stilletf.com QR"
+                      className="w-[220px] h-[220px]"
+                    />
+                    <span className="mt-2 text-[11px] text-slate-500">
+                      stilletf.com
+                    </span>
+                  </div>
+                </div>
+
+                {/* RIGHT: chart + tagline + metrics */}
+                <div className="flex flex-col">
+                  <div className="w-full" style={{ height: 260 }}>
+                    <ChartBuilder
+                      assets={assets}
+                      weights={weights}
+                      showYield={true}
+                      size="l"
+                      fixed
+                      width={800}
+                      height={260}
+                      animated={false}
+                      yieldOnly={true}
+                      onReady={handleCaptureChartReady}
+                      legendOff={true}
+                    />
+                  </div>
+
+                  <p className="mt-10 mb-6 text-center text-[22px] font-semibold leading-snug text-black">
+                    I created this portfolio on{" "}
+                    <span className="font-bold">stilletf.com</span> — can you
+                    do better?
+                  </p>
+
+                  <div className="flex-1 min-h-[160px] text-[14px] text-black">
+                    <MetricsBuilder
+                      assets={assets}
+                      weights={weights}
+                      showYield={true}
+                      assetMeta={assetMeta}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

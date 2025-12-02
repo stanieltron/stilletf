@@ -25,8 +25,8 @@ export async function generateMetadata({ params }) {
     // fall back to defaults
   }
 
-  // Per-portfolio OG image, generated similarly to ShareModal capture
-  const ogImageUrl = `${baseUrl}/api/og/useretfs/${id}`;
+  // 🔥 use DB-backed PNG
+  const ogImageUrl = `${baseUrl}/api/portfolio-og/${id}`;
 
   return {
     title,
