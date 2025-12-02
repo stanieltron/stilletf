@@ -39,6 +39,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     // ============ Leverage Parameters ============
     uint256 public constant OPTIMAL_LTV = 7500; // 75% optimal borrowing ratio
     uint256 public constant REBALANCE_THRESHOLD = 500; // 5% deviation triggers rebalance (500 basis points)
+    uint256 public constant HARVEST_BUFFER_BPS = 500; // 5% of profit retained to cover interest
+    uint256 public constant MAX_BPS = 10000;
 
     // ============ Swap Parameters ============
     uint24 public constant POOL_FEE = 3000; // 0.3% Uniswap pool fee
@@ -239,8 +241,13 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
 
         uint256 profitBase = assetsValueBase - totalDebt;
         uint256 profitAssets = (profitBase * baseCurrencyUnit) / stEthPrice;
+        if (profitAssets == 0) return 0;
 
-        uint256 sharesToRedeem = fluidLending.convertToShares(profitAssets);
+        // Keep a buffer to cover accrued interest; harvest only the net portion
+        uint256 harvestAssets = (profitAssets * (MAX_BPS - HARVEST_BUFFER_BPS)) / MAX_BPS;
+        if (harvestAssets == 0) return 0;
+
+        uint256 sharesToRedeem = fluidLending.convertToShares(harvestAssets);
         if (sharesToRedeem == 0) return 0;
         if (sharesToRedeem > shares) sharesToRedeem = shares;
 
@@ -490,16 +497,19 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
 
     function _syncAccounting() internal {
         (uint256 collateralBase, uint256 debtBase) = _getAccountData();
-        totalDebt = debtBase;
-
         uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
-        if (uaPrice > 0) {
-            totalCollateral = (collateralBase * (10 ** uaDecimals)) / uaPrice;
+        uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+
+        // Only overwrite tracked debt/collateral when we have non-zero signals from the pool + oracle.
+        if (debtBase > 0) {
+            totalDebt = debtBase;
+            if (borrowedPrice > 0) {
+                totalBorrowed = (debtBase * (10 ** borrowedDecimals)) / borrowedPrice;
+            }
         }
 
-        uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-        if (borrowedPrice > 0) {
-            totalBorrowed = (debtBase * (10 ** borrowedDecimals)) / borrowedPrice;
+        if (collateralBase > 0 && uaPrice > 0) {
+            totalCollateral = (collateralBase * (10 ** uaDecimals)) / uaPrice;
         }
 
         totalStakedInFluid = fluidLending.balanceOf(address(this));

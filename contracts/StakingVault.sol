@@ -34,6 +34,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
     uint256 public constant ACC_PRECISION = 1e12;
     mapping(address => uint256) public rewardDebt; // User's reward debt for proper accounting
     mapping(address => uint256) public pendingRewards; // Claimable USDC per user
+    uint256 public lastRewardBalance; // Tracks USDC already accounted for
 
     // ============ Events ============
     event Staked(address indexed user, uint256 amountUA, uint256 sharesIssued);
@@ -69,6 +70,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
         name = _name;
         symbol = _symbol;
         decimals = IERC20Metadata(_UA).decimals();
+        lastRewardBalance = USDC.balanceOf(address(this));
     }
 
     // ============ Core Staking Functions ============
@@ -179,14 +181,9 @@ contract StakingVault is ReentrancyGuard, Ownable {
     function harvestYield() external nonReentrant returns (uint256 amountUSDC) {
         // 1. amountUSDC = strategy.harvestYield();
         amountUSDC = strategy.harvestYield();
-        
-        // 2. if (amountUSDC > 0 && _totalSupply > 0) {
-        if (amountUSDC > 0 && _totalSupply > 0) {
-            // Update reward index for vault stakers
-            accRewardPerShare += (amountUSDC * ACC_PRECISION) / _totalSupply;
-            
-            emit YieldHarvested(amountUSDC, block.timestamp);
-        }
+        // Sync rewards using actual USDC delta (covers external transfers too)
+        _accrueRewards();
+        emit YieldHarvested(amountUSDC, block.timestamp);
         
         // 3. return amountUSDC;
         return amountUSDC;
@@ -284,6 +281,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
      * @param account Address to update rewards for
      */
     function _updateRewards(address account) internal {
+        _accrueRewards();
         // 1. if (account != address(0)) {
         if (account != address(0)) {
             // uint256 pending = (_balances[account] * accRewardPerShare) / ACC_PRECISION - rewardDebt[account];
@@ -298,6 +296,18 @@ contract StakingVault is ReentrancyGuard, Ownable {
             rewardDebt[account] = (_balances[account] * accRewardPerShare) / ACC_PRECISION;
         // }
         }
+    }
+
+    /**
+     * @notice Accrue any newly received USDC into accRewardPerShare
+     */
+    function _accrueRewards() internal {
+        uint256 balance = USDC.balanceOf(address(this));
+        if (balance > lastRewardBalance && _totalSupply > 0) {
+            uint256 delta = balance - lastRewardBalance;
+            accRewardPerShare += (delta * ACC_PRECISION) / _totalSupply;
+        }
+        lastRewardBalance = balance;
     }
 
     /**

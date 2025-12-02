@@ -97,6 +97,34 @@ contract YieldStrategyTest is Test {
         assertGt(usdcAfter, usdcBefore, "no usdc gained");
     }
 
+    function testHarvestKeepsBufferAndOnlyTakesYield() public {
+        ua.transfer(address(strategy), 5e7);
+        ua.approve(address(strategy), type(uint256).max);
+        strategy.deposit(5e7);
+
+        // Record pre-donation state
+        uint256 sharesBefore = fluid.balanceOf(address(strategy));
+        uint256 assetsBefore = fluid.totalAssets();
+
+        // donate yield (ETH -> stETH) to fluid vault
+        vm.deal(address(this), 2 ether);
+        fluid.donateYieldWithETH{value: 2 ether}();
+        uint256 assetsAfterDonation = fluid.totalAssets();
+        uint256 donatedYield = assetsAfterDonation - assetsBefore;
+        assertGt(donatedYield, 0, "no yield donated");
+
+        uint256 usdcBefore = usdc.balanceOf(vault);
+        uint256 harvested = strategy.harvestYield();
+        uint256 usdcAfter = usdc.balanceOf(vault);
+
+        uint256 sharesAfter = fluid.balanceOf(address(strategy));
+
+        assertGt(harvested, 0, "nothing harvested");
+        assertGt(usdcAfter, usdcBefore, "no usdc harvested");
+        assertGt(sharesAfter, 0, "all shares redeemed unexpectedly");
+        assertLt(sharesAfter, sharesBefore, "shares did not decrease");
+    }
+
     function logState() internal view {
         console2.log("Strategy UA balance", ua.balanceOf(address(strategy)));
         console2.log("Strategy WETH balance", weth.balanceOf(address(strategy)));
