@@ -2,7 +2,7 @@
 import PortfolioDetailClient from "./ClientPortfolioDetail";
 import { Metadata } from "next";
 
-export async function generateMetadata({ params }): Promise<Metadata> {
+export async function generateMetadata({ params }) {
   const id = params.id;
 
   const baseUrl =
