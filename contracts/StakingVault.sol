@@ -20,7 +20,6 @@ contract StakingVault is ReentrancyGuard, Ownable {
     IERC20 public immutable UA; // Underlying asset (e.g., WETH)
     IERC20 public immutable USDC; // Reward token
     IYieldStrategy public immutable strategy;
-    address public immutable btcStakingContract;
 
     // ============ ERC-20 Share Token State ============
     mapping(address => uint256) private _balances;
@@ -36,10 +35,6 @@ contract StakingVault is ReentrancyGuard, Ownable {
     mapping(address => uint256) public rewardDebt; // User's reward debt for proper accounting
     mapping(address => uint256) public pendingRewards; // Claimable USDC per user
 
-    // ============ Configuration ============
-    uint256 public btcStakerProfitBps = 2000; // 20% default profit share for BTC stakers
-    uint256 public constant MAX_BPS = 10000;
-
     // ============ Events ============
     event Staked(address indexed user, uint256 amountUA, uint256 sharesIssued);
     event Unstaked(address indexed user, uint256 sharesRedeemed, uint256 amountUA);
@@ -48,7 +43,6 @@ contract StakingVault is ReentrancyGuard, Ownable {
     event RebalanceTriggered(uint256 timestamp);
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
-    event ProfitShareUpdated(uint256 newBps);
 
     // ============ Modifiers ============
     modifier updateRewards(address account) {
@@ -61,19 +55,16 @@ contract StakingVault is ReentrancyGuard, Ownable {
         address _UA,
         address _USDC,
         address _strategy,
-        address _btcStakingContract,
         string memory _name,
         string memory _symbol
     ) Ownable(msg.sender) {
         require(_UA != address(0), "Invalid UA address");
         require(_USDC != address(0), "Invalid USDC address");
         require(_strategy != address(0), "Invalid strategy address");
-        require(_btcStakingContract != address(0), "Invalid BTC staking address");
 
         UA = IERC20(_UA);
         USDC = IERC20(_USDC);
         strategy = IYieldStrategy(_strategy);
-        btcStakingContract = _btcStakingContract;
         
         name = _name;
         symbol = _symbol;
@@ -97,20 +88,8 @@ contract StakingVault is ReentrancyGuard, Ownable {
         // 3. UA.transferFrom(msg.sender, address(this), amountUA);
         UA.safeTransferFrom(msg.sender, address(this), amountUA);
         
-        // 4. Calculate shares based on current exchange rate
-        // 5. uint256 totalUA = totalAssets();
-        uint256 totalUA = totalAssets();
-        
-        // 6. if (_totalSupply == 0 || totalUA == 0) {
-        //    shares = amountUA; // 1:1 for first staker
-        //    } else {
-        //    shares = (amountUA * _totalSupply) / totalUA;
-        //    }
-        if (_totalSupply == 0 || totalUA == 0) {
-            shares = amountUA; // 1:1 for first staker
-        } else {
-            shares = (amountUA * _totalSupply) / totalUA;
-        }
+        // 4. Shares are 1:1 with UA deposited
+        shares = amountUA;
         
         // 7. _mint(msg.sender, shares);
         _mint(msg.sender, shares);
@@ -140,11 +119,8 @@ contract StakingVault is ReentrancyGuard, Ownable {
         // 2. require(shares > 0 && shares <= _balances[msg.sender], "INVALID_SHARES");
         require(shares > 0 && shares <= _balances[msg.sender], "INVALID_SHARES");
         
-        // 3. uint256 totalUA = totalAssets();
-        uint256 totalUA = totalAssets();
-        
-        // 4. amountUA = (shares * totalUA) / _totalSupply;
-        amountUA = (shares * totalUA) / _totalSupply;
+        // 3. UA returned matches shares (1:1)
+        amountUA = shares;
         
         // 5. _burn(msg.sender, shares);
         _burn(msg.sender, shares);
@@ -206,18 +182,8 @@ contract StakingVault is ReentrancyGuard, Ownable {
         
         // 2. if (amountUSDC > 0 && _totalSupply > 0) {
         if (amountUSDC > 0 && _totalSupply > 0) {
-            // Reserve portion for BTC stakers
-            uint256 btcStakerPortion = (amountUSDC * btcStakerProfitBps) / 10000;
-            uint256 vaultRewards = amountUSDC - btcStakerPortion;
-            
             // Update reward index for vault stakers
-            accRewardPerShare += (vaultRewards * ACC_PRECISION) / _totalSupply;
-            
-            // Queue BTC staker distribution
-            if (btcStakerPortion > 0) {
-                USDC.safeTransfer(btcStakingContract, btcStakerPortion);
-                IBTCStaking(btcStakingContract).notifyRewardAmount(btcStakerPortion);
-            }
+            accRewardPerShare += (amountUSDC * ACC_PRECISION) / _totalSupply;
             
             emit YieldHarvested(amountUSDC, block.timestamp);
         }
@@ -257,8 +223,7 @@ contract StakingVault is ReentrancyGuard, Ownable {
      */
     function sharePrice() external view returns (uint256) {
         uint256 scale = 10 ** decimals;
-        if (_totalSupply == 0) return scale;
-        return (totalAssets() * scale) / _totalSupply;
+        return scale; // 1 share = 1 UA unit
     }
 
     /**
@@ -310,18 +275,6 @@ contract StakingVault is ReentrancyGuard, Ownable {
         }
         
         return true;
-    }
-
-    // ============ Admin Functions ============
-
-    /**
-     * @notice Update the profit share for BTC stakers
-     * @param newBps New basis points (0-10000)
-     */
-    function setProfitShare(uint256 newBps) external onlyOwner {
-        require(newBps <= MAX_BPS, "Invalid bps");
-        btcStakerProfitBps = newBps;
-        emit ProfitShareUpdated(newBps);
     }
 
     // ============ Internal Functions ============

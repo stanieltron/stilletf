@@ -30,7 +30,7 @@ contract YieldStrategyTest is Test {
         weth = new MockWETH();
         steth = new MockStETH();
         oracle = new MockOracle();
-        pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)));
+        pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)), IAaveOracle(address(oracle)));
         fluid = new MockFluidVault(address(steth));
         router = new MockRouter();
 

@@ -3,18 +3,25 @@ pragma solidity ^0.8.19;
 
 import "../../contracts/Interfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./MockTokens.sol";
 
 contract MockPool is IPool {
     IERC20 public immutable collateral;
     IERC20 public immutable debtAsset;
+    IAaveOracle public immutable oracle;
+    uint8 public immutable collateralDecimals;
+    uint8 public immutable debtDecimals;
 
     uint256 public supplied;
     uint256 public borrowed;
 
-    constructor(IERC20 _collateral, IERC20 _debt) {
+    constructor(IERC20 _collateral, IERC20 _debt, IAaveOracle _oracle) {
         collateral = _collateral;
         debtAsset = _debt;
+        oracle = _oracle;
+        collateralDecimals = IERC20Metadata(address(_collateral)).decimals();
+        debtDecimals = IERC20Metadata(address(_debt)).decimals();
     }
 
     function supply(address asset, uint256 amount, address, uint16) external {
@@ -58,6 +65,19 @@ contract MockPool is IPool {
         uint256,
         uint256
     ) {
-        return (supplied, borrowed, 0, 0, 0, supplied > 0 ? (supplied * 1e18) / (borrowed + 1) : 0);
+        uint256 collateralPrice = oracle.getAssetPrice(address(collateral));
+        uint256 debtPrice = oracle.getAssetPrice(address(debtAsset));
+
+        if (collateralPrice > 0) {
+            totalCollateralBase = (supplied * collateralPrice) / (10 ** collateralDecimals);
+        }
+        if (debtPrice > 0) {
+            totalDebtBase = (borrowed * debtPrice) / (10 ** debtDecimals);
+        }
+
+        uint256 ltv = totalCollateralBase == 0 ? 0 : (totalDebtBase * 10000) / totalCollateralBase;
+        uint256 healthFactor = totalDebtBase == 0 ? type(uint256).max : (totalCollateralBase * 1e18) / totalDebtBase;
+
+        return (totalCollateralBase, totalDebtBase, 0, 0, ltv, healthFactor);
     }
 }

@@ -33,7 +33,7 @@ contract StakingVaultTest is Test {
         weth = new MockWETH();
         steth = new MockStETH();
         oracle = new MockOracle();
-        pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)));
+        pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)), IAaveOracle(address(oracle)));
         fluid = new MockFluidVault(address(steth));
 
         // Fund WETH contract with ETH to allow unwrapping
@@ -67,10 +67,8 @@ contract StakingVaultTest is Test {
             address(ua),
             address(usdc),
             address(strategy),
-            address(0xBEEF),
             "Vault", "VLT"
         );
-        vault.setProfitShare(0);
 
         assertEq(strategy.vault(), address(vault), "strategy vault mismatch");
 
@@ -102,6 +100,23 @@ contract StakingVaultTest is Test {
 
         uint256 pending = vault.getPendingRewards(alice);
         assertGt(pending, 0, "no rewards accrued");
+    }
+
+    function testDepositThenWithdrawExactAmount() public {
+        uint256 depositAmount = 5e7; // 0.5 WBTC with 8 decimals
+
+        vm.startPrank(alice);
+        uint256 mintedShares = vault.stake(depositAmount);
+        assertEq(mintedShares, depositAmount, "shares should match deposit");
+        assertEq(vault.balanceOf(alice), depositAmount, "vault balance mismatch");
+
+        uint256 beforeWallet = ua.balanceOf(alice);
+        uint256 withdrawn = vault.unstake(mintedShares);
+        vm.stopPrank();
+
+        assertEq(withdrawn, depositAmount, "withdrawn amount mismatch");
+        assertEq(ua.balanceOf(alice), beforeWallet + depositAmount, "wallet did not receive UA back");
+        assertEq(vault.balanceOf(alice), 0, "shares not burned");
     }
 
     function logState() internal view {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 
 const ENV_ADDR = {
   vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
@@ -58,6 +58,7 @@ const FLUID_ABI = [
   "function convertToAssets(uint256) view returns (uint256)",
   "function convertToShares(uint256) view returns (uint256)",
   "function decimals() view returns (uint8)",
+  "function donateYieldWithETH() payable",
 ];
 
 const VAULT_ABI = [
@@ -87,6 +88,15 @@ function fmt(v, decimals = 18, fraction = 4) {
   }
 }
 
+function baseToUa(baseAmount, price, uaDecimals, baseUnit) {
+  try {
+    if (!baseAmount || !price || !baseUnit) return null;
+    return (baseAmount * 10n ** BigInt(uaDecimals)) / price;
+  } catch {
+    return null;
+  }
+}
+
 function SummaryCard({ title, children }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white/60 p-4 shadow-sm backdrop-blur">
@@ -105,6 +115,10 @@ export default function TestnetStatusPage() {
   const [addresses, setAddresses] = useState(ENV_ADDR);
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [donationEth, setDonationEth] = useState("");
+  const [txMessage, setTxMessage] = useState("");
+  const [donating, setDonating] = useState(false);
 
   const ready = useMemo(
     () =>
@@ -163,6 +177,7 @@ export default function TestnetStatusPage() {
       if (!accounts || !accounts.length) {
         setWalletAddress("");
         setProvider(null);
+        setSigner(null);
         return;
       }
       initializeWallet(accounts[0]);
@@ -219,7 +234,9 @@ export default function TestnetStatusPage() {
     try {
       setErr("");
       const nextProvider = new BrowserProvider(window.ethereum);
+      const nextSigner = await nextProvider.getSigner();
       setProvider(nextProvider);
+      setSigner(nextSigner);
       setWalletAddress(address);
     } catch (e) {
       console.error(e);
@@ -394,6 +411,44 @@ export default function TestnetStatusPage() {
     }
   }
 
+  async function donateYieldWithEth() {
+    if (!signer || !walletAddress) {
+      setErr("Connect your wallet to donate yield.");
+      return;
+    }
+    if (!addresses.fluid) {
+      setErr("Fluid vault address is not configured.");
+      return;
+    }
+    if (!donationEth || Number(donationEth) <= 0) {
+      setErr("Enter an ETH amount greater than zero.");
+      return;
+    }
+    try {
+      setDonating(true);
+      setErr("");
+      setTxMessage("Sending ETH donation...");
+      const network = await signer.provider.getNetwork();
+      if (network.chainId?.toString() !== DEFAULT_CHAIN_ID) {
+        throw new Error(`Switch to chain ${DEFAULT_CHAIN_ID} to donate.`);
+      }
+      const fluid = new Contract(addresses.fluid, FLUID_ABI, signer);
+      const tx = await fluid.donateYieldWithETH({
+        value: parseUnits(donationEth, 18),
+      });
+      await tx.wait();
+      setTxMessage("Donation confirmed. Refreshing balances...");
+      setDonationEth("");
+      await refresh();
+      setTxMessage("Donation confirmed on-chain.");
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Donation failed.");
+    } finally {
+      setDonating(false);
+    }
+  }
+
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -442,6 +497,12 @@ export default function TestnetStatusPage() {
         </div>
       )}
 
+      {txMessage && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">
+          {txMessage}
+        </div>
+      )}
+
       {data && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <SummaryCard title="Network">
@@ -487,10 +548,10 @@ export default function TestnetStatusPage() {
           <SummaryCard title="Vault (staking)">
             {data.vault ? (
               <>
-                <Row label="totalAssets" value={fmt(data.vault.totalAssets, data.tokens?.wbtc?.decimals ?? 8)} />
-                <Row label="totalSupply" value={fmt(data.vault.totalSupply, data.tokens?.wbtc?.decimals ?? 8)} />
-                <Row label="sharePrice" value={fmt(data.vault.sharePrice, data.vault.decimals ?? 18)} />
-                <Row label="UA in vault" value={fmt(data.vault.uaBalance, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="totalAssets (WBTC)" value={fmt(data.vault.totalAssets, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="totalSupply (WBTC shares)" value={fmt(data.vault.totalSupply, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="sharePrice (WBTC)" value={fmt(data.vault.sharePrice, data.vault.decimals ?? 18)} />
+                <Row label="UA in vault (WBTC)" value={fmt(data.vault.uaBalance, data.tokens?.wbtc?.decimals ?? 8)} />
               </>
             ) : (
               <span className="text-slate-500">Unavailable</span>
@@ -500,11 +561,31 @@ export default function TestnetStatusPage() {
           <SummaryCard title="Strategy">
             {data.strategy ? (
               <>
-                <Row label="totalAssets" value={fmt(data.strategy.totalAssets, data.tokens?.wbtc?.decimals ?? 8)} />
-                <Row label="collateral" value={fmt(data.strategy.totalCollateral, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="totalAssets (WBTC)" value={fmt(data.strategy.totalAssets, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="collateral (WBTC)" value={fmt(data.strategy.totalCollateral, data.tokens?.wbtc?.decimals ?? 8)} />
                 <Row label="borrowed (WETH)" value={fmt(data.strategy.totalBorrowed, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="staked in Fluid (shares)" value={fmt(data.strategy.totalStakedInFluid, data.fluid?.decimals ?? 18)} />
-                <Row label="totalDebt (base)" value={fmt(data.strategy.totalDebt, 8)} />
+                <Row
+                  label="totalDebt (WBTC)"
+                  value={
+                    baseToUa(
+                      data.strategy.totalDebt,
+                      data.oracle?.prices?.wbtc,
+                      data.tokens?.wbtc?.decimals ?? 8,
+                      data.oracle?.base
+                    )
+                      ? fmt(
+                          baseToUa(
+                            data.strategy.totalDebt,
+                            data.oracle?.prices?.wbtc,
+                            data.tokens?.wbtc?.decimals ?? 8,
+                            data.oracle?.base
+                          ),
+                          data.tokens?.wbtc?.decimals ?? 8
+                        )
+                      : "-"
+                  }
+                />
                 <Row label="WETH balance" value={fmt(data.strategy.wethBal, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="stETH balance" value={fmt(data.strategy.stethBal, data.tokens?.steth?.decimals ?? 18)} />
               </>
@@ -516,12 +597,37 @@ export default function TestnetStatusPage() {
           <SummaryCard title="Fluid Vault (mock)">
             {data.fluid ? (
               <>
-                <Row label="totalAssets" value={fmt(data.fluid.totalAssets, data.tokens?.steth?.decimals ?? 18)} />
-                <Row label="strategy shares" value={fmt(data.fluid.strategyShares, data.fluid.decimals)} />
+                <Row label="totalAssets (stETH)" value={fmt(data.fluid.totalAssets, data.tokens?.steth?.decimals ?? 18)} />
+                <Row label="strategy shares (mFLUID)" value={fmt(data.fluid.strategyShares, data.fluid.decimals)} />
                 <Row
                   label="1 share → assets"
                   value={fmt(data.fluid.shareToAsset, data.tokens?.steth?.decimals ?? 18)}
                 />
+                <div className="mt-4 space-y-2 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+                  <p className="text-xs font-semibold text-slate-700">Donate yield with ETH</p>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={donationEth}
+                      disabled={donating}
+                      onChange={(e) => setDonationEth(e.target.value)}
+                      placeholder="0.1"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                    />
+                    <button
+                      onClick={donateYieldWithEth}
+                      disabled={!walletAddress || donating}
+                      className="whitespace-nowrap rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {donating ? "Donating..." : "Donate"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Sends ETH via donateYieldWithETH; boosts vault assets without minting new shares.
+                  </p>
+                </div>
               </>
             ) : (
               <span className="text-slate-500">Unavailable</span>
@@ -531,7 +637,7 @@ export default function TestnetStatusPage() {
           <SummaryCard title="Aave Pool (mock)">
             {data.pool ? (
               <>
-                <Row label="supplied (UA)" value={fmt(data.pool.supplied, data.tokens?.wbtc?.decimals ?? 8)} />
+                <Row label="supplied (WBTC)" value={fmt(data.pool.supplied, data.tokens?.wbtc?.decimals ?? 8)} />
                 <Row label="borrowed (WETH)" value={fmt(data.pool.borrowed, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="LTV (bps)" value={data.pool.ltv?.toString() ?? "-"} />
                 <Row label="health factor" value={fmt(data.pool.health, 18, 4)} />

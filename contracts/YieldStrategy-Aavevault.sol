@@ -162,6 +162,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
      */
     function withdraw(uint256 amountUA, address to) external onlyVault nonReentrant {
         _syncAccounting();
+        require(totalCollateral > 0, "NO_COLLATERAL");
         // Calculate proportional unwinding needed
         uint256 shareToWithdraw = (amountUA * 1e18) / totalCollateral;
         

@@ -66,7 +66,6 @@ export default function BTCETFPage() {
   });
   const [userStats, setUserStats] = useState({
     shares: 0n,
-    vaultValue: 0n,
     pendingRewards: 0n,
     walletBalance: 0n,
   });
@@ -82,8 +81,16 @@ export default function BTCETFPage() {
   );
 
   const vaultHoldings = useMemo(
-    () => formatBigAmount(userStats.vaultValue, wbtcDecimals, { maximumFractionDigits: 8 }),
-    [userStats.vaultValue, wbtcDecimals]
+    () => formatBigAmount(userStats.shares, vaultStats.decimals, { maximumFractionDigits: 8 }),
+    [userStats.shares, vaultStats.decimals]
+  );
+  const vaultTvl = useMemo(
+    () => formatBigAmount(vaultStats.totalSupply, vaultStats.decimals, { maximumFractionDigits: 4 }),
+    [vaultStats.totalSupply, vaultStats.decimals]
+  );
+  const vaultAssetsDisplay = useMemo(
+    () => formatBigAmount(vaultStats.totalAssets, vaultStats.decimals, { maximumFractionDigits: 4 }),
+    [vaultStats.totalAssets, vaultStats.decimals]
   );
   const yieldAmount = useMemo(
     () => formatBigAmount(userStats.pendingRewards, REWARD_DECIMALS, { maximumFractionDigits: 4 }),
@@ -200,6 +207,14 @@ export default function BTCETFPage() {
     }
   }
 
+  const openDialog = (mode = "deposit") => {
+    setDialogMode(mode);
+    setDialogOpen(true);
+    setAmount("");
+    setErr("");
+    setTxMessage("");
+  };
+
   async function connectWallet() {
     if (typeof window === "undefined" || !window.ethereum) {
       setErr("Please install MetaMask to continue.");
@@ -222,7 +237,7 @@ export default function BTCETFPage() {
     try {
       setLoading(true);
       setErr("");
-      const [network, shares, totalAssets, totalSupply, sharePrice, pendingRewards, walletBal, vaultDecimals] =
+      const [network, shares, totalAssetsRaw, totalSupply, sharePrice, pendingRewards, walletBal, vaultDecimals] =
         await Promise.all([
           provider.getNetwork(),
           nextVault.balanceOf(address),
@@ -237,14 +252,16 @@ export default function BTCETFPage() {
         setErr(`Wrong network. Connect to chain ${DEFAULT_CHAIN_ID}.`);
         return;
       }
-      const vaultValue = totalSupply === 0n ? 0n : (shares * totalAssets) / totalSupply;
+      const shareScale = 10n ** BigInt(Number(vaultDecimals) || wbtcDecimals);
+      const totalAssets =
+        totalSupply === 0n ? 0n : (sharePrice * totalSupply) / shareScale || totalAssetsRaw;
       setVaultStats({
         totalAssets,
         totalSupply,
         sharePrice,
         decimals: Number(vaultDecimals) || wbtcDecimals,
       });
-      setUserStats({ shares, vaultValue, pendingRewards, walletBalance: walletBal });
+      setUserStats({ shares, pendingRewards, walletBalance: walletBal });
       setErr("");
     } catch (e) {
       console.error(e);
@@ -279,8 +296,8 @@ export default function BTCETFPage() {
         await tx.wait();
         setTxMessage("Deposit confirmed on-chain.");
       } else {
-        const { totalAssets, totalSupply } = vaultStats;
-        const sharesNeeded = totalAssets === 0n ? 0n : (value * totalSupply) / totalAssets;
+        // Shares are 1:1 with deposited WBTC
+        const sharesNeeded = value;
         if (sharesNeeded === 0n) {
           setErr("No shares available to withdraw.");
           setTxMessage("");
@@ -390,18 +407,27 @@ export default function BTCETFPage() {
                       {vaultHoldings} BTC
                     </p>
                   </div>
-                  <button
-                    onClick={() => { setDialogMode("deposit"); setDialogOpen(true); }}
-                    disabled={!ready}
-                    className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-strong)] disabled:opacity-50 shadow-sm"
-                  >
-                    Add / Withdraw
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openDialog("deposit")}
+                      disabled={!ready}
+                      className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-strong)] disabled:opacity-50 shadow-sm"
+                    >
+                      Add WBTC
+                    </button>
+                    <button
+                      onClick={() => openDialog("withdraw")}
+                      disabled={!ready || userStats.shares === 0n}
+                      className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold hover:bg-slate-50 disabled:opacity-50 shadow-sm"
+                    >
+                      Withdraw
+                    </button>
+                  </div>
                 </div>
                 <div className="text-sm text-slate-600 flex flex-wrap gap-2">
                   <span>WBTC wallet: {walletBalance}</span>
                   <span>•</span>
-                  <span>Staked shares: {formatBigAmount(userStats.shares, 18, { maximumFractionDigits: 6 })}</span>
+                  <span>Staked shares: {formatBigAmount(userStats.shares, vaultStats.decimals, { maximumFractionDigits: 6 })}</span>
                 </div>
               </div>
 
@@ -409,8 +435,8 @@ export default function BTCETFPage() {
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-inner">
                   <p className="text-sm text-slate-500">Vault metrics</p>
                   <div className="mt-3 space-y-2 text-sm text-slate-700">
-                    <InfoRow label="Total assets" value={`${formatBigAmount(vaultStats.totalAssets, vaultStats.decimals, { maximumFractionDigits: 4 })} BTC`} />
-                    <InfoRow label="Total supply" value={formatBigAmount(vaultStats.totalSupply, 18, { maximumFractionDigits: 4 })} />
+                    <InfoRow label="Total staked" value={`${vaultTvl} BTC`} />
+                    <InfoRow label="Total assets (calc.)" value={`${vaultAssetsDisplay} BTC`} />
                     <InfoRow label="Share price" value={`${formatBigAmount(vaultStats.sharePrice, vaultStats.decimals, { maximumFractionDigits: 6 })} WBTC`} />
                   </div>
                 </div>
@@ -431,9 +457,7 @@ export default function BTCETFPage() {
                       Withdraw
                     </button>
                   </div>
-                  <div className="text-sm text-slate-600">
-                    Total assets: {formatBigAmount(vaultStats.totalAssets, vaultStats.decimals, { maximumFractionDigits: 4 })} BTC
-                  </div>
+                  <div className="text-sm text-slate-600">Total staked: {vaultTvl} BTC</div>
                 </div>
               </div>
             </div>
@@ -476,6 +500,29 @@ export default function BTCETFPage() {
               </div>
 
               <div>
+                <div className="mb-4 flex gap-2 rounded-xl bg-slate-100 p-1">
+                  <button
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
+                      dialogMode === "deposit"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    onClick={() => setDialogMode("deposit")}
+                  >
+                    Deposit
+                  </button>
+                  <button
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
+                      dialogMode === "withdraw"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    onClick={() => setDialogMode("withdraw")}
+                  >
+                    Withdraw
+                  </button>
+                </div>
+
                 <label className="text-sm text-slate-600">Amount (WBTC)</label>
                 <input
                   type="number"

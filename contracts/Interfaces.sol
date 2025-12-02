@@ -74,8 +74,3 @@ interface IYieldStrategy {
     function needsRebalance() external view returns (bool);
     function totalAssets() external view returns (uint256);
 }
-
-// BTC staking notifier
-interface IBTCStaking {
-    function notifyRewardAmount(uint256 amount) external;
-}

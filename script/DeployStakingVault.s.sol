@@ -49,7 +49,7 @@ contract DeployStakingVault is Script {
         stEth = new MockStETH();
         oracle = new MockOracle();
         router = new MockRouter();
-        pool = new MockPool(IERC20(address(wbtc)), IERC20(address(weth)));
+        pool = new MockPool(IERC20(address(wbtc)), IERC20(address(weth)), IAaveOracle(address(oracle)));
 
         // Seed liquidity with a small ETH footprint (keeps Sepolia spend low)
         weth.deposit{value: 0.02 ether}(); // funds unwrapping capacity
@@ -84,7 +84,6 @@ contract DeployStakingVault is Script {
             address(wbtc),
             address(usdc),
             address(strategy),
-            deployer, // mock BTC staking contract; can be swapped later
             "STILL WBTC Staking Vault (Sepolia Mock)",
             "stWBTC"
         );
