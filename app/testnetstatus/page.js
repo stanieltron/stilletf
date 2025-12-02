@@ -2,12 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Contract, JsonRpcProvider, formatUnits } from "ethers";
-
-const RPC_URL =
-  process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL ||
-  process.env.NEXT_PUBLIC_RPC_URL ||
-  "";
+import { BrowserProvider, Contract, formatUnits } from "ethers";
 
 const ENV_ADDR = {
   vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
@@ -108,10 +103,12 @@ export default function TestnetStatusPage() {
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
   const [addresses, setAddresses] = useState(ENV_ADDR);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [provider, setProvider] = useState(null);
 
   const ready = useMemo(
     () =>
-      RPC_URL &&
+      provider &&
       addresses.vault &&
       addresses.strategy &&
       addresses.fluid &&
@@ -121,7 +118,7 @@ export default function TestnetStatusPage() {
       addresses.steth &&
       addresses.pool &&
       addresses.oracle,
-    [addresses]
+    [addresses, provider]
   );
 
   useEffect(() => {
@@ -152,11 +149,35 @@ export default function TestnetStatusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+    const eth = window.ethereum;
+    eth
+      .request({ method: "eth_accounts" })
+      .then((accounts) => {
+        if (accounts && accounts[0]) initializeWallet(accounts[0]);
+      })
+      .catch(() => {});
+
+    const onAccountsChanged = (accounts) => {
+      if (!accounts || !accounts.length) {
+        setWalletAddress("");
+        setProvider(null);
+        return;
+      }
+      initializeWallet(accounts[0]);
+    };
+    eth.on("accountsChanged", onAccountsChanged);
+    return () => {
+      eth.removeListener("accountsChanged", onAccountsChanged);
+    };
+  }, []);
+
   async function refresh() {
     setLoading(true);
     setErr("");
     try {
-      const provider = new JsonRpcProvider(RPC_URL);
+      if (!provider) throw new Error("No provider");
       const [blockNumber, network] = await Promise.all([
         provider.getBlockNumber(),
         provider.getNetwork(),
@@ -184,9 +205,44 @@ export default function TestnetStatusPage() {
       });
     } catch (e) {
       console.error(e);
-      setErr("Failed to load status. Check RPC URL and addresses.");
+      setErr("Failed to load status. Connect wallet and check addresses.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function initializeWallet(address) {
+    if (!window.ethereum) {
+      setErr("MetaMask not detected.");
+      return;
+    }
+    try {
+      setErr("");
+      const nextProvider = new BrowserProvider(window.ethereum);
+      setProvider(nextProvider);
+      setWalletAddress(address);
+    } catch (e) {
+      console.error(e);
+      setErr("Failed to initialize wallet.");
+    }
+  }
+
+  async function connectWallet() {
+    if (typeof window === "undefined" || !window.ethereum) {
+      setErr("Please install MetaMask to continue.");
+      return;
+    }
+    try {
+      setErr("");
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+      if (accounts && accounts[0]) {
+        await initializeWallet(accounts[0]);
+      }
+    } catch (e) {
+      console.error(e);
+      setErr("Wallet connection was rejected.");
     }
   }
 
@@ -348,13 +404,23 @@ export default function TestnetStatusPage() {
           <h1 className="text-2xl font-bold text-slate-900">Sepolia Status</h1>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={refresh}
-            disabled={loading || !ready}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={connectWallet}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100"
+            >
+              {walletAddress
+                ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+                : "Connect Wallet"}
+            </button>
+            <button
+              onClick={refresh}
+              disabled={loading || !walletAddress}
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading ? "Refreshing..." : "Refresh"}
+            </button>
+          </div>
           <Link
             href="/btcetf"
             className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
@@ -364,15 +430,9 @@ export default function TestnetStatusPage() {
         </div>
       </div>
 
-      {!RPC_URL && (
+      {!walletAddress && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Set NEXT_PUBLIC_SEPOLIA_RPC_URL (or NEXT_PUBLIC_RPC_URL) to enable on-chain reads.
-        </div>
-      )}
-
-      {!ready && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Missing addresses. Populate NEXT_PUBLIC_* env vars for vault, strategy, fluid, tokens, pool, and oracle.
+          Connect a wallet on Sepolia to fetch status.
         </div>
       )}
 
@@ -386,8 +446,10 @@ export default function TestnetStatusPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <SummaryCard title="Network">
             <div className="flex justify-between">
-              <span>RPC</span>
-              <span className="text-slate-900">{RPC_URL ? "Configured" : "Missing"}</span>
+              <span>Wallet</span>
+              <span className="text-slate-900">
+                {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not connected"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span>Chain ID</span>
