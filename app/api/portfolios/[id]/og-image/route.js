@@ -1,6 +1,6 @@
 // app/api/portfolios/[id]/og-image/route.js
 import { NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+import { prisma } from "../../../../../lib/prisma";
 
 export async function POST(req, { params }) {
   const { id } = params;
