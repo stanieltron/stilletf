@@ -1,6 +1,6 @@
 // app/api/portfolios/[id]/og-image/route.js
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from "../../../../lib/prisma";
 
 export async function POST(req, { params }) {
   const { id } = params;
@@ -22,7 +22,7 @@ export async function POST(req, { params }) {
   const buffer = Buffer.from(base64, "base64");
 
   await prisma.portfolio.update({
-    where: { id },
+    where: { id: String(id) },
     data: {
       ogImage: buffer,
       ogImageMime: mime,
