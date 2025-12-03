@@ -7,29 +7,34 @@ import {
   Line,
   XAxis,
   YAxis,
-  Tooltip,
   Legend,
   ResponsiveContainer,
 } from "recharts";
 
-/**
- * Legend that only shows ETF + ETF (with yield).
- */
 function ETFLegend({ payload }) {
   if (!payload) return null;
 
   const items = payload.filter(
-    (item) =>
-      item.dataKey === "portfolio" || item.dataKey === "portfolioYield"
+    (item) => item.dataKey === "portfolio" || item.dataKey === "portfolioYield"
   );
   if (!items.length) return null;
 
   return (
-    <div className="mt-2 flex gap-4 text-xs text-[var(--muted)]">
+    <div
+      style={{
+        marginTop: 8,
+        display: "flex",
+        gap: 12,
+        fontSize: 12,
+        color: "var(--muted)",
+      }}
+    >
       {items.map((item) => (
-        <div key={item.dataKey} className="flex items-center gap-1.5">
+        <div
+          key={item.dataKey}
+          style={{ display: "flex", alignItems: "center", gap: 6 }}
+        >
           <span
-            className="inline-block"
             style={{
               width: 18,
               height: 3,
@@ -51,9 +56,9 @@ function ETFLegend({ payload }) {
  * - assets: string[]
  * - weights: number[]
  * - showYield: boolean
- * - animated: boolean – if false, disable all line animations.
- * - yieldOnly: boolean – if true, show *only* the yield line (no asset lines, no baseline ETF).
- * - legendOff: boolean – if true, hide the ETF legend.
+ * - animated: boolean — if false, disable line animations.
+ * - yieldOnly: boolean — if true, show only the yield line.
+ * - legendOff: boolean — if true, hide the ETF legend.
  * - onReady: optional callback when data is loaded.
  *
  * The chart always fills 100% of its parent (width & height).
@@ -66,55 +71,65 @@ export default function ChartBuilder({
   yieldOnly = false,
   legendOff = false,
   onReady,
+  assetMeta,
 }) {
   const [result, setResult] = useState(null);
   const [assetMap, setAssetMap] = useState(null);
   const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(true);
   const initialCapital = 1000;
+  const assetMetaKey = useMemo(
+    () => (assetMeta ? Object.keys(assetMeta).join(",") : ""),
+    [assetMeta]
+  );
 
-  // fetch / compute portfolio result whenever assets or weights change
   useEffect(() => {
     let alive = true;
+    const numericWeights = (weights || []).map((w) => {
+      const n = Number(w);
+      return Number.isFinite(n) ? n : 0;
+    });
 
     async function run() {
       try {
-        setLoading(true);
         setErr("");
 
-        const sum = (weights || []).reduce(
-          (a, b) => a + (Number.isFinite(b) ? b : 0),
-          0
-        );
+        const sum = numericWeights.reduce((a, b) => a + b, 0);
 
         if (!sum || sum <= 0) {
           if (alive) {
             setResult(null);
             setAssetMap(null);
-            setLoading(false);
           }
           return;
         }
 
-        const res = await portfolioCalculator(assets, weights);
+        const res = await portfolioCalculator(assets, numericWeights, assetMeta);
         if (!alive) return;
 
         setResult(res);
 
         if (res && res.assets) {
           setAssetMap(res.assets);
+        } else if (assetMeta && Object.keys(assetMeta).length) {
+          setAssetMap(assetMeta);
         } else {
           const all = await fetchAssets();
           if (!alive) return;
           setAssetMap(all.assets || null);
         }
 
-        if (onReady) onReady();
+        const hasData =
+          res &&
+          Array.isArray(res.series) &&
+          res.series.length > 0;
+        if (onReady && hasData) {
+          setTimeout(() => {
+            if (alive) onReady();
+          }, 0);
+        }
       } catch (e) {
         if (!alive) return;
         setErr(e?.message || String(e));
-      } finally {
-        if (alive) setLoading(false);
       }
     }
 
@@ -123,9 +138,8 @@ export default function ChartBuilder({
       alive = false;
     };
     // join() keeps deps stable while still reacting to changes
-  }, [assets.join(","), weights.join(","), onReady]);
+  }, [assets.join(","), weights.join(","), assetMetaKey, onReady]);
 
-  // build Recharts rows
   const chartData = useMemo(() => {
     if (!result)
       return {
@@ -138,7 +152,6 @@ export default function ChartBuilder({
     const pct = result.weights || [];
     const activeKeys = assets.filter((_, i) => (pct[i] ?? 0) > 0);
 
-    // per-asset series
     const perAsset = activeKeys.map((key) => {
       const idx = assets.indexOf(key);
       const meta = assetMap?.[key] || {};
@@ -155,7 +168,6 @@ export default function ChartBuilder({
 
     const portfolio = Array.isArray(result.series) ? result.series : [];
 
-    // yield line (fall back to portfolio if yield data missing)
     let portfolioYield = Array.isArray(result.seriesWithYield)
       ? result.seriesWithYield
       : [];
@@ -233,112 +245,104 @@ export default function ChartBuilder({
   };
 
   if (err)
-    return <div className="text-sm text-[var(--neg)] mt-8">{err}</div>;
+    return (
+      <div style={{ fontSize: "0.9rem", color: "var(--neg)", marginTop: 12 }}>
+        {err}
+      </div>
+    );
   if (!result)
     return (
-      <div className="text-sm text-[var(--muted)]">
-        No data yet – add some asset weight.
+      <div style={{ fontSize: "0.9rem", color: "var(--muted)" }}>
+        No data yet — add some asset weight.
       </div>
     );
 
-  const inner = (
-    <>
-      <XAxis
-        dataKey="i"
-        ticks={chartData.yearTicks}
-        tickFormatter={(i) => chartData.years[i]}
-        axisLine={false}
-        tickLine={false}
-        interval="preserveStartEnd"
-        tick={{ fill: "var(--muted)", fontSize: 12 }}
-      />
-      <YAxis
-        width={56}
-        tickFormatter={fmtUSD}
-        axisLine={false}
-        tickLine={false}
-        tick={{ fill: "var(--muted)", fontSize: 12 }}
-      />
-      {/* <Tooltip
-        formatter={(val, name) => [fmtUSD(val), name]}
-        labelFormatter={(i) => chartData.years[i]}
-        wrapperStyle={{ outline: "none" }}
-        contentStyle={{
-          background: "var(--bg)",
-          border: "1px solid var(--line)",
-          borderRadius: 12,
-          color: "var(--text)",
-        }}
-      /> */}
-
-      {!legendOff && (
-        <Legend
-          verticalAlign="bottom"
-          align="left"
-          layout="horizontal"
-          content={<ETFLegend />}
-        />
-      )}
-
-      {/* ETF main line (only when not yieldOnly) */}
-      {!yieldOnly && (
-        <Line
-          type="monotone"
-          dataKey="portfolio"
-          name="ETF"
-          dot={false}
-          activeDot={{ r: 3 }}
-          stroke="var(--pos, #2563eb)"
-          strokeWidth={5}
-          strokeLinecap="round"
-          isAnimationActive={animated}
-        />
-      )}
-
-      {/* ETF with yield – shown if showYield OR yieldOnly */}
-      {(showYield || yieldOnly) && (
-        <Line
-          type="monotone"
-          dataKey="portfolioYield"
-          name="ETF (with yield)"
-          dot={false}
-          activeDot={{ r: 3 }}
-          stroke="var(--accent, #1d4ed8)"
-          strokeWidth={5}
-          strokeLinecap="round"
-          strokeOpacity={0.98}
-          isAnimationActive={animated}
-        />
-      )}
-
-      {/* Asset lines – only when not yieldOnly */}
-      {!yieldOnly &&
-        chartData.perAsset.map((a) => (
-          <Line
-            key={a.key}
-            type="monotone"
-            dataKey={a.key}
-            name={a.name}
-            dot={false}
-            activeDot={{ r: 2 }}
-            stroke={a.color || "#8884d8"}
-            strokeWidth={2}
-            strokeOpacity={0.9}
-            isAnimationActive={animated}
-          />
-        ))}
-    </>
-  );
-
-  // Responsive-only: fill parent (width & height)
   return (
-    <div className="w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
+    <div
+      style={{
+        minHeight: 0,
+        minWidth: 0,
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flex: 1,
+      }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={chartData.rows}
           margin={{ top: 6, right: 12, left: 0, bottom: 24 }}
         >
-          {inner}
+          <XAxis
+            dataKey="i"
+            ticks={chartData.yearTicks}
+            tickFormatter={(i) => chartData.years[i]}
+            axisLine={false}
+            tickLine={false}
+            interval="preserveStartEnd"
+            tick={{ fill: "var(--muted)", fontSize: 12 }}
+          />
+          <YAxis
+            width={56}
+            tickFormatter={fmtUSD}
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: "var(--muted)", fontSize: 12 }}
+          />
+
+          {!legendOff && (
+            <Legend
+              verticalAlign="bottom"
+              align="left"
+              layout="horizontal"
+              content={<ETFLegend />}
+            />
+          )}
+
+          {!yieldOnly && (
+            <Line
+              type="monotone"
+              dataKey="portfolio"
+              name="ETF"
+              dot={false}
+              activeDot={{ r: 3 }}
+              stroke="var(--pos, #2563eb)"
+              strokeWidth={5}
+              strokeLinecap="round"
+              isAnimationActive={animated}
+            />
+          )}
+
+          {(showYield || yieldOnly) && (
+            <Line
+              type="monotone"
+              dataKey="portfolioYield"
+              name="ETF (with yield)"
+              dot={false}
+              activeDot={{ r: 3 }}
+              stroke="var(--accent, #1d4ed8)"
+              strokeWidth={5}
+              strokeLinecap="round"
+              strokeOpacity={0.98}
+              isAnimationActive={animated}
+            />
+          )}
+
+          {!yieldOnly &&
+            chartData.perAsset.map((a) => (
+              <Line
+                key={a.key}
+                type="monotone"
+                dataKey={a.key}
+                name={a.name}
+                dot={false}
+                activeDot={{ r: 2 }}
+                stroke={a.color || "#8884d8"}
+                strokeWidth={2}
+                strokeOpacity={0.9}
+                isAnimationActive={animated}
+              />
+            ))}
         </LineChart>
       </ResponsiveContainer>
     </div>

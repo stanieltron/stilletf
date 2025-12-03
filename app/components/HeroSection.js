@@ -2,31 +2,25 @@
 
 import Link from "next/link";
 
-export default function HeroSection({ ctaHref = "/?auth=1", onCtaClick }) {
+export default function HeroSection({
+  ctaHref = "/?auth=1",
+  onCtaClick,
+  sectionRef,
+}) {
   return (
-    <section className="section border-b-0 !py-0">
-      <div className="container-main border-b-8 border-[var(--accent)] pb-12 ">
-        <h1 className="font-bold mb-4 tracking-tight leading-tight [font-size:clamp(2rem,4vw,3rem)]">
-          Tokenized Wealth
-        </h1>
+    <section ref={sectionRef} className="hero">
+      <div className="container-main hero-shell">
+        <h1 className="hero-title">Tokenized Wealth</h1>
 
-        <p className="text-body-muted max-w-3xl">
-          Build fully on-chain, composable and yield-generating ETF products. Start with proven DeFi
-          strategies and maintain complete control of your assets.
+        <p className="hero-text">
+          Build fully on-chain, composable and yield-generating ETF products.
+          Start with proven DeFi strategies and maintain complete control of
+          your assets.
         </p>
 
-        <div className="mt-4">
-          <Link
-            href={ctaHref}
-            onClick={onCtaClick}
-            className={[
-              "inline-flex items-center justify-center gap-2",
-              "border border-[var(--text)] bg-[var(--text)] px-4 py-2.5",
-              "font-extrabold text-[var(--bg)] no-underline uppercase tracking-wide",
-              "hover:opacity-95 active:opacity-90",
-            ].join(" ")}
-          >
-            REGISTER FOR EARLY ACCESS →
+        <div className="hero-cta">
+          <Link href={ctaHref} onClick={onCtaClick} className="hero-button">
+            Register for early access →
           </Link>
         </div>
       </div>

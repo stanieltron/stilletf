@@ -4,65 +4,53 @@ export default function Features() {
   return (
     <section className="section-dark">
       <div className="container-main">
-        <h2 className="heading-2 text-center uppercase tracking-wide">
-          On-chain ETFs, rethought for builders
-        </h2>
+        <h2 className="heading-2 text-center">On-chain ETFs, rethought for builders</h2>
 
-        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))] gap-10 mb-14 text-center">
+        <div className="feature-grid" style={{ textAlign: "center", marginBottom: 56 }}>
           <div>
-            <h4 className="heading-4 tracking-wide uppercase">
-              Composable by design
-            </h4>
+            <h4 className="heading-4">Composable by design</h4>
             <p className="text-body-light">
               Chain-agnostic integrations, public math, and modular vaults.
             </p>
           </div>
 
           <div>
-            <h4 className="heading-4 tracking-wide uppercase">
-              Capital efficient
-            </h4>
+            <h4 className="heading-4">Capital efficient</h4>
             <p className="text-body-light">
               Route idle collateral to vetted yield sources with guardrails.
             </p>
           </div>
 
           <div>
-            <h4 className="heading-4 tracking-wide uppercase">
-              Verifiable performance
-            </h4>
+            <h4 className="heading-4">Verifiable performance</h4>
             <p className="text-body-light">
               On-chain data provenance and transparent rebalancing logic.
             </p>
           </div>
         </div>
 
-        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))] gap-8 border-t-8 border-blue-600 mt-14 pt-14 text-center">
+        <div
+          className="stats-grid"
+          style={{
+            borderTop: "8px solid #2250f4",
+            paddingTop: 48,
+            marginTop: 48,
+            textAlign: "center",
+          }}
+        >
           <div>
-            <div className="text-body-light mb-2.5">
-              Built on
-            </div>
-            <div className="heading-4 uppercase tracking-wide">
-              3 chains
-            </div>
+            <div className="text-body-light">Built on</div>
+            <div className="heading-4">3 chains</div>
           </div>
 
           <div>
-            <div className="text-body-light mb-2.5">
-              Used in
-            </div>
-            <div className="heading-4 uppercase tracking-wide">
-              Dozens of apps
-            </div>
+            <div className="text-body-light">Used in</div>
+            <div className="heading-4">Dozens of apps</div>
           </div>
 
           <div>
-            <div className="text-body-light mb-2.5">
-              Trusted by
-            </div>
-            <div className="heading-4 uppercase tracking-wide">
-              Thousands of users
-            </div>
+            <div className="text-body-light">Trusted by</div>
+            <div className="heading-4">Thousands of users</div>
           </div>
         </div>
       </div>
