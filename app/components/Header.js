@@ -40,9 +40,7 @@ export default function Header() {
         if (alive) setMineCount(0);
       }
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [open, isAuthed]);
 
   useEffect(() => {
@@ -57,34 +55,20 @@ export default function Header() {
 
   function openSignIn() {
     const base = typeof window !== "undefined" ? window.location.pathname : "/";
-    const params = new URLSearchParams(
-      typeof window !== "undefined" ? window.location.search : ""
-    );
+    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     params.set("auth", "1");
-    const qs = params.toString();
-    const target = qs ? `${base}?${qs}` : base;
-    try {
-      router.push(target, { scroll: false });
-    } catch {
-      if (typeof window !== "undefined") window.location.assign(target);
-    }
+    params.set("skipIntro", "1");
+    router.push(`${base}?${params.toString()}#builder`, { scroll: false });
   }
 
   async function connectMetamask() {
     try {
-      if (!window?.ethereum) {
-        alert("MetaMask not detected.");
-        return;
-      }
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
+      if (!window?.ethereum) { alert("MetaMask not detected."); return; }
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       const addr = (accounts && accounts[0]) || "";
       if (!addr) return;
       setWallet(addr);
-      try {
-        localStorage.setItem("walletAddress", addr);
-      } catch {}
+      try { localStorage.setItem("walletAddress", addr); } catch {}
       try {
         await fetch("/api/me/wallet", {
           method: "POST",
@@ -100,41 +84,39 @@ export default function Header() {
 
   function handleBrandClick(e) {
     e.preventDefault();
-    router.push("/", { scroll: true });
+    router.push("/?skipIntro=1", { scroll: true });
     if (typeof window !== "undefined") {
-      requestAnimationFrame(() =>
-        window.scrollTo({ top: 0, behavior: "smooth" })
-      );
+      requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     }
   }
 
   return (
-    <header className="site-header">
-      <div className="site-header-inner">
+    <header className="relative w-full bg-[var(--bg-dark)] text-[var(--header-text)] border-b border-[var(--chrome)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-4 grid grid-cols-[auto_1fr_auto] items-center gap-4 w-full">
         {/* Left: logo/brand */}
         <Link
           href="/"
           onClick={handleBrandClick}
-          className="brand"
+          className="text-inherit no-underline font-extrabold tracking-tight text-base sm:text-lg"
         >
           STILLWATER
         </Link>
 
         {/* Center: nav */}
-        <nav className="main-nav">
-          <Link href="/ETFs" className="nav-link">
+        <nav className="justify-self-center flex gap-5 items-center text-sm sm:text-base">
+          <Link href="/ETFs" className="text-inherit no-underline">
             Still-ETFs
           </Link>
-          <Link href="/useretfs" className="nav-link">
+          <Link href="/useretfs" className="text-inherit no-underline">
             Leaderboard
           </Link>
         </nav>
 
         {/* Right: auth / account */}
-        <div className="account-area" ref={menuRef}>
+        <div className="justify-self-end relative" ref={menuRef}>
           {!isAuthed ? (
             <button
-              className="btn btn-outline"
+              className="border border-[var(--border)] bg-white px-2.5 py-1.5 font-bold cursor-pointer leading-none text-black"
               onClick={openSignIn}
             >
               Sign in
@@ -143,7 +125,7 @@ export default function Header() {
             <>
               <button
                 onClick={() => setOpen((v) => !v)}
-                className="account-button"
+                className=" px-2.5 py-1.5 font-bold cursor-pointer leading-none bg-transparent text-orange-400"
                 aria-haspopup="true"
                 aria-expanded={open ? "true" : "false"}
                 title="Account"
@@ -153,23 +135,31 @@ export default function Header() {
 
               {open && (
                 <div
-                  className="dropdown"
+                  className="absolute right-0 mt-2 w-56 border border-[var(--border)] bg-white text-black shadow-lg z-50"
                   role="menu"
                   aria-label="Account menu"
                 >
-                  <button onClick={connectMetamask}>Connect MetaMask</button>
-                  <Link href="/useretfs" onClick={() => setOpen(false)}>
-                    My ETFs
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setOpen(false);
-                      signOut();
-                    }}
-                    style={{ color: "var(--neg)" }}
-                  >
-                    Log out
-                  </button>
+                  <div className="p-2 grid gap-2">
+                    <button
+                      className="w-full text-left px-3 py-2 hover:bg-[var(--bg-alt)] font-semibold"
+                      onClick={connectMetamask}
+                    >
+                      Connect MetaMask
+                    </button>
+                    <Link
+                      href="/useretfs"
+                      className="block px-3 py-2 hover:bg-[var(--bg-alt)] font-semibold no-underline text-black"
+                      onClick={() => setOpen(false)}
+                    >
+                      My ETFs
+                    </Link>
+                    <button
+                      className="w-full text-left px-3 py-2 hover:bg-[var(--bg-alt)] font-semibold text-[var(--neg)]"
+                      onClick={() => { setOpen(false); signOut(); }}
+                    >
+                      Log out
+                    </button>
+                  </div>
                 </div>
               )}
             </>

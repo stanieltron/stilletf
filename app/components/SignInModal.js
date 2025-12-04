@@ -1,7 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -32,10 +31,8 @@ export default function SignInModal() {
 
   const [open, setOpen] = useState(wantsOpen);
   const [nickname, setNickname] = useState("");
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => setOpen(wantsOpen), [wantsOpen]);
-  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (needsSignup) {
@@ -79,21 +76,12 @@ export default function SignInModal() {
   }
 
   function startOAuth(provider) {
-    const url =
-      typeof window !== "undefined"
-        ? new URL(window.location.href)
-        : null;
-    if (url) {
-      url.searchParams.set("auth", "1");
-      url.hash = "";
-    }
-    const callbackUrl = url
-      ? `${url.pathname}${url.searchParams.toString() ? `?${url.searchParams.toString()}` : ""}`
-      : "/?auth=1";
+    const base = typeof window !== "undefined" ? window.location.pathname : "/";
+    const callbackUrl = `${base}?auth=1&skipIntro=1#builder`;
     signIn(provider, { callbackUrl });
   }
 
-  if (!open || !mounted) return null;
+  if (!open) return null;
 
   const displayName =
     session?.user?.nickname ||
@@ -102,13 +90,16 @@ export default function SignInModal() {
     session?.user?.email ||
     "User";
 
-  const modalContent = (
-    <div data-auth-modal className="fixed inset-0 z-[12000] flex items-center justify-center">
+  return (
+    <div data-auth-modal>
       {/* backdrop */}
-      <div className="absolute inset-0 bg-[rgba(0,0,0,0.5)] auth-modal-backdrop" onClick={closeModal} />
+      <div
+        className="fixed inset-0 bg-[rgba(0,0,0,0.5)] z-[9998]"
+        onClick={closeModal}
+      />
       {/* dialog */}
       <div
-        className="relative w-[min(92vw,480px)] bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.25)] z-[12001] p-5 auth-modal-dialog"
+        className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(92vw,480px)] bg-white rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.25)] z-[9999] p-5"
         role="dialog"
         aria-modal="true"
         aria-label="Sign in or register"
@@ -122,12 +113,12 @@ export default function SignInModal() {
             aria-label="Close"
             className="border-0 bg-transparent text-[18px] cursor-pointer"
           >
-            x
+            ✕
           </button>
         </div>
 
         {!isAuthed ? (
-          // Logged out: offer providers
+          // Logged out → offer providers
           <div className="grid gap-2.5">
             <button
               onClick={() => startOAuth("google")}
@@ -203,9 +194,4 @@ export default function SignInModal() {
       </div>
     </div>
   );
-
-  if (typeof document !== "undefined") {
-    return createPortal(modalContent, document.body);
-  }
-  return modalContent;
 }

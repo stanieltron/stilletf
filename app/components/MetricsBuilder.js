@@ -11,47 +11,26 @@ import { portfolioCalculator } from "../../lib/portfolio";
  * - No rounded border around the whole thing
  * - Fits inside 300px, no scrolling
  */
-export default function MetricsBuilder({
-  assets = [],
-  weights = [],
-  showYield = false,
-  detail,
-  onReady,
-  assetMeta,
-}) {
+export default function MetricsBuilder({ assets = [], weights = [], showYield = false, detail }) {
   const [result, setResult] = useState(null);
   const [err, setErr] = useState("");
   const ticketRef = useRef(0);
-  const assetMetaKey = assetMeta ? Object.keys(assetMeta).join(",") : "";
 
   useEffect(() => {
     let alive = true;
     const myTicket = ++ticketRef.current;
-    const numericWeights = (weights || []).map((w) => {
-      const n = Number(w);
-      return Number.isFinite(n) ? n : 0;
-    });
 
     (async () => {
       try {
         setErr("");
-        const sum = numericWeights.reduce((a, b) => a + b, 0);
+        const sum = weights.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
         if (sum <= 0) {
           if (alive && ticketRef.current === myTicket) setResult(null);
           return;
         }
-        const res = await portfolioCalculator(assets, numericWeights, assetMeta);
+        const res = await portfolioCalculator(assets, weights);
         if (!alive || ticketRef.current !== myTicket) return;
         setResult(res);
-        const hasData =
-          res &&
-          Array.isArray(res.series) &&
-          res.series.length > 0;
-        if (onReady && hasData) {
-          setTimeout(() => {
-            if (alive && ticketRef.current === myTicket) onReady();
-          }, 0);
-        }
       } catch (e) {
         if (!alive || ticketRef.current !== myTicket) return;
         setErr(e?.message || String(e));
@@ -59,7 +38,7 @@ export default function MetricsBuilder({
     })();
 
     return () => { alive = false; };
-  }, [assets, weights, assetMetaKey]);
+  }, [assets, weights]);
 
   if (err) return <div className="mt-8 text-red-700 text-sm">{err}</div>;
   if (!result) return null;
@@ -105,27 +84,52 @@ export default function MetricsBuilder({
   };
 
   return (
-    <div className="metrics">
-      <div className="metrics-kpis">
-        <KPI label="End Value" value={fmt2(endVal)} tone={m.gain < 0 ? "down" : "up"} />
-        <KPI label="Gain" value={fmt2(m.gain)} tone={m.gain < 0 ? "down" : "up"} />
-        {hasYieldGain && (
-          <KPI
-            label="Gain on Yield"
-            value={fmt2(m.gainOnYield)}
-            tone={m.gainOnYield < 0 ? "down" : "up"}
-          />
-        )}
-      </div>
+    <div className="relative flex flex-col bg-white overflow-hidden w-full h-full">
+      <section className="flex flex-col flex-1 min-h-0 gap-2">
+        {/* KPIs: one line, centered, smooth 1300ms */}
+        <div className="flex flex-nowrap items-stretch justify-between w-full mt-1 flex-none">
+          <div
+            className="shrink-0"
+            style={{ width: `${widthPercent}%`, transition: "width 1300ms ease" }}
+          >
+            <KPI label="End Value" value={fmt2(endVal)} />
+          </div>
 
-      <div className="metrics-grid">
-        <GaugeRow category="Growth"     score={scoreGrowth}  hint={<Hint text={tips.growth} />} />
-        <GaugeRow category="Stability"  score={scoreStab}    hint={<Hint text={tips.stab} />} />
-        <GaugeRow category="Resilience" score={scoreResil}   hint={<Hint text={tips.resil} />} />
-        <GaugeRow category="Efficiency" score={scoreSharpe}  hint={<Hint text={tips.sharpe} />} />
-        <GaugeRow category="Smoothness" score={scoreSortino} hint={<Hint text={tips.sortino} />} />
-        <GaugeRow category="Balance"    score={scoreBalance} hint={<Hint text={tips.balance} />} />
-      </div>
+          <div
+            className="shrink-0"
+            style={{ width: `${widthPercent}%`, transition: "width 1300ms ease" }}
+          >
+            <KPI
+              label="Gain"
+              value={fmt2(m.gain)}
+              tone={m.gain < 0 ? "down" : "up"}
+            />
+          </div>
+
+          {hasYieldGain && (
+            <div
+              className="shrink-0"
+              style={{ width: `${widthPercent}%`, transition: "width 1300ms ease" }}
+            >
+              <KPI
+                label="Gain on Yield"
+                value={fmt2(m.gainOnYield)}
+                tone={m.gainOnYield < 0 ? "down" : "up"}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Gauges: fill remaining vertical space */}
+        <div className="grid grid-cols-3 grid-rows-2 gap-x-3 gap-y-2 mt-1 flex-1 items-stretch content-stretch min-h-0">
+          <GaugeRow category="Growth"     score={scoreGrowth}  hint={<Hint text={tips.growth} />} />
+          <GaugeRow category="Stability"  score={scoreStab}    hint={<Hint text={tips.stab} />} />
+          <GaugeRow category="Resilience" score={scoreResil}   hint={<Hint text={tips.resil} />} />
+          <GaugeRow category="Efficiency" score={scoreSharpe}  hint={<Hint text={tips.sharpe} />} />
+          <GaugeRow category="Smoothness" score={scoreSortino} hint={<Hint text={tips.sortino} />} />
+          <GaugeRow category="Balance"    score={scoreBalance} hint={<Hint text={tips.balance} />} />
+        </div>
+      </section>
     </div>
   );
 }
@@ -135,10 +139,17 @@ export default function MetricsBuilder({
 /* ---------- Subcomponents ---------- */
 
 function KPI({ label, value, tone }) {
+  const toneClass =
+    tone === "up" ? "text-slate-900" :
+    tone === "down" ? "text-slate-900" :
+    "text-slate-900";
+
   return (
-    <div className="metric-kpi">
-      <span className="metric-kpi-label">{label}</span>
-      <span className="metric-kpi-value">{value}</span>
+    <div className="p-3 bg-white h-full text-center flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center">
+        <span className="text-[10px] tracking-wider uppercase text-slate-500">{label}</span>
+      </div>
+      <div className={`mt-1 text-[22px] font-semibold leading-none ${toneClass}`}>{value}</div>
     </div>
   );
 }
@@ -148,17 +159,34 @@ function GaugeRow({ category, score, hint }) {
   const pct = Math.round(s * 100);
 
   return (
-    <div className="metric-gauge">
-      <div className="metric-gauge-header">
-        <span className="metric-gauge-title">{category}</span>
+    <div className="p-1 bg-white h-full flex flex-col justify-center">
+      <div className="flex items-center justify-between mb-[2px]">
+        <span className="text-[18px] tracking-wider uppercase text-slate-700 leading-none">
+          {category}
+        </span>
         {hint}
       </div>
-      <div className="metric-gauge-bar">
-        <span className="metric-gauge-track" />
-        <span
-          className="metric-gauge-fill"
-          style={{ width: `${pct}%` }}
-        />
+
+      {/* 8px thick line that never scales */}
+      <div className="w-full">
+        <svg width="100%" height="8" viewBox="0 0 100 8" preserveAspectRatio="none">
+          <path
+            d="M 0 4 L 100 4"
+            stroke="#d1d5db"
+            strokeWidth="8"
+            vectorEffect="non-scaling-stroke"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d={`M 0 4 L ${pct} 4`}
+            stroke="#2563eb"
+            strokeWidth="8"
+            vectorEffect="non-scaling-stroke"
+            fill="none"
+            strokeLinecap="round"
+          />
+        </svg>
       </div>
     </div>
   );
@@ -168,6 +196,6 @@ function GaugeRow({ category, score, hint }) {
 
 /* ---------- Helpers ---------- */
 function clamp01(x) { return Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0; }
-function fmt2(v)   { return Number.isFinite(v) ? v.toFixed(2) : "–"; }
-function fmtNum(v) { return Number.isFinite(v) ? v.toFixed(2) : "–"; }
-function fmtPctStr(v) { return Number.isFinite(v) ? `${v.toFixed(2)}%` : "–"; }
+function fmt2(v)   { return Number.isFinite(v) ? v.toFixed(2) : "—"; }
+function fmtNum(v) { return Number.isFinite(v) ? v.toFixed(2) : "—"; }
+function fmtPctStr(v) { return Number.isFinite(v) ? `${v.toFixed(2)}%` : "—"; }
