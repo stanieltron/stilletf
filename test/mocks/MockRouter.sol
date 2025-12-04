@@ -2,12 +2,18 @@
 pragma solidity ^0.8.19;
 
 import "../../contracts/Interfaces.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./MockTokens.sol";
 
 contract MockRouter is ISwapRouter {
     uint256 public lastAmountIn;
     address public lastTokenIn;
     address public lastTokenOut;
+    IAaveOracle public oracle;
+
+    constructor(address _oracle) {
+        oracle = IAaveOracle(_oracle);
+    }
 
     function _decimals(address token, uint8 defaultDec) internal view returns (uint8) {
         try IERC20Metadata(token).decimals() returns (uint8 d) {
@@ -30,12 +36,19 @@ contract MockRouter is ISwapRouter {
         uint8 inDec = _decimals(params.tokenIn, 18);
         uint8 outDec = _decimals(params.tokenOut, 18);
 
-        // 1:1 by value with decimal normalization
-        amountOut = params.amountIn;
-        if (outDec > inDec) {
-            amountOut = params.amountIn * (10 ** (outDec - inDec));
-        } else if (inDec > outDec) {
-            amountOut = params.amountIn / (10 ** (inDec - outDec));
+        if (params.tokenIn == params.tokenOut) {
+            amountOut = params.amountIn;
+        } else {
+            // Price-aware conversion using oracle values (base currency)
+            uint256 priceIn = oracle.getAssetPrice(params.tokenIn);
+            uint256 priceOut = oracle.getAssetPrice(params.tokenOut);
+            uint256 base = oracle.BASE_CURRENCY_UNIT();
+            require(priceIn > 0 && priceOut > 0 && base > 0, "oracle price missing");
+
+            // Compute base currency value: amountIn (token decimals) * priceIn / 10^inDec
+            uint256 valueBase = (params.amountIn * priceIn) / (10 ** inDec);
+            // Convert base currency value to tokenOut units: valueBase * 10^outDec / priceOut
+            amountOut = (valueBase * (10 ** outDec)) / priceOut;
         }
 
         // Pull tokenIn from caller to simulate spend

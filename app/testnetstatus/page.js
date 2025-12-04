@@ -80,11 +80,10 @@ const STRATEGY_ABI = [
   "function vault() view returns (address)",
 ];
 
-function fmt(v, decimals = 18, fraction = 4) {
+function fmt(v, decimals = 18) {
   try {
-    return Number(formatUnits(v || 0n, decimals)).toLocaleString("en-US", {
-      maximumFractionDigits: fraction,
-    });
+    // Use formatUnits directly to avoid rounding for display; show exact token amount.
+    return formatUnits(v || 0n, decimals);
   } catch {
     return "0";
   }

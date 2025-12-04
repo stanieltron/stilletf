@@ -26,6 +26,8 @@ contract StakingVaultTest is Test {
     MockRouter router;
 
     address alice = address(0xA11CE);
+    address bob = address(0xB0B);
+    address carol = address(0xCAFE);
 
     function setUp() public {
         ua = new MockERC20("Mock WBTC", "WBTC", 8);
@@ -46,7 +48,7 @@ contract StakingVaultTest is Test {
         oracle.setPrice(address(steth), oracle.UNIT());
         oracle.setPrice(address(usdc), oracle.UNIT()); // assume 1 USDC = $1
 
-        router = new MockRouter();
+        router = new MockRouter(address(oracle));
 
         // Predict vault address (next deployment)
         address predictedVault = computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
@@ -133,6 +135,104 @@ contract StakingVaultTest is Test {
         assertEq(withdrawn, depositAmount, "withdrawn amount mismatch");
         assertEq(ua.balanceOf(alice), beforeWallet + depositAmount, "wallet did not receive UA back");
         assertEq(vault.balanceOf(alice), 0, "shares not burned");
+    }
+
+    function testFullCycleTwiceWithYieldHarvest() public {
+        uint256 depositAmount = 5e7; // 0.5 WBTC
+        uint256 aliceUaStart = ua.balanceOf(alice);
+        uint256 aliceUsdcStart = usdc.balanceOf(alice);
+
+        _runFullVaultCycle(depositAmount, 1 ether);
+        uint256 aliceUsdcAfterFirst = usdc.balanceOf(alice);
+        assertEq(ua.balanceOf(alice), aliceUaStart, "UA balance should return after first cycle");
+        assertGt(aliceUsdcAfterFirst, aliceUsdcStart, "USDC did not increase after first cycle");
+
+        _runFullVaultCycle(depositAmount, 2 ether);
+        assertEq(vault.balanceOf(alice), 0, "shares should be zero after second cycle");
+        assertEq(ua.balanceOf(alice), aliceUaStart, "UA balance should return after second cycle");
+        assertGt(usdc.balanceOf(alice), aliceUsdcAfterFirst, "USDC did not increase after second cycle");
+    }
+
+    function _runFullVaultCycle(uint256 depositAmount, uint256 donationEth) internal {
+        vm.startPrank(alice);
+        uint256 shares = vault.stake(depositAmount);
+        vm.stopPrank();
+        assertEq(shares, depositAmount, "shares should match UA deposit");
+
+        vm.deal(address(this), donationEth);
+        fluid.donateYieldWithETH{value: donationEth}();
+
+        uint256 harvested = vault.harvestYield();
+        assertGt(harvested, 0, "harvest should pull yield");
+
+        uint256 pending = vault.getPendingRewards(alice);
+        assertGt(pending, 0, "pending rewards should increase after harvest");
+
+        vm.prank(alice);
+        uint256 claimed = vault.claim();
+        assertEq(claimed, pending, "claimed rewards mismatch");
+
+        vm.prank(alice);
+        uint256 withdrawn = vault.unstake(shares);
+        assertEq(withdrawn, depositAmount, "UA withdraw mismatch");
+    }
+
+    function testMultiAccountDepositHarvestAndWithdrawAll() public {
+        address[3] memory users = [alice, bob, carol];
+        uint256 depositAmount = 2e7; // 0.2 WBTC each
+
+        // Fund and approve users (alice already funded/approved in setUp)
+        for (uint256 i = 1; i < users.length; i++) {
+            ua.mint(users[i], 1e8);
+            vm.prank(users[i]);
+            ua.approve(address(vault), type(uint256).max);
+        }
+
+        // Stake from all users
+        for (uint256 i = 0; i < users.length; i++) {
+            vm.prank(users[i]);
+            uint256 shares = vault.stake(depositAmount);
+            assertEq(shares, depositAmount, "share mismatch");
+        }
+
+        // Donate yield and harvest
+        vm.deal(address(this), 1 ether);
+        fluid.donateYieldWithETH{value: 1 ether}();
+        uint256 harvested = vault.harvestYield();
+        assertGt(harvested, 0, "no yield harvested");
+
+        // Each user should see roughly equal pending rewards
+        uint256[] memory pending = new uint256[](users.length);
+        uint256 pendingSum;
+        for (uint256 i = 0; i < users.length; i++) {
+            pending[i] = vault.getPendingRewards(users[i]);
+            pendingSum += pending[i];
+            assertGt(pending[i], 0, "pending zero");
+        }
+        assertApproxEqAbs(pending[0], pending[1], 3, "pending mismatch user1/user2");
+        assertApproxEqAbs(pending[1], pending[2], 3, "pending mismatch user2/user3");
+        assertApproxEqAbs(pendingSum, harvested, 6, "pending sum mismatch harvested");
+
+        // Claim and verify balances increase
+        uint256[] memory beforeUsdc = new uint256[](users.length);
+        for (uint256 i = 0; i < users.length; i++) {
+            beforeUsdc[i] = usdc.balanceOf(users[i]);
+            vm.prank(users[i]);
+            uint256 claimed = vault.claim();
+            assertApproxEqAbs(claimed, pending[i], 3, "claimed mismatch");
+            assertEq(usdc.balanceOf(users[i]), beforeUsdc[i] + claimed, "USDC not received");
+        }
+
+        // Withdraw all UA
+        for (uint256 i = 0; i < users.length; i++) {
+            uint256 beforeUa = ua.balanceOf(users[i]);
+            uint256 shares = vault.balanceOf(users[i]);
+            vm.prank(users[i]);
+            uint256 withdrawn = vault.unstake(shares);
+            assertEq(withdrawn, depositAmount, "UA withdraw mismatch");
+            assertEq(ua.balanceOf(users[i]), beforeUa + depositAmount, "UA not received");
+            assertEq(vault.balanceOf(users[i]), 0, "shares not burned for user");
+        }
     }
 
     function logState() internal view {

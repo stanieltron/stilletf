@@ -342,6 +342,8 @@ contract StakingVault is ReentrancyGuard, Ownable {
             _balances[from] = fromBalance - amount;
             _balances[to] += amount;
         }
+
+        _afterTokenTransfer(from, to);
         
         emit Transfer(from, to, amount);
     }
@@ -355,6 +357,8 @@ contract StakingVault is ReentrancyGuard, Ownable {
         unchecked {
             _balances[account] += amount;
         }
+
+        _afterTokenTransfer(address(0), account);
         
         emit Transfer(address(0), account, amount);
     }
@@ -371,6 +375,8 @@ contract StakingVault is ReentrancyGuard, Ownable {
             _balances[account] = accountBalance - amount;
             _totalSupply -= amount;
         }
+
+        _afterTokenTransfer(account, address(0));
         
         emit Transfer(account, address(0), amount);
     }
@@ -385,5 +391,15 @@ contract StakingVault is ReentrancyGuard, Ownable {
         
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
+    }
+
+    function _afterTokenTransfer(address from, address to) internal {
+        uint256 acc = accRewardPerShare;
+        if (from != address(0)) {
+            rewardDebt[from] = (_balances[from] * acc) / ACC_PRECISION;
+        }
+        if (to != address(0) && to != from) {
+            rewardDebt[to] = (_balances[to] * acc) / ACC_PRECISION;
+        }
     }
 }

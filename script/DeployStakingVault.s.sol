@@ -48,7 +48,7 @@ contract DeployStakingVault is Script {
         usdc = new MockERC20("Mock USDC", "USDC", 6);
         stEth = new MockStETH();
         oracle = new MockOracle();
-        router = new MockRouter();
+        router = new MockRouter(address(oracle));
         pool = new MockPool(IERC20(address(wbtc)), IERC20(address(weth)), IAaveOracle(address(oracle)));
 
         // Seed liquidity with a small ETH footprint (keeps Sepolia spend low)

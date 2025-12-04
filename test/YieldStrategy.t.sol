@@ -32,7 +32,7 @@ contract YieldStrategyTest is Test {
         oracle = new MockOracle();
         pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)), IAaveOracle(address(oracle)));
         fluid = new MockFluidVault(address(steth));
-        router = new MockRouter();
+        router = new MockRouter(address(oracle));
 
         // fund WETH contract with ETH and pool with WETH liquidity
         weth.deposit{value: 200 ether}();

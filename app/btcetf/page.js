@@ -11,6 +11,7 @@ const DEFAULT_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || "11155111";
 const DEFAULT_WBTC_DECIMALS = Number(process.env.NEXT_PUBLIC_WBTC_DECIMALS || 8);
 const REWARD_DECIMALS = Number(process.env.NEXT_PUBLIC_REWARD_DECIMALS || 6);
 const REWARD_SYMBOL = process.env.NEXT_PUBLIC_REWARD_SYMBOL || "USDC";
+const TARGET_CHAIN_HEX = `0x${Number(DEFAULT_CHAIN_ID).toString(16)}`;
 
 const STAKING_VAULT_ABI = [
   "function stake(uint256 amountUA) external returns (uint256)",
@@ -62,9 +63,10 @@ export default function BTCETFPage() {
   const [wbtcDecimals, setWbtcDecimals] = useState(DEFAULT_WBTC_DECIMALS);
   const [addresses, setAddresses] = useState({ vault: "", wbtc: "" });
 
-  const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
   const [err, setErr] = useState("");
-  const [txMessage, setTxMessage] = useState("");
+  const [networkOk, setNetworkOk] = useState(true);
+  const [actionState, setActionState] = useState({ phase: "idle", label: "" });
 
   const [vaultStats, setVaultStats] = useState({
     totalAssets: 0n,
@@ -81,22 +83,20 @@ export default function BTCETFPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState("deposit");
   const [amount, setAmount] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
+  const [showMoreInfo, setShowMoreInfo] = useState(false);
 
   const ready = useMemo(
-    () => !!walletAddress && !!vault && !!wbtc && !!addresses.vault && !!addresses.wbtc,
-    [walletAddress, vault, wbtc, addresses]
+    () => !!walletAddress && !!vault && !!wbtc && !!addresses.vault && !!addresses.wbtc && networkOk,
+    [walletAddress, vault, wbtc, addresses, networkOk]
   );
 
+  const actionBusy = actionState.phase !== "idle";
+  const showInlineStatus = actionBusy && !dialogOpen;
   const vaultHoldings = useMemo(
     () => formatBigAmount(userStats.shares, vaultStats.decimals, { maximumFractionDigits: 8 }),
     [userStats.shares, vaultStats.decimals]
   );
   const vaultTvl = useMemo(
-    () => formatBigAmount(vaultStats.totalSupply, vaultStats.decimals, { maximumFractionDigits: 4 }),
-    [vaultStats.totalSupply, vaultStats.decimals]
-  );
-  const vaultAssetsDisplay = useMemo(
     () => formatBigAmount(vaultStats.totalAssets, vaultStats.decimals, { maximumFractionDigits: 4 }),
     [vaultStats.totalAssets, vaultStats.decimals]
   );
@@ -146,7 +146,7 @@ export default function BTCETFPage() {
       initializeWallet(accounts[0]);
     };
     const onChainChanged = () => {
-      setTxMessage("");
+      setActionState({ phase: "idle", label: "" });
       refresh();
     };
     eth.on("accountsChanged", onAccountsChanged);
@@ -177,7 +177,24 @@ export default function BTCETFPage() {
     setSigner(null);
     setVault(null);
     setWbtc(null);
+    setNetworkOk(true);
   };
+
+  async function ensureCorrectChain(nextProvider) {
+    try {
+      const network = await nextProvider.getNetwork();
+      if (network.chainId?.toString() === DEFAULT_CHAIN_ID) return true;
+      if (!window.ethereum?.request) return false;
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: TARGET_CHAIN_HEX }],
+      });
+      return true;
+    } catch (e) {
+      console.error("chain switch failed", e);
+      return false;
+    }
+  }
 
   async function initializeWallet(address) {
     if (!window.ethereum) {
@@ -192,6 +209,13 @@ export default function BTCETFPage() {
       setErr("");
       const nextProvider = new BrowserProvider(window.ethereum);
       const nextSigner = await nextProvider.getSigner();
+
+      const chainReady = await ensureCorrectChain(nextProvider);
+      setNetworkOk(chainReady);
+      if (!chainReady) {
+        setErr(`Switch to chain ${DEFAULT_CHAIN_ID} to continue.`);
+      }
+
       setProvider(nextProvider);
       setSigner(nextSigner);
       setWalletAddress(address);
@@ -220,7 +244,6 @@ export default function BTCETFPage() {
     setDialogOpen(true);
     setAmount("");
     setErr("");
-    setTxMessage("");
   };
 
   async function connectWallet() {
@@ -241,9 +264,9 @@ export default function BTCETFPage() {
   }
 
   async function refresh(nextVault = vault, nextWbtc = wbtc, address = walletAddress) {
-    if (!nextVault || !nextWbtc || !address) return;
+    if (!nextVault || !nextWbtc || !address || !provider) return;
     try {
-      setLoading(true);
+      setLoadingData(true);
       setErr("");
       const [network, shares, totalAssetsRaw, totalSupply, sharePrice, pendingRewards, walletBal, vaultDecimals] =
         await Promise.all([
@@ -256,7 +279,9 @@ export default function BTCETFPage() {
           safeRead(nextWbtc.balanceOf(address), 0n),
           safeRead(nextVault.decimals(), BigInt(wbtcDecimals)),
         ]);
-      if (network.chainId?.toString() !== DEFAULT_CHAIN_ID) {
+      const chainMatches = network.chainId?.toString() === DEFAULT_CHAIN_ID;
+      setNetworkOk(chainMatches);
+      if (!chainMatches) {
         setErr(`Wrong network. Connect to chain ${DEFAULT_CHAIN_ID}.`);
         return;
       }
@@ -275,11 +300,12 @@ export default function BTCETFPage() {
       console.error(e);
       setErr("Could not fetch vault data.");
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   }
 
   async function handleSubmitAction() {
+    if (actionBusy) return;
     if (!ready) {
       setErr("Connect your wallet first.");
       return;
@@ -289,37 +315,37 @@ export default function BTCETFPage() {
       return;
     }
     try {
-      setLoading(true);
       setErr("");
-      setTxMessage(dialogMode === "deposit" ? "Adding WBTC..." : "Withdrawing WBTC...");
+      setActionState({ phase: "approval", label: "Waiting for your wallet" });
       const value = parseUnits(amount, wbtcDecimals);
 
       if (dialogMode === "deposit") {
         const allowance = await wbtc.allowance(walletAddress, addresses.vault);
         if (allowance < value) {
           const approveTx = await wbtc.approve(addresses.vault, value);
+          setActionState({ phase: "pending", label: "Approval pending on-chain" });
           await approveTx.wait();
         }
+        setActionState({ phase: "pending", label: "Depositing WBTC..." });
         const tx = await vault.stake(value);
         await tx.wait();
-        setTxMessage("Deposit confirmed on-chain.");
       } else {
-        // Shares are 1:1 with deposited WBTC
         const sharesNeeded = value;
         if (sharesNeeded === 0n) {
           setErr("No shares available to withdraw.");
-          setTxMessage("");
+          setActionState({ phase: "idle", label: "" });
           return;
         }
         if (sharesNeeded > userStats.shares) {
           setErr("You do not have enough staked balance for that amount.");
-          setTxMessage("");
+          setActionState({ phase: "idle", label: "" });
           return;
         }
+        setActionState({ phase: "pending", label: "Withdrawing from vault..." });
         const tx = await vault.unstake(sharesNeeded);
         await tx.wait();
-        setTxMessage("Withdrawal confirmed on-chain.");
       }
+      setActionState({ phase: "success", label: "Confirmed on-chain" });
       setAmount("");
       setDialogOpen(false);
       await refresh();
@@ -327,193 +353,202 @@ export default function BTCETFPage() {
       console.error(e);
       setErr(e?.message || "Transaction failed.");
     } finally {
-      setTxMessage("");
-      setLoading(false);
+      setTimeout(() => setActionState({ phase: "idle", label: "" }), 800);
     }
   }
 
   async function withdrawYield() {
+    if (actionBusy) return;
     if (!ready) {
       setErr("Connect your wallet first.");
       return;
     }
     try {
-      setLoading(true);
       setErr("");
-      setTxMessage("Withdrawing yield...");
+      setActionState({ phase: "pending", label: "Claiming yield..." });
       const tx = await vault.claim();
       await tx.wait();
-      setTxMessage("Yield withdrawn.");
+      setActionState({ phase: "success", label: "Yield claimed" });
       await refresh();
     } catch (e) {
       console.error(e);
       setErr(e?.message || "Could not withdraw yield.");
     } finally {
-      setTxMessage("");
-      setLoading(false);
+      setTimeout(() => setActionState({ phase: "idle", label: "" }), 800);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f8fafc] via-[#eef2ff] to-[#e0e7ff] text-slate-900 flex flex-col relative">
-      <main className="flex-1 relative overflow-hidden">
-        <div className="absolute top-6 right-6 flex flex-col items-end gap-2 z-20">
-          <button
-            onClick={connectWallet}
-            className="px-4 py-2 rounded-full bg-white border border-slate-200 text-sm font-semibold hover:bg-slate-50 transition text-slate-900 shadow-sm"
-          >
-            {walletAddress ? shorten(walletAddress) : "Connect MetaMask"}
-          </button>
-          <Link
-            href={HOW_TO_WALLET_HREF}
-            className="text-xs underline text-[var(--accent-strong)] hover:text-[var(--accent)]"
-          >
-            How to use wallets
-          </Link>
-        </div>
-
-        <div className="max-w-5xl mx-auto px-4 py-20 relative z-10">
-          <div className="backdrop-blur-lg bg-white/90 border border-slate-200 rounded-3xl p-8 md:p-12 shadow-2xl">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <p className="uppercase tracking-[0.3em] text-xs text-slate-500 mb-3">
-                  BTC ETF Vault
-                </p>
-                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-slate-900">
-                  StakingVault — BTCX
-                </h1>
-                <p className="text-slate-600 mt-2 max-w-xl">
-                  Stake WBTC into the vault, earn stablecoin yield, and withdraw your rewards anytime.
-                </p>
+    <div className="min-h-screen bg-gradient-to-b from-[#f7f9fc] via-[#eef2f8] to-[#e8edf7] text-slate-900 flex flex-col">
+      <main className="flex-1 flex flex-col">
+        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col gap-6 flex-1">
+          <header className="flex items-start justify-between gap-6 pb-2">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <p className="uppercase text-[0.7rem] tracking-[0.35em] text-slate-500">BTC ETF</p>
+                <div className="flex items-center gap-2 text-[0.7rem] text-slate-500">
+                  <span
+                    className={`h-2 w-2 rounded-full ${loadingData ? "bg-amber-400 animate-pulse" : "bg-emerald-500"}`}
+                  />
+                  <span>{loadingData ? "Updating" : "Live data"}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-slate-500">Share price</p>
-                <p className="text-2xl font-bold text-[#f97316]">
-                  {formatBigAmount(vaultStats.sharePrice, vaultStats.decimals, { maximumFractionDigits: 6 })} WBTC
-                </p>
-              </div>
+              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+                earn USD yield for holding crypto assets
+              </h1>
             </div>
-
-            {err && (
-              <div className="mt-6 text-sm text-red-800 bg-red-50 border border-red-200 rounded-xl p-3">
-                {err}
-              </div>
-            )}
-
-            {txMessage && (
-              <div className="mt-6 text-sm text-slate-900 bg-blue-50 border border-blue-200 rounded-xl p-3">
-                {txMessage}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-6 mt-8">
-              <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-3 shadow-inner">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-slate-500">Your BTC in the fund</p>
-                    <p className="text-3xl font-extrabold mt-1 text-[#f97316]">
-                      {vaultHoldings} BTC
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openDialog("deposit")}
-                      disabled={!ready}
-                      className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-strong)] disabled:opacity-50 shadow-sm"
-                    >
-                      Add WBTC
-                    </button>
-                    <button
-                      onClick={() => openDialog("withdraw")}
-                      disabled={!ready || userStats.shares === 0n}
-                      className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 font-semibold hover:bg-slate-50 disabled:opacity-50 shadow-sm"
-                    >
-                      Withdraw
-                    </button>
-                  </div>
-                </div>
-                <div className="text-sm text-slate-600 flex flex-wrap gap-2">
-                  <span>WBTC wallet: {walletBalance}</span>
-                  <span>•</span>
-                  <span>Staked shares: {formatBigAmount(userStats.shares, vaultStats.decimals, { maximumFractionDigits: 6 })}</span>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-inner">
-                  <p className="text-sm text-slate-500">Vault metrics</p>
-                  <div className="mt-3 space-y-2 text-sm text-slate-700">
-                    <InfoRow label="Total staked" value={`${vaultTvl} BTC`} />
-                    <InfoRow label="Total assets (calc.)" value={`${vaultAssetsDisplay} BTC`} />
-                    <InfoRow label="Share price" value={`${formatBigAmount(vaultStats.sharePrice, vaultStats.decimals, { maximumFractionDigits: 6 })} WBTC`} />
-                  </div>
-                </div>
-
-                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-inner">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm text-slate-500">Your stablecoin yield</p>
-                      <p className="text-3xl font-extrabold mt-1 text-[#16a34a]">
-                        {yieldAmount} {REWARD_SYMBOL}
-                      </p>
-                    </div>
-                    <button
-                      onClick={withdrawYield}
-                      disabled={!ready || userStats.pendingRewards === 0n}
-                      className="px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 disabled:opacity-50 shadow-sm"
-                    >
-                      Withdraw
-                    </button>
-                  </div>
-                  <div className="text-sm text-slate-600">Total staked: {vaultTvl} BTC</div>
-                </div>
-              </div>
-            </div>
-
-            {showDetails && (
-              <div className="mt-10 grid md:grid-cols-3 gap-4 text-sm text-slate-700">
-                <InfoCard label="Vault address" value={addresses.vault || "Not set"} />
-                <InfoCard label="Underlying token" value={addresses.wbtc || "Not set"} />
-                <InfoCard label="Wallet status" value={walletAddress ? shorten(walletAddress) : "Not connected"} />
-              </div>
-            )}
-
-            <div className="mt-12 flex items-center justify-center">
-              <Link
-                href={HOW_IT_WORKS_HREF}
-                className="underline text-[var(--accent-strong)] hover:text-[var(--accent)] text-sm"
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={walletAddress ? resetWallet : connectWallet}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-900 text-sm font-semibold shadow-sm hover:bg-slate-100 transition"
               >
-                How it works
+                <span
+                  className={`h-2 w-2 rounded-full ${walletAddress && networkOk ? "bg-emerald-500" : "bg-amber-400"}`}
+                />
+                {walletAddress ? shorten(walletAddress) : "Connect wallet"}
+              </button>
+              <Link
+                href={HOW_TO_WALLET_HREF}
+                className="text-xs underline text-slate-700 hover:text-slate-900"
+              >
+                How to use wallets
               </Link>
             </div>
+          </header>
+
+          {err && (
+            <div className="rounded-2xl border border-red-500/30 bg-red-100 px-4 py-3 text-sm text-red-800">
+              {err}
+            </div>
+          )}
+
+          <div className="flex flex-col flex-1 justify-center">
+            <section className="rounded-3xl border border-slate-200 bg-white shadow-md p-6 md:p-7 space-y-6">
+              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <div className="flex flex-col gap-1">
+                  <span className="text-base md:text-lg font-semibold text-slate-900 tracking-tight">
+                    My WBTC in the fund
+                  </span>
+                  <span className="text-xs text-slate-500">Wallet: {walletBalance} WBTC</span>
+                </div>
+                <div className="flex items-center justify-center">
+                  <span
+                    className="text-4xl md:text-5xl font-semibold text-amber-500 tabular-nums font-mono text-center min-w-[170px]"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {vaultHoldings} BTC
+                  </span>
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => openDialog("deposit")}
+                    disabled={!ready}
+                    className="px-4 py-2 rounded-xl bg-amber-500 text-white font-semibold shadow hover:bg-amber-400 disabled:opacity-50"
+                  >
+                    Add WBTC
+                  </button>
+                  <button
+                    onClick={() => openDialog("withdraw")}
+                    disabled={!ready || userStats.shares === 0n}
+                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-900 font-semibold hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Withdraw
+                  </button>
+                </div>
+              </div>
+
+              <div className="h-px w-full bg-slate-200" />
+
+              <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-base md:text-lg font-semibold text-slate-900 tracking-tight">
+                    My {REWARD_SYMBOL} yield
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMoreInfo((prev) => !prev)}
+                    className="px-3 py-1 rounded-full border border-amber-500 text-amber-700 text-xs font-semibold hover:bg-amber-500 hover:text-white transition shadow-sm"
+                  >
+                    *
+                  </button>
+                </div>
+                <div className="flex items-center justify-center">
+                  <span
+                    className="text-4xl md:text-5xl font-semibold text-emerald-600 tabular-nums font-mono text-center min-w-[170px]"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {yieldAmount} {REWARD_SYMBOL}
+                  </span>
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={withdrawYield}
+                    disabled={!ready || userStats.pendingRewards === 0n}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold shadow hover:bg-emerald-400 disabled:opacity-50"
+                  >
+                    Claim
+                  </button>
+                </div>
+              </div>
+
+              {showInlineStatus && <ActionStatus state={actionState} />}
+
+              {showMoreInfo && (
+                <div className="border-t border-slate-200 pt-4 space-y-2 text-sm">
+                  <p className="text-slate-600">More info</p>
+                  <div className="space-y-2">
+                    <DataStat label="Total WBTC in fund" value={`${vaultTvl} BTC`} />
+                    <DataStat
+                      label="Total USDC claimed to date"
+                      value="Not available from contract"
+                    />
+                    <DataStat
+                      label="Vault address"
+                      value={addresses.vault ? shorten(addresses.vault) : "Not set"}
+                    />
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link
+              href={HOW_IT_WORKS_HREF}
+              className="text-sm underline text-slate-700 hover:text-slate-900"
+            >
+              How it works
+            </Link>
           </div>
         </div>
 
         {dialogOpen && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-30 px-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 px-4">
+            <div className="bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">{dialogMode === "deposit" ? "Add WBTC" : "Withdraw WBTC"}</p>
-                  <h3 className="text-xl font-bold text-slate-900">
+                  <p className="text-sm text-slate-400">
+                    {dialogMode === "deposit" ? "Add WBTC" : "Withdraw WBTC"}
+                  </p>
+                  <h3 className="text-xl font-semibold text-white">
                     {dialogMode === "deposit" ? "Deposit" : "Withdraw"}
                   </h3>
                 </div>
                 <button
                   onClick={() => setDialogOpen(false)}
-                  className="text-slate-500 hover:text-slate-800"
+                  className="text-slate-400 hover:text-white"
                 >
                   ✕
                 </button>
               </div>
 
               <div>
-                <div className="mb-4 flex gap-2 rounded-xl bg-slate-100 p-1">
+                <div className="mb-4 flex gap-2 rounded-xl bg-slate-900 p-1 border border-slate-800">
                   <button
                     className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
                       dialogMode === "deposit"
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white text-slate-950 shadow"
+                        : "text-slate-300 hover:text-white"
                     }`}
                     onClick={() => setDialogMode("deposit")}
                   >
@@ -522,8 +557,8 @@ export default function BTCETFPage() {
                   <button
                     className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
                       dialogMode === "withdraw"
-                        ? "bg-white text-slate-900 shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-white text-slate-950 shadow"
+                        : "text-slate-300 hover:text-white"
                     }`}
                     onClick={() => setDialogMode("withdraw")}
                   >
@@ -531,33 +566,35 @@ export default function BTCETFPage() {
                   </button>
                 </div>
 
-                <label className="text-sm text-slate-600">Amount (WBTC)</label>
+                <label className="text-sm text-slate-300">Amount (WBTC)</label>
                 <input
                   type="number"
                   min="0"
                   step="any"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full mt-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 outline-none focus:border-[var(--accent)]"
+                  className="w-full mt-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-300 focus:ring-amber-300/30"
                   placeholder="0.0"
                 />
 
-                <div className="mt-4 text-xs text-slate-600 space-y-1">
+                <div className="mt-4 text-xs text-slate-400 space-y-1">
                   <p>Wallet: {walletBalance} WBTC</p>
                   <p>Vault balance: {vaultHoldings} BTC</p>
                 </div>
 
+                {actionBusy && <ActionStatus state={actionState} />}
+
                 <div className="mt-6 flex justify-end gap-3">
                   <button
                     onClick={() => setDialogOpen(false)}
-                    className="px-4 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50"
+                    className="px-4 py-2 rounded-xl border border-slate-800 text-slate-200 hover:bg-white/5"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSubmitAction}
-                    disabled={loading || !ready}
-                    className="px-4 py-2 rounded-xl bg-[var(--accent)] text-white font-semibold hover:bg-[var(--accent-strong)] disabled:opacity-50 shadow-sm"
+                    disabled={actionBusy || !ready}
+                    className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-semibold shadow hover:bg-amber-300 disabled:opacity-50"
                   >
                     {dialogMode === "deposit" ? "Confirm deposit" : "Confirm withdrawal"}
                   </button>
@@ -578,20 +615,26 @@ function shorten(address = "") {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function InfoRow({ label, value }) {
+function ActionStatus({ state }) {
+  if (!state || state.phase === "idle") return null;
+  const tone = state.phase === "success" ? "text-emerald-600" : "text-amber-600";
+  const showSpinner = state.phase !== "success";
   return (
-    <div className="flex justify-between text-sm">
-      <span className="text-slate-600">{label}</span>
-      <span className="font-mono text-slate-900">{value}</span>
+    <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+      {showSpinner && (
+        <span className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+      )}
+      {!showSpinner && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
+      <span className={tone}>{state.label}</span>
     </div>
   );
 }
 
-function InfoCard({ label, value }) {
+function DataStat({ label, value }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 shadow-inner">
-      <p className="text-xs uppercase text-slate-500">{label}</p>
-      <p className="text-sm font-semibold text-slate-900 mt-1 break-all">{value}</p>
+    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      <span className="text-slate-700 text-sm">{label}</span>
+      <span className="text-slate-900 font-mono text-sm">{value}</span>
     </div>
   );
 }
