@@ -164,7 +164,7 @@ function PortfolioCard({ p, meta, rank, onVote }) {
       </div>
 
       {/* Chart from ChartBuilder */}
-      <div className="mt-4 h-[110px] sm:h-[180px]">
+      <div className="mt-4 h-[150px] sm:h-[200px]">
         {sumPoints(p.weights) > 0 ? (
           <ChartBuilder
             assets={p.assets}
@@ -182,16 +182,16 @@ function PortfolioCard({ p, meta, rank, onVote }) {
       </div>
 
       {/* Metrics from MetricsBuilder */}
-      <div className="mt-4 h-[140px] sm:h-[200px]">
+      <div className="mt-3 h-[130px] sm:h-[190px]">
         <MetricsBuilder assets={p.assets} weights={p.weights} showYield={true} />
       </div>
 
-      {/* composition big & pronounced, lots of space */}
-      <div className="mt-6">
-        <div className="text-sm md:text-base uppercase tracking-wide text-[var(--muted)] mb-3 font-semibold">
+      {/* composition */}
+      <div className="mt-4">
+        <div className="text-xs sm:text-sm md:text-base uppercase tracking-wide text-[var(--muted)] mb-2 font-semibold">
           Composition
         </div>
-        <div className="text-lg sm:text-xl md:text-2xl leading-snug max-w-full">
+        <div className="text-base sm:text-lg md:text-2xl leading-snug max-w-full">
           {comp}
         </div>
       </div>
@@ -230,65 +230,57 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
         </div>
       )}
 
-      {/* Left: name + meta + composition */}
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <div className="flex items-center gap-3">
-          <div className="font-bold truncate text-lg sm:text-xl md:text-2xl">
+      {/* Content: name + chart + metrics in a compact row on mobile */}
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-bold truncate text-base sm:text-xl md:text-2xl">
             {p.nickname || "Untitled portfolio"}
           </div>
-          <span className="text-sm sm:text-base md:text-lg text-[var(--muted)] font-semibold">
+          <span className="text-xs sm:text-base md:text-lg text-[var(--muted)] font-semibold">
             {p._count?.votes ?? 0} votes
           </span>
         </div>
 
-        {/* fixed-height comment so rows align */}
-        <div className="mt-2 min-h-[56px]">
-          {p.comment && (
-            <div className="text-base sm:text-lg md:text-xl text-[var(--muted)] line-clamp-2">
-              {p.comment}
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="w-full sm:w-1/2">
+            <div className="w-full h-[90px] sm:h-[120px]">
+              {sumPoints(p.weights) > 0 ? (
+                <ChartBuilder
+                  assets={p.assets}
+                  weights={p.weights}
+                  showYield={true}
+                  animated={false}
+                  yieldOnly={true}
+                  legendOff={true}
+                />
+              ) : (
+                <div className="text-sm sm:text-base text-[var(--muted)]">
+                  No data
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          <div className="w-full sm:w-1/2">
+            <MiniMetrics assets={p.assets} weights={p.weights} />
+          </div>
         </div>
 
-        <div className="mt-3">
-          <span className="text-xs sm:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-2">
+        <div className="mt-1">
+          <span className="text-xs sm:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-1">
             Composition
           </span>
-          <div className="text-lg sm:text-xl md:text-2xl text-[var(--fg)] max-w-full">
+          <div className="text-sm sm:text-base md:text-xl text-[var(--fg)] max-w-full">
             {comp}
           </div>
         </div>
       </div>
 
-      {/* Middle: slim chart using ChartBuilder (yield-only to keep slim) */}
-      <div className="hidden lg:flex flex-[1.2] items-center">
-        <div className="w-full h-[120px]">
-          {sumPoints(p.weights) > 0 ? (
-            <ChartBuilder
-              assets={p.assets}
-              weights={p.weights}
-              showYield={true}
-              animated={false}
-              yieldOnly={true}
-              legendOff={true}
-            />
-          ) : (
-            <div className="text-lg md:text-xl text-[var(--muted)]">
-              No data
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right: tiny metrics + vote button */}
-      <div className="flex flex-col items-end justify-between w-full lg:w-auto gap-4">
-        <div className="w-full">
-          <MiniMetrics assets={p.assets} weights={p.weights} />
-        </div>
+      <div className="flex items-center justify-end w-full lg:w-auto">
         <button
           type="button"
           onClick={handleVoteClick}
-          className="border border-[var(--border)] bg-black text-white px-3 py-2 text-base sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
+          className="border border-[var(--border)] bg-black text-white px-2.5 py-1.5 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111] w-full lg:w-auto"
         >
           Vote
         </button>
