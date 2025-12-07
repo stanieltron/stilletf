@@ -241,7 +241,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
           </span>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-center">
           <div className="w-full sm:w-1/2">
             <div className="w-full h-[90px] sm:h-[120px]">
               {sumPoints(p.weights) > 0 ? (
@@ -261,8 +261,10 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
             </div>
           </div>
 
-          <div className="w-full sm:w-1/2">
-            <MiniMetrics assets={p.assets} weights={p.weights} />
+          <div className="w-full sm:w-1/2 flex items-center justify-end">
+            <div className="w-full sm:w-auto scale-[0.75] sm:scale-90 origin-top-right">
+              <MiniMetrics assets={p.assets} weights={p.weights} />
+            </div>
           </div>
         </div>
 
@@ -270,7 +272,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
           <span className="text-xs sm:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-1">
             Composition
           </span>
-          <div className="text-sm sm:text-base md:text-xl text-[var(--fg)] max-w-full">
+          <div className="text-[11px] sm:text-xs md:text-xl text-[var(--fg)] max-w-full">
             {comp}
           </div>
         </div>
