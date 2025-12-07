@@ -85,9 +85,9 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
 
   return (
     <div className="relative flex flex-col bg-white overflow-hidden w-full h-full">
-      <section className="flex flex-col flex-1 min-h-0 gap-2">
+      <section className="flex flex-col flex-1 min-h-0 gap-2 sm:gap-3">
         {/* KPIs: one line, centered, smooth 1300ms */}
-        <div className="flex flex-nowrap items-stretch justify-between w-full mt-1 flex-none">
+        <div className="flex flex-nowrap items-stretch justify-between w-full mt-0.5 sm:mt-1 flex-none gap-1 sm:gap-0">
           <div
             className="shrink-0"
             style={{ width: `${widthPercent}%`, transition: "width 1300ms ease" }}
@@ -121,7 +121,7 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
         </div>
 
         {/* Gauges: fill remaining vertical space */}
-        <div className="grid grid-cols-3 grid-rows-2 gap-x-3 gap-y-2 mt-1 flex-1 items-stretch content-stretch min-h-0">
+        <div className="grid grid-cols-3 grid-rows-2 gap-x-2 sm:gap-x-3 gap-y-1.5 sm:gap-y-2 mt-1 flex-1 items-stretch content-stretch min-h-0">
           <GaugeRow category="Growth"     score={scoreGrowth}  hint={<Hint text={tips.growth} />} />
           <GaugeRow category="Stability"  score={scoreStab}    hint={<Hint text={tips.stab} />} />
           <GaugeRow category="Resilience" score={scoreResil}   hint={<Hint text={tips.resil} />} />
@@ -145,11 +145,11 @@ function KPI({ label, value, tone }) {
     "text-slate-900";
 
   return (
-    <div className="p-3 bg-white h-full text-center flex flex-col items-center justify-center">
+    <div className="p-2 sm:p-3 bg-white h-full text-center flex flex-col items-center justify-center">
       <div className="flex flex-col items-center justify-center">
-        <span className="text-[10px] tracking-wider uppercase text-slate-500">{label}</span>
+        <span className="text-[9px] sm:text-[10px] tracking-wider uppercase text-slate-500">{label}</span>
       </div>
-      <div className={`mt-1 text-[22px] font-semibold leading-none ${toneClass}`}>{value}</div>
+      <div className={`mt-1 text-[16px] sm:text-[22px] font-semibold leading-none ${toneClass}`}>{value}</div>
     </div>
   );
 }
@@ -159,9 +159,9 @@ function GaugeRow({ category, score, hint }) {
   const pct = Math.round(s * 100);
 
   return (
-    <div className="p-1 bg-white h-full flex flex-col justify-center">
+    <div className="p-1 sm:p-1.5 bg-white h-full flex flex-col justify-center">
       <div className="flex items-center justify-between mb-[2px]">
-        <span className="text-[18px] tracking-wider uppercase text-slate-700 leading-none">
+        <span className="text-[12px] sm:text-[18px] tracking-wider uppercase text-slate-700 leading-none">
           {category}
         </span>
         {hint}
@@ -169,11 +169,11 @@ function GaugeRow({ category, score, hint }) {
 
       {/* 8px thick line that never scales */}
       <div className="w-full">
-        <svg width="100%" height="8" viewBox="0 0 100 8" preserveAspectRatio="none">
+        <svg width="100%" height="6" viewBox="0 0 100 8" preserveAspectRatio="none">
           <path
             d="M 0 4 L 100 4"
             stroke="#d1d5db"
-            strokeWidth="8"
+            strokeWidth="6"
             vectorEffect="non-scaling-stroke"
             fill="none"
             strokeLinecap="round"
@@ -181,7 +181,7 @@ function GaugeRow({ category, score, hint }) {
           <path
             d={`M 0 4 L ${pct} 4`}
             stroke="#2563eb"
-            strokeWidth="8"
+            strokeWidth="6"
             vectorEffect="non-scaling-stroke"
             fill="none"
             strokeLinecap="round"

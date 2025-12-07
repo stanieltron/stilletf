@@ -139,44 +139,32 @@ function PortfolioCard({ p, meta, rank, onVote }) {
       onClick={openDetails}
       className="border border-[var(--border)] bg-white p-3 sm:p-5 md:p-6 flex flex-col h-full shadow-md cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-xl hover:bg-[var(--bg-soft,#fafafa)]"
     >
-      <div className="flex items-start gap-3 sm:gap-4">
-        {/* Rank inside card – uses GLOBAL rank */}
-        <div className="flex items-start mr-2">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-black">
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-extrabold text-black">
             #{rank}
           </div>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="font-extrabold truncate text-lg sm:text-2xl md:text-3xl">
-            {p.nickname || "Untitled portfolio"}
-          </div>
-
-          {/* fixed-height comment block so cards align */}
-          <div className="mt-3 min-h-[72px]">
-            {p.comment && (
-              <div className="text-[var(--muted)] text-sm sm:text-lg md:text-xl line-clamp-3">
-                {p.comment}
-              </div>
-            )}
-          </div>
-
-          <div className="text-[var(--muted)] text-sm sm:text-lg md:text-xl flex gap-3 mt-2 font-semibold">
-            <span>{p._count?.votes ?? 0} votes</span>
+          <div className="flex flex-col min-w-0 leading-tight">
+            <div className="font-extrabold truncate text-base sm:text-xl md:text-3xl">
+              {p.nickname || "Untitled portfolio"}
+            </div>
+            <div className="text-[var(--muted)] text-[11px] sm:text-sm md:text-xl font-semibold">
+              {p._count?.votes ?? 0} votes
+            </div>
           </div>
         </div>
 
         <button
           type="button"
           onClick={handleVoteClick}
-          className="shrink-0 border border-[var(--border)] bg-black text-white px-2.5 py-2 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
+          className="shrink-0 border border-[var(--border)] bg-black text-white px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
         >
           Vote
         </button>
       </div>
 
       {/* Chart from ChartBuilder */}
-      <div className="mt-5 h-[120px] sm:h-[180px]">
+      <div className="mt-4 h-[110px] sm:h-[180px]">
         {sumPoints(p.weights) > 0 ? (
           <ChartBuilder
             assets={p.assets}
@@ -194,7 +182,7 @@ function PortfolioCard({ p, meta, rank, onVote }) {
       </div>
 
       {/* Metrics from MetricsBuilder */}
-      <div className="mt-5 h-[160px] sm:h-[220px]">
+      <div className="mt-4 h-[140px] sm:h-[200px]">
         <MetricsBuilder assets={p.assets} weights={p.weights} showYield={true} />
       </div>
 
@@ -565,5 +553,6 @@ export default function UserETFsPage() {
     </div>
   );
 }
+
 
 
