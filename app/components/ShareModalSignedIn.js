@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import * as htmlToImage from "html-to-image";
@@ -40,7 +40,7 @@ export default function ShareModalSignedIn({
   if (!open) return null;
 
   const baseShareText =
-    "I built this ETF-style crypto portfolio on STILL – can you beat it?";
+    "I built this ETF-style crypto portfolio on STILL ΓÇô can you beat it?";
 
   const fullShareText = shareUrl
     ? `${baseShareText}\n\n${shareUrl}`
@@ -120,7 +120,7 @@ export default function ShareModalSignedIn({
       setShareUrl(url);
       setSaved(true);
 
-      // 🔥 Generate the REAL OG image (logo + QR + chart + metrics)
+      // ≡ƒöÑ Generate the REAL OG image (logo + QR + chart + metrics)
       generateOgImageForPortfolio(portfolio.id).catch((err) => {
         console.error("[OG] failed to generate real OG image", err);
       });
@@ -183,14 +183,14 @@ export default function ShareModalSignedIn({
   }
 
   return (
-    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 sm:px-4">
       <div
-        className="bg-black text-white shadow-xl w-[80%] flex flex-col border border-[var(--border)] px-8 py-6"
-        style={{ fontSize: "200%" }}
+        className="bg-black text-white shadow-xl w-full max-w-6xl flex flex-col border border-[var(--border)] px-4 py-4 sm:px-8 sm:py-6 max-h-[90vh] overflow-y-auto"
+        style={{ fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)" }}
       >
-        <div className="flex items-stretch justify-between gap-8">
+        <div className="flex flex-col lg:flex-row items-stretch justify-between gap-6 lg:gap-8">
           {/* LEFT COLUMN */}
-          <div className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 flex flex-col gap-4 min-w-0">
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-semibold leading-snug">
                 ETF ready, save yours to share, get votes, climb the leaderboard
@@ -217,9 +217,9 @@ export default function ShareModalSignedIn({
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-6 py-3 border border-[var(--border)] bg-white text-black text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black hover:text-white transition"
+                  className="cta-btn cta-btn-sm cta-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "Saving…" : "Save portfolio"}
+                  {saving ? "SavingΓÇª" : "Save portfolio"}
                 </button>
               </div>
             )}
@@ -239,7 +239,7 @@ export default function ShareModalSignedIn({
                     type="button"
                     onClick={handleCopyLink}
                     title="Copy link to clipboard"
-                    className="px-4 py-2 border border-[var(--border)] text-xs font-semibold uppercase tracking-wide hover:bg-white hover:text-black transition bg-white text-black"
+                    className="cta-btn cta-btn-sm cta-white text-xs"
                   >
                     Copy link
                   </button>
@@ -249,23 +249,23 @@ export default function ShareModalSignedIn({
                   <button
                     type="button"
                     onClick={handleShareX}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-black text-white hover:bg-white hover:text-black transition text-lg font-semibold"
+                    className="cta-btn cta-btn-sm cta-black gap-2"
                   >
-                    <span className="text-2xl font-bold leading-none">𝕏</span>
+                    <span className="text-2xl font-bold leading-none">X</span>
                     <span>Share on X</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleShareTelegram}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                    className="cta-btn cta-btn-sm cta-white gap-2"
                   >
-                    <span className="text-xl leading-none">✈️</span>
+                    <span className="text-xl leading-none">TG</span>
                     <span>Telegram</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleShareLinkedIn}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                    className="cta-btn cta-btn-sm cta-white gap-2"
                   >
                     <span className="text-xl font-bold leading-none">in</span>
                     <span>LinkedIn</span>
@@ -273,7 +273,7 @@ export default function ShareModalSignedIn({
                   <button
                     type="button"
                     onClick={handleShareReddit}
-                    className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                    className="cta-btn cta-btn-sm cta-white gap-2"
                   >
                     <span className="text-2xl font-bold leading-none">r</span>
                     <span>Reddit</span>
@@ -282,7 +282,7 @@ export default function ShareModalSignedIn({
 
                 {generatingOg && (
                   <p className="text-xs text-[var(--muted)]">
-                    Generating share image in the background…
+                    Generating share image in the backgroundΓÇª
                   </p>
                 )}
               </div>
@@ -294,7 +294,7 @@ export default function ShareModalSignedIn({
           </div>
 
           {/* MIDDLE: chart + metrics preview (live) */}
-          <div className="flex-[1.4] flex flex-col gap-4">
+          <div className="flex lg:flex-[1.4] flex-col gap-4">
             <div className="border border-[var(--border)] bg-white text-black p-4 flex flex-col gap-3">
               <h3 className="text-lg font-semibold mt-0 mb-1">
                 Performance preview
@@ -323,12 +323,13 @@ export default function ShareModalSignedIn({
           </div>
 
           {/* RIGHT COLUMN */}
-          <div className="flex flex-col justify-between items-stretch text-base w-[260px] shrink-0">
-            <div className="flex flex-col items-stretch gap-3">
+          <div className="flex flex-col lg:justify-between items-stretch text-base gap-3 w-full lg:w-[260px] shrink-0">
+            <div className="flex flex-row lg:flex-col items-stretch gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-3 border border-[var(--border)] hover:bg-white hover:text-black transition text-lg font-semibold"
+                className="cta-btn cta-white flex-1"
+                style={{ height: "40px", minHeight: "40px" }}
               >
                 Close
               </button>
@@ -341,7 +342,7 @@ export default function ShareModalSignedIn({
               </p>
               <Link
                 href="/btcetf"
-                className="inline-flex items-center justify-center px-5 py-3 text-lg font-semibold bg-blue-600 text-white hover:bg-blue-500 transition no-underline"
+                className="cta-btn cta-btn-sm cta-blue no-underline text-center"
               >
                 Try pilot BTCETF on testnet
               </Link>
@@ -349,7 +350,7 @@ export default function ShareModalSignedIn({
           </div>
         </div>
 
-        {/* 🔒 HIDDEN LIVE CARD – SAME layout as ShareModal.js, used ONLY for OG capture */}
+        {/* ≡ƒöÆ HIDDEN LIVE CARD ΓÇô SAME layout as ShareModal.js, used ONLY for OG capture */}
         {open && (
           <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
             <div
@@ -404,7 +405,7 @@ export default function ShareModalSignedIn({
 
                   <p className="mt-10 mb-6 text-center text-[22px] font-semibold leading-snug text-black">
                     I created this portfolio on{" "}
-                    <span className="font-bold">stilletf.com</span> — can you
+                    <span className="font-bold">stilletf.com</span> ΓÇö can you
                     do better?
                   </p>
 
@@ -425,3 +426,6 @@ export default function ShareModalSignedIn({
     </section>
   );
 }
+
+
+

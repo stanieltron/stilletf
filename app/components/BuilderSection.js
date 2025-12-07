@@ -280,7 +280,7 @@ export default function BuilderSection({ keepAssets = true }) {
       className="container-main w-full flex flex-col overflow-hidden"
       style={{ fontSize: "200%" }} // 2x all text
     >
-      <div className="w-full flex-1 flex flex-col gap-6 min-h-0">
+      <div className="w-full flex-1 flex flex-col gap-3 md:gap-5 min-h-0">
         <h2 className="section-hero center font-bold tracking-tight leading-tight [font-size:clamp(1.5rem,2.5vw,2rem)] m-0">
           header2 placeholder
         </h2>
@@ -292,7 +292,7 @@ export default function BuilderSection({ keepAssets = true }) {
         )}
         {loadingAssets && (
           <div className="text-[clamp(.8rem,0.9vw,.9rem)] text-[var(--muted)] mt-2">
-            Loading assets…
+            Loading assets...
           </div>
         )}
 
@@ -303,9 +303,10 @@ export default function BuilderSection({ keepAssets = true }) {
               "split",
               hasPortfolio ? "has-portfolio" : "no-portfolio",
               "relative",
-              "grid items-stretch content-stretch gap-4 min-h-0 w-full max-w-full box-border overflow-hidden",
-              "[grid-template-columns:var(--left-w)_minmax(0,1fr)]",
-              hasPortfolio ? "h-[872px]" : "h-[500px]",
+              "grid items-stretch content-stretch gap-3 md:gap-4 min-h-0 w-full max-w-full box-border overflow-hidden",
+              "grid-cols-1",
+              hasPortfolio ? "md:h-[720px] h-auto" : "md:h-[500px] h-auto",
+              "md:[grid-template-columns:var(--left-w)_minmax(0,1fr)]",
             ].join(" ")}
             style={{
               ["--left-w"]: hasPortfolio ? "30%" : "40%",
@@ -314,7 +315,7 @@ export default function BuilderSection({ keepAssets = true }) {
             {/* BLUE DIVIDER BETWEEN LEFT & RIGHT PANE, ANCHORED TO --left-w */}
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 bottom-0"
+              className="pointer-events-none absolute top-0 bottom-0 hidden md:block"
               style={{
                 left: "calc(var(--left-w) + 0.5rem)", // left column width + half the gap (gap-4 = 1rem)
                 width: 0,
@@ -330,8 +331,8 @@ export default function BuilderSection({ keepAssets = true }) {
                 "bg-white ",
                 "overflow-hidden min-h-0 w-full flex flex-col",
                 hasPortfolio
-                  ? "self-stretch [grid-row:1/span_3]"
-                  : "h-[500px] self-start [grid-row:auto]",
+                  ? "md:h-[720px] h-[300px] self-stretch"
+                  : "md:h-[500px] h-[300px] self-start [grid-row:auto]",
                 "rounded-none",
               ].join(" ")}
               style={{ contain: "content" }}
@@ -345,7 +346,7 @@ export default function BuilderSection({ keepAssets = true }) {
               <div className="relative flex-1 min-h-0">
                 <div
                   ref={listRef}
-                  className="grid grid-cols-1 gap-3 px-3 py-3 min-h-0 h-full overflow-y-auto no-scrollbar pb-12 local-scroll-container"
+                  className="grid grid-cols-1 gap-0 px-3 py-2 min-h-0 h-full overflow-y-auto no-scrollbar pb-10 local-scroll-container"
                 >
                   {assetKeys.map((key, idx) => {
                     const current = weights[idx] ?? 0;
@@ -364,7 +365,7 @@ export default function BuilderSection({ keepAssets = true }) {
   accentColor={assetMeta[key]?.color || undefined}
   value={current}
   maxForThis={maxForThis}
-  pointsRemaining={pointsRemaining}   // 👈 NEW
+  pointsRemaining={pointsRemaining}   // <- NEW
   onChange={(desiredVal) =>
     setWeights((w) => {
       const copy = [...w];
@@ -406,14 +407,20 @@ export default function BuilderSection({ keepAssets = true }) {
 
                 {showScrollHint && (
                   <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-20 z-10 flex items-end justify-center bg-gradient-to-t from-white via-white/85 to-transparent">
-                    <div className="mb-2 flex flex-col items-center gap-2">
-                      <span className="[font-size:clamp(.72rem,.9vw,.75rem)] font-bold tracking-wide text-[#111] uppercase">
+                    <div className="mb-2 flex flex-col items-center gap-2 text-blue-600">
+                      <span className="[font-size:clamp(.72rem,.9vw,.75rem)] font-bold tracking-wide uppercase">
                         Scroll for more
                       </span>
-
-                      {/* Arrow styled like side nav arrow */}
-                      <div className="animate-scrollBounce w-8 h-8 flex items-center justify-center text-xs font-bold">
-                        <span className="leading-none">▼</span>
+                      <div className="w-8 h-8 flex items-center justify-center animate-bounce">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="w-6 h-6"
+                          aria-hidden="true"
+                        >
+                          <path d="M12 16.5a1 1 0 0 1-.7-.3l-6-6a1 1 0 1 1 1.4-1.4l5.3 5.3 5.3-5.3a1 1 0 0 1 1.4 1.4l-6 6a1 1 0 0 1-.7.3Z" />
+                        </svg>
                       </div>
                     </div>
                   </div>
@@ -428,56 +435,54 @@ export default function BuilderSection({ keepAssets = true }) {
               className={[
                 "right-pane",
                 hasPortfolio ? "" : "is-empty",
-                "grid gap-4 min-h-0 self-stretch",
+                "min-h-0 self-stretch",
                 hasPortfolio
-                  ? "[grid-template-rows:500px_auto_300px]"
-                  : "[grid-template-rows:500px]",
+                  ? "md:grid md:gap-0 md:h-[720px] flex flex-col gap-3 h-auto"
+                  : "md:grid gap-3 [grid-template-rows:500px]",
               ].join(" ")}
+              style={
+                hasPortfolio
+                  ? { gridTemplateRows: "40px 40px 300px 40px 300px" }
+                  : undefined
+              }
             >
               {hasPortfolio ? (
                 <>
-                  {/* Chart section (no border/shadow) */}
+                  {/* Status + actions (40px) */}
                   <div
                     className={[
                       "bg-white",
-                      "rounded-none p-3 min-h-0 h-full flex flex-col",
+                      "rounded-none px-3 flex flex-col sm:flex-row sm:items-center h-auto sm:h-[40px] gap-2 sm:gap-3",
+                      "[font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]",
                     ].join(" ")}
                   >
-                    <div className="flex items-center gap-3 mb-2 [font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]">
+                    <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3 w-full">
                       {/* LEFT: ETF STATUS / FILL CTA */}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 w-full">
                         {!isETFComplete ? (
-                          <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-[var(--accent)] bg-[var(--accent-soft)] text-[11px] sm:text-xs font-extrabold tracking-wide text-[var(--accent-text)] uppercase">
+                          <div className="cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm">
                             <span className="whitespace-nowrap">
-                              Fill ETF with{" "}
-                              <span className="text-blue-900">
-                                {pointsRemaining}
-                              </span>{" "}
-                              more points to complete
+                              Fill ETF with {pointsRemaining} more points to complete
                             </span>
                           </div>
                         ) : (
-                          <div className="inline-flex items-center gap-2 px-3 py-1.5 border border-[var(--accent)] bg-[var(--accent-soft)] text-[11px] sm:text-xs font-extrabold tracking-wide text-[var(--accent-text)] uppercase">
+                          <div className="cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm">
                             <span className="whitespace-nowrap">
-                              ETF complete · 20 / 20 points
+                              ETF complete - 20 / 20 points
                             </span>
                           </div>
                         )}
                       </div>
 
                       {/* RIGHT: YIELD INFO / BUTTONS */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
                         {/* FIRST-TIME YIELD INTRO (only once, when ETF just complete and yield not yet activated) */}
                         {isETFComplete && !yieldEverActivated ? (
                           <div className="flex items-center gap-2 text-right">
-                            <span className="text-[10px] sm:text-xs text-[var(--accent-text)] whitespace-nowrap font-semibold">
-                              stillwater ETF uses assets to generate additional
-                              yield
-                            </span>
                             <button
                               type="button"
                               onClick={handleFirstYieldActivate}
-                              className="relative inline-flex items-center justify-center px-4 sm:px-6 py-2 sm:py-2.5 border border-[var(--accent)] bg-white text-[11px] sm:text-xs font-extrabold tracking-wide uppercase text-[var(--accent-text)] rounded-none shadow-[0_0_12px_rgba(37,99,235,0.45)]"
+                              className="relative cta-btn cta-btn-sm cta-blue text-[10px] sm:text-xs shadow-[0_0_18px_rgba(37,99,235,0.9)]"
                             >
                               {/* Pulsating blue aura around the button */}
                               <span
@@ -485,10 +490,8 @@ export default function BuilderSection({ keepAssets = true }) {
                                 aria-hidden="true"
                               />
                               <span className="relative flex items-center gap-1">
-                                <span className="text-[15px] leading-none">
-                                  ⚡
-                                </span>
-                                <span>Turn yield on</span>
+                                <span className="text-[14px] leading-none">[+]</span>
+                                <span>Add STILL yield</span>
                               </span>
                             </button>
                           </div>
@@ -502,12 +505,12 @@ export default function BuilderSection({ keepAssets = true }) {
                               type="button"
                               onClick={handleToggleYield}
                               className={[
-                                "relative inline-flex items-center justify-center px-3 py-1.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wide rounded-none",
+                                "relative cta-btn cta-btn-sm text-[10px] sm:text-xs",
                                 yieldOn
-                                  ? "bg-[#e5e7eb] text-[#374151]" // plain grey when yield is ON
-                                  : "bg-[var(--accent)] text-white shadow-[0_0_18px_rgba(37,99,235,0.9)]", // blue when OFF
+                                  ? "cta-grey"
+                                  : "cta-blue shadow-[0_0_18px_rgba(37,99,235,0.9)]",
                               ].join(" ")}
-                              aria-label={yieldOn ? "Turn yield off" : "Turn yield on"}
+                              aria-label={yieldOn ? "Turn yield off" : "Add STILL yield"}
                             >
                               {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
                               {isETFComplete && !yieldOn && (
@@ -519,9 +522,9 @@ export default function BuilderSection({ keepAssets = true }) {
 
                               <span className="relative flex items-center gap-1">
                                 <span className="text-[14px] leading-none">
-                                  {yieldOn ? "⬜" : "🟦"}
+                                  {yieldOn ? "[ ]" : "[+]"}
                                 </span>
-                                <span>{yieldOn ? "Turn yield off" : "Turn yield on"}</span>
+                                <span>{yieldOn ? "Turn yield off" : "Add STILL yield"}</span>
                               </span>
                             </button>
 
@@ -532,14 +535,14 @@ export default function BuilderSection({ keepAssets = true }) {
                               <button
                                 type="button"
                                 onClick={handleCompletePortfolioClick}
-                                className="relative inline-flex items-center justify-center px-3 py-1.5 border border-[#ff8a00] bg-[#fffaec] text-[10px] sm:text-xs font-extrabold uppercase tracking-wide rounded-none shadow-[0_0_14px_rgba(255,138,0,0.75)]"
+                                className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
                               >
                                 <span
                                   className="pointer-events-none absolute inset-[-3px] border border-[#ffb347] rounded-none animate-ping"
                                   aria-hidden="true"
                                 />
                                 <span className="relative flex items-center gap-1">
-                                  <span className="text-[14px] leading-none">✅</span>
+                                  <span className="text-[14px] leading-none">*</span>
                                   <span>Complete portfolio</span>
                                 </span>
                               </button>
@@ -550,43 +553,41 @@ export default function BuilderSection({ keepAssets = true }) {
 
                       </div>
                     </div>
-
-               <div
-  className="my-1"
-  aria-label={`ETF completeness ${pointsForBar} of 20`}
->
-  <div className="relative h-[8px] w-full bg-gray-300 overflow-hidden rounded-none">
-    <div
-      className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width]"
-      style={{ width: `${(pointsForBar / MAX_TOTAL_POINTS) * 100}%` }}
-      aria-hidden="true"
-    />
-  </div>
-
-  {isETFComplete && (
-    <div
-      className="mt-1.5 h-[2px] bg-[#ff8a00] opacity-35"
-      aria-hidden="true"
-    />
-  )}
-</div>
-<div className="mt-0 w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
-  <ChartBuilder
-    assets={assetKeys}
-    weights={weights}
-    showYield={yieldOn}
-    size="l"           
-  />
-</div>
                   </div>
 
-                  {/* Text between chart and metrics */}
-                  <div className="text-center w-full text-[clamp(1.1rem,1vw,1.1rem)] font-bold flex items-center justify-center">
+                  {/* Progress (30px) */}
+                  <div
+                    className="bg-white rounded-none px-3 flex items-center h-[30px]"
+                    aria-label={`ETF completeness ${pointsForBar} of 20`}
+                  >
+                    <div className="relative h-[6px] w-full bg-gray-300 overflow-hidden rounded-none">
+                      <div
+                        className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width]"
+                        style={{ width: `${(pointsForBar / MAX_TOTAL_POINTS) * 100}%` }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Chart (200px mobile / 300px desktop) */}
+                  <div className="bg-white rounded-none px-3 flex h-[200px] md:h-[300px]">
+                    <div className="w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
+                      <ChartBuilder
+                        assets={assetKeys}
+                        weights={weights}
+                        showYield={yieldOn}
+                        size="l"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Text between chart and metrics (30px) */}
+                  <div className="text-center w-full text-[clamp(.95rem,.9vw,1rem)] font-bold flex items-center justify-center h-[30px]">
                     If you invested $1000 5 years ago, you would have:
                   </div>
 
-                  {/* Metrics section (no border/shadow) */}
-                  <div className="bg-white rounded-none p-3 h-[300px] overflow-auto flex flex-col">
+                  {/* Metrics section (200px mobile / 300px desktop) */}
+                  <div className="bg-white rounded-none p-3 h-[200px] md:h-[300px] overflow-auto flex flex-col">
                     <PortfolioBuilder
                       assets={assetKeys}
                       weights={weights}
@@ -602,10 +603,10 @@ export default function BuilderSection({ keepAssets = true }) {
                   aria-live="polite"
                 >
                   <div className="flex flex-col gap-2 items-center justify-center">
-                    <div className="font-extrabold [font-size:clamp(1.125rem,2.4vw,1.5rem)] tracking-[.2px] text-[var(--muted)] opacity-90 lowercase">
+                        <div className="font-extrabold [font-size:clamp(1.125rem,2.4vw,1.5rem)] tracking-[.2px] text-[var(--muted)] opacity-90 lowercase">
                       <div className="flex flex-col items-center justify-center gap-1 text-center">
                         <div className="[font-size:clamp(.8rem,.9vw,.85rem)] text-[var(--muted)] opacity-90">
-                          ← start building with adding assets
+                          {"<- start building with adding assets"}
                         </div>
                         <div className="font-extrabold [font-size:clamp(1.25rem,2.8vw,1.75rem)] tracking-[.2px]">
                           build your ETF for future rewards
@@ -649,9 +650,9 @@ function WeightInput({
   accentColor,
   nameOnly = "",
   maxForThis = 10,
-  pointsRemaining = 0,          // 👈 NEW
+  pointsRemaining = 0,          // <- NEW
   highlightPlus = false,        // pulsing +
-  highlightMinus = false,       // pulsing − (for "1 default asset" state)
+  highlightMinus = false,       // pulsing - (for "1 default asset" state)
 }) {
   const v0 = Number.isFinite(value) ? value : 0;
   const v = Math.max(0, Math.min(10, Math.round(v0)));
@@ -685,20 +686,20 @@ function WeightInput({
       style={accentColor ? { "--accent": accentColor } : undefined}
       className="select-none"
     >
-      <div className="mb-1">
+      <div className="mb-0.5 md:mb-1 leading-tight h-[30px] md:h-[35px] flex items-center">
         <span
-          className="font-semibold [font-size:70%]"
+          className="font-semibold [font-size:55%] md:[font-size:65%]"
           style={{ color: "var(--accent, var(--text))" }}
         >
           {nameOnly || label}
         </span>
       </div>
 
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-        {/* − button */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1.5 md:gap-2 h-[36px] md:h-[40px]">
+        {/* - button */}
         <button
           type="button"
-          className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
           onClick={dec}
           disabled={decDisabled}
           aria-label={`Decrease ${label}`}
@@ -712,7 +713,7 @@ function WeightInput({
                 : "",
             ].join(" ")}
           >
-            −
+            -
           </span>
         </button>
 
@@ -720,7 +721,7 @@ function WeightInput({
         <button
           type="button"
           onClick={handleBarClick}
-          className="relative h-[8px] w-full rounded-none bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
+          className="relative h-[6px] md:h-[8px] w-full rounded-none bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
           aria-label={`${label}: current ${v} of 10`}
           title={`${v} / 10`}
         >
@@ -747,7 +748,7 @@ function WeightInput({
         {/* + button */}
         <button
           type="button"
-          className="inline-flex items-center justify-center h-14 w-14 text-[42px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
           onClick={inc}
           disabled={incDisabled}
           aria-label={`Increase ${label}`}
@@ -768,4 +769,3 @@ function WeightInput({
     </div>
   );
 }
-

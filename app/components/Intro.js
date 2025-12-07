@@ -14,7 +14,7 @@ export default function Intro({ onEnter }) {
         </p>
 
         <button
-          className="btn-step intro-btn inline-flex items-center justify-center rounded-2xl px-6 py-3 bg-[var(--bg)] text-[var(--text)] font-medium hover:bg-white/90 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-white/50 transition"
+          className="cta-btn cta-blue intro-btn active:scale-[0.98]"
           onClick={onEnter}
         >
           Get started

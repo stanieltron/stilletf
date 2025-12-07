@@ -116,7 +116,7 @@ export default function Header() {
         <div className="justify-self-end relative" ref={menuRef}>
           {!isAuthed ? (
             <button
-              className="border border-[var(--border)] bg-white px-2.5 py-1.5 font-bold cursor-pointer leading-none text-black"
+              className="cta-btn cta-white"
               onClick={openSignIn}
             >
               Sign in
@@ -125,7 +125,7 @@ export default function Header() {
             <>
               <button
                 onClick={() => setOpen((v) => !v)}
-                className=" px-2.5 py-1.5 font-bold cursor-pointer leading-none bg-transparent text-orange-400"
+                className="cta-btn cta-white"
                 aria-haspopup="true"
                 aria-expanded={open ? "true" : "false"}
                 title="Account"

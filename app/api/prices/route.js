@@ -2,28 +2,29 @@ import { NextResponse } from "next/server";
 
 // Colors split out by asset id (no TS types)
 const COLORS = {
-  asset1: "#f2a900",
-  asset2: "#627eea",
-  asset3: "#f3ba2f",
-  asset4: "#2a5ada",
-  asset5: "#6b7280",
-  asset6: "#1f77b4",
-  asset7: "#ff7f0e",
-  asset8: "#2ca02c",
-  asset9: "#9467bd",
-  asset10: "#17becf",
-  asset11: "#8c564b",
-  asset12: "#e377c2",
-  asset13: "#7f7f7f",
-  asset14: "#bcbd22",
-  asset15: "#d4af37",
-  asset16: "#c0c0c0",
-  asset17: "#386641",
-  asset18: "#000000",
-  asset19: "#a05195",
-  asset20: "#003f5c",
-  asset21: "#ff0054",
+  asset1:  "#ff6b00", // vivid orange
+  asset2:  "#ff1744", // bright red-pink
+  asset3:  "#ffb300", // strong amber
+  asset4:  "#ff4081", // hot pink
+  asset5:  "#d500f9", // electric magenta
+  asset6:  "#c51162", // deep crimson pink
+  asset7:  "#f50057", // neon pink-red
+  asset8:  "#e040fb", // vivid purple-magenta
+  asset9:  "#ab47bc", // amethyst purple
+  asset10: "#8e24aa", // deep purple
+  asset11: "#ff7043", // vivid orange-salmon
+  asset12: "#ffca28", // bright golden yellow
+  asset13: "#ff5252", // coral red
+  asset14: "#ff8f00", // strong dark amber
+  asset15: "#ffc400", // bright gold
+  asset16: "#ffea00", // neon lemon
+  asset17: "#b71c1c", // deep red
+  asset18: "#4a148c", // rich violet
+  asset19: "#ad1457", // dark raspberry
+  asset20: "#bf360c", // burnt orange
+
 };
+
 
 // Base assets WITHOUT color
 const BASE_ASSETS = {
@@ -247,17 +248,7 @@ const BASE_ASSETS = {
       50.58477, 52.310062, 52.585434, 53.765579, 55.457123, 58.023949, 58.220638, 59.080002, 60.349998, 61.119999, 61.0, 61.27,
     ],
   },
-  asset21: {
-    name: "Volatility Hedge (VIXY)",
-    yearlyYield: 0.0,
-    prices: [
-      1099.199951, 1384.0, 1044.0, 748.0, 658.400024, 567.200012, 481.600006, 495.399994, 417.0, 456.0, 349.799988, 414.0,
-      303.399994, 349.600006, 393.0, 331.399994, 412.600006, 349.799988, 365.0, 291.200012, 291.799988, 342.0, 285.799988, 241.199997,
-      227.600006, 183.0, 186.399994, 181.0, 151.600006, 138.0, 99.839996, 90.68, 86.080002, 93.199997, 93.68, 69.040001,
-      62.040001, 60.32, 53.959999, 51.84, 54.16, 45.759998, 43.400002, 45.799999, 44.0, 49.0, 57.200001, 41.990002,
-      45.02, 43.369999, 44.77, 50.259998, 63.139999, 52.77, 46.880001, 41.490002, 35.259998, 32.299999, 33.029999, 32.669998,
-    ],
-  },
+  
 };
 
 // Helper to inject colors so the final shape matches the original

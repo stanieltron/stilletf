@@ -25,7 +25,7 @@ export default function ShareModal({
   const [copying, setCopying] = useState(false);
 
   const shareText =
-    "I created this portfolio on stilletf.com — can you do better?";
+    "I created this portfolio on stilletf.com - can you do better?";
   const shareUrl = "https://stilletf.com";
 
   const router = useRouter();
@@ -47,7 +47,6 @@ export default function ShareModal({
 
     router.push(`${base}?${params.toString()}#builder`, { scroll: false });
   }
-
 
   // Reset state when modal opens/closes
   useEffect(() => {
@@ -166,18 +165,127 @@ export default function ShareModal({
     openShareWindow(url);
   };
 
+  // Disable background scroll when any modal (including this one) is open
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const body = document.body;
+    const current = parseInt(body.dataset.modalLocks || "0", 10) || 0;
+    const next = open ? current + 1 : Math.max(0, current - 1);
+    body.dataset.modalLocks = String(next);
+    body.style.overflow = next > 0 ? "hidden" : "";
+
+    return () => {
+      if (!open) return;
+      const cur = parseInt(body.dataset.modalLocks || "0", 10) || 0;
+      const n = Math.max(0, cur - 1);
+      body.dataset.modalLocks = String(n);
+      body.style.overflow = n > 0 ? "hidden" : "";
+    };
+  }, [open]);
+
+  const renderCaptureContent = (withRef = false) => (
+    <div
+      ref={withRef ? captureRef : null}
+      className="bg-white overflow-hidden"
+      style={{
+        width: "1200px",
+        height: "675px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        className="w-full h-full grid"
+        style={{
+          gridTemplateColumns: "repeat(4, 300px)",
+          gridTemplateRows: "300px 75px 300px",
+        }}
+      >
+        {/* Row 1 Col 1: Logo */}
+        <div className="flex items-center justify-center" style={{ padding: 10 }}>
+          <div className="flex items-center justify-center w-full h-full bg-white">
+            <img
+              src="/logos/stilllogo.png"
+              alt="stillwater logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+
+        {/* Row 1 Col 2-4: Chart */}
+        <div
+          className="flex items-center justify-center"
+          style={{ gridColumn: "2 / span 3", gridRow: "1 / span 1", padding: 10 }}
+        >
+          <div className="w-full h-full bg-white flex items-center justify-center">
+            <ChartBuilder
+              assets={assets}
+              weights={weights}
+              showYield={true}
+              size="l"
+              fixed
+              width={880}
+              height={280}
+              animated={false}
+              yieldOnly={true}
+              onReady={handleCaptureChartReady}
+              legendOff={true}
+            />
+          </div>
+        </div>
+
+        {/* Row 2 Col 1-4: Text */}
+        <div
+          className="flex items-center justify-center text-center"
+          style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
+        >
+          <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
+            I created this portfolio on{" "}
+            <span className="font-bold">stilletf.com</span> - can you do better?
+          </p>
+        </div>
+
+        {/* Row 3 Col 1: QR */}
+        <div
+          className="flex flex-col items-center justify-center"
+          style={{ gridColumn: "1 / span 1", gridRow: "3 / span 1", padding: 10 }}
+        >
+          <img
+            src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fstilletf.com"
+            alt="stilletf.com QR"
+            className="w-full h-full object-contain"
+          />
+        </div>
+
+        {/* Row 3 Col 2-4: Metrics */}
+        <div
+          className="flex"
+          style={{ gridColumn: "2 / span 3", gridRow: "3 / span 1", padding: 10 }}
+        >
+          <div className="w-full h-full text-[14px] text-black bg-white">
+            <MetricsBuilder
+              assets={assets}
+              weights={weights}
+              showYield={true}
+              assetMeta={assetMeta}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!open) return null;
 
   return (
-    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 sm:px-4">
       <div
-        className="bg-black text-white shadow-xl w-[80%] flex flex-col border border-[var(--border)] px-8 py-6"
-        style={{ fontSize: "200%" }}
+        className="bg-black text-white shadow-xl w-full max-w-6xl flex flex-col border border-[var(--border)] px-4 py-4 sm:px-8 sm:py-6 max-h-[90vh] overflow-y-auto"
+        style={{ fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)" }}
       >
-        {/* MAIN ROW – stretch columns; height is now content-driven */}
-        <div className="flex items-stretch justify-between gap-8">
+        {/* MAIN ROW - stretch columns; height is now content-driven */}
+        <div className="flex flex-col lg:flex-row items-stretch justify-between gap-6 lg:gap-8">
           {/* LEFT COLUMN */}
-          <div className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 flex flex-col gap-4 min-w-0">
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-semibold leading-snug">
                 Share your portfolio in one click
@@ -200,9 +308,9 @@ export default function ShareModal({
                 type="button"
                 onClick={handleCopyImage}
                 disabled={!imgDataUrl || copying}
-                className="px-6 py-3 border border-[var(--border)] text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white hover:text-black transition"
+                className="cta-btn cta-btn-sm cta-white gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {copying ? "Copying…" : "Copy image"}
+                {copying ? "Copying..." : "Copy image"}
               </button>
               <span className="text-sm text-[var(--muted)]">
                 (then paste straight into X, Discord or anywhere else)
@@ -211,16 +319,16 @@ export default function ShareModal({
 
             <div className="flex flex-col gap-2">
               <span className="text-sm text-[var(--muted)]">
-                …or share directly:
+                ...or share directly:
               </span>
               <div className="flex flex-wrap gap-3 text-base">
                 {/* black background -> white on hover */}
                 <button
                   type="button"
                   onClick={handleShareX}
-                  className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-black text-white hover:bg-white hover:text-black transition text-lg font-semibold"
+                  className="cta-btn cta-btn-sm cta-black gap-2"
                 >
-                  <span className="text-2xl font-bold leading-none">𝕏</span>
+                  <span className="text-2xl font-bold leading-none">X</span>
                   <span>X</span>
                 </button>
 
@@ -228,7 +336,7 @@ export default function ShareModal({
                 <button
                   type="button"
                   onClick={handleShareFacebook}
-                  className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                  className="cta-btn cta-btn-sm cta-white gap-2"
                 >
                   <span className="text-2xl font-bold leading-none">f</span>
                   <span>Facebook</span>
@@ -237,7 +345,7 @@ export default function ShareModal({
                 <button
                   type="button"
                   onClick={handleShareLinkedIn}
-                  className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                  className="cta-btn cta-btn-sm cta-white gap-2"
                 >
                   <span className="text-xl font-bold leading-none">in</span>
                   <span>LinkedIn</span>
@@ -246,7 +354,7 @@ export default function ShareModal({
                 <button
                   type="button"
                   onClick={handleShareReddit}
-                  className="flex items-center gap-2 px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white transition text-lg font-semibold"
+                  className="cta-btn cta-btn-sm cta-white gap-2"
                 >
                   <span className="text-2xl font-bold leading-none">r</span>
                   <span>Reddit</span>
@@ -259,7 +367,7 @@ export default function ShareModal({
               <button
                 type="button"
                 onClick={openSignIn}
-                className="w-full px-6 py-3 bg-white text-black text-lg font-semibold hover:bg-black hover:text-white transition"
+                className="cta-btn cta-btn-sm cta-white w-full disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Sign in to share, get votes and future rewards
               </button>
@@ -271,36 +379,37 @@ export default function ShareModal({
             {!imgDataUrl && !error && (
               <div className="text-base text-[var(--muted)] mt-1">
                 {generating
-                  ? "Generating your share image…"
-                  : "We’ll generate the image automatically once the chart is ready."}
+                  ? "Generating your share image..."
+                  : "We'll generate the image automatically once the chart is ready."}
               </div>
             )}
           </div>
 
           {/* MIDDLE: bigger preview */}
-          <div className="flex-[1.4] flex items-center justify-center">
-            <div className="border border-[var(--border)] bg-white max-w-full overflow-hidden flex items-center justify-center">
+          <div className="flex lg:flex-[1.4] flex-col items-center justify-center gap-3">
+            <div className="border border-[var(--border)] bg-white max-w-full overflow-hidden flex items-center justify-center w-full max-w-[640px]" style={{ aspectRatio: "16 / 9" }}>
               {imgDataUrl ? (
                 <img
                   src={imgDataUrl}
                   alt="Share preview"
-                  className="h-[360px] w-auto"
+                  className="w-full h-full object-contain"
                 />
               ) : (
-                <div className="h-[360px] w-[560px] flex items-center justify-center text-base text-black">
-                  Preparing preview…
+                <div className="w-full h-full flex items-center justify-center text-base text-black px-4 text-center">
+                  Preparing preview...
                 </div>
               )}
             </div>
           </div>
 
           {/* RIGHT COLUMN: top buttons + bottom-anchored Try pilot */}
-          <div className="flex flex-col justify-between items-stretch text-base">
-            <div className="flex flex-col items-stretch gap-3">
+          <div className="flex flex-col lg:justify-between items-stretch text-base gap-3 w-full lg:w-auto lg:min-w-[220px]">
+            <div className="flex flex-row lg:flex-col items-stretch gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-3 border border-[var(--border)] hover:bg-white hover:text-black transition text-lg font-semibold"
+                className="cta-btn cta-white flex-1"
+                style={{ height: "40px", minHeight: "40px" }}
               >
                 Close
               </button>
@@ -308,7 +417,8 @@ export default function ShareModal({
                 type="button"
                 onClick={handleDownload}
                 disabled={!imgDataUrl}
-                className="px-5 py-3 border border-[var(--border)] bg-white text-black hover:bg-black hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition text-lg font-semibold"
+                className="cta-btn cta-black disabled:opacity-50 disabled:cursor-not-allowed flex-1"
+                style={{ height: "40px", minHeight: "40px" }}
               >
                 Download PNG
               </button>
@@ -316,83 +426,18 @@ export default function ShareModal({
 
             <Link
               href="/btcetf"
-              className="mt-6 inline-flex items-center justify-center px-5 py-3 text-lg font-semibold bg-blue-600 text-white hover:bg-blue-500 transition no-underline"
+              className="cta-btn cta-btn-sm cta-blue no-underline lg:mt-6 text-center"
             >
               Try pilot BTCETF on testnet
             </Link>
           </div>
         </div>
 
-        {/* HIDDEN LIVE CARD (HTML) – captured at 1200×675 */}
-        {open && (!imgDataUrl || generating) && (
-          <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
-            <div
-              ref={captureRef}
-              className="bg-white overflow-hidden"
-              style={{
-                width: "1200px",
-                height: "675px",
-                boxSizing: "border-box",
-                padding: "40px",
-              }}
-            >
-              <div className="w-full h-full grid grid-cols-[260px_minmax(0,1fr)] gap-x-40 gap-y-16">
-                <div className="flex flex-col items-center justify-between">
-                  <div className="flex items-center justify-center">
-                    <img
-                      src="/logos/stilllogo.png"
-                      alt="stillwater logo"
-                      className="w-[220px] h-[220px] object-contain"
-                    />
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <img
-                      src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fstilletf.com"
-                      alt="stilletf.com QR"
-                      className="w-[220px] h-[220px]"
-                    />
-                    <span className="mt-2 text-[11px] text-slate-500">
-                      stilletf.com
-                    </span>
-                  </div>
-                </div>
+        {/* Hidden capture content (only for image generation) */}
+        <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+          {renderCaptureContent(true)}
+        </div>
 
-                <div className="flex flex-col">
-                  <div className="w-full" style={{ height: 260 }}>
-                    <ChartBuilder
-                      assets={assets}
-                      weights={weights}
-                      showYield={true}
-                      size="l"
-                      fixed
-                      width={800}
-                      height={260}
-                      animated={false}
-                      yieldOnly={true}
-                      onReady={handleCaptureChartReady}
-                      legendOff={true}
-                    />
-                  </div>
-
-                  <p className="mt-10 mb-6 text-center text-[22px] font-semibold leading-snug text-black">
-                    I created this portfolio on{" "}
-                    <span className="font-bold">stilletf.com</span> — can you
-                    do better?
-                  </p>
-
-                  <div className="flex-1 min-h-[160px] text-[14px] text-black">
-                    <MetricsBuilder
-                      assets={assets}
-                      weights={weights}
-                      showYield={true}
-                      assetMeta={assetMeta}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </section>
   );

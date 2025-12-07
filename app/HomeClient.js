@@ -123,6 +123,18 @@ export default function HomeClient() {
     []
   );
 
+  const [compactNav, setCompactNav] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window === "undefined") return;
+      setCompactNav(window.innerWidth < 1100);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const scrollToSection = (index) => {
     const sections = sectionRefs.current.filter(Boolean);
     if (!sections.length) return;
@@ -172,7 +184,6 @@ export default function HomeClient() {
   // but still padded down so they don't hide behind the fixed header.
   const sectionStyleBase = useMemo(
     () => ({
-      paddingTop: `${headerH}px`,
       boxSizing: "border-box",
     }),
     [headerH]
@@ -188,9 +199,9 @@ export default function HomeClient() {
         <Header />
       </div>
 
-      {/* Left-side section panel (always visible now) */}
+      {/* Left-side section panel (responsive) */}
       <nav
-        className="hidden md:flex fixed left-6 top-1/2 -translate-y-1/2 z-[9998] flex-col items-center gap-4"
+        className="hidden md:flex fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[9998] flex-col items-center gap-3 md:gap-4 bg-white/80 backdrop-blur-md rounded-md px-2 py-3 shadow-sm"
         aria-label="Page sections"
       >
         {/* UP ARROW */}
@@ -214,6 +225,7 @@ export default function HomeClient() {
         <div className="flex flex-col gap-2">
           {navSections.map((section) => {
             const isActive = current === section.index;
+            const label = compactNav ? section.label.slice(0, 1) : section.label;
             return (
               <button
                 key={section.id}
@@ -224,8 +236,9 @@ export default function HomeClient() {
                     ? "text-blue-600"
                     : "text-slate-400 hover:text-slate-100"
                 }`}
+                title={section.label}
               >
-                {section.label}
+                {label}
               </button>
             );
           })}
@@ -258,9 +271,10 @@ export default function HomeClient() {
           className="flex w-full justify-center"
           style={{
             ...sectionStyleBase,
+            paddingTop: `${headerH}px`,
           }}
         >
-          <div className="w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
             <HeroSection />
             <BuilderSection keepAssets={keepAssets} />
           </div>
@@ -272,10 +286,10 @@ export default function HomeClient() {
           className="flex w-full justify-center"
           style={{
             ...sectionStyleBase,
-            background: "#eef2ff",
+            background: "#ffffffff",
           }}
         >
-          <div className="w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
             <Carousel />
             <MissionStatement />
           </div>
@@ -287,10 +301,10 @@ export default function HomeClient() {
           className="flex w-full justify-center"
           style={{
             ...sectionStyleBase,
-            background: "#fff7ed",
+            background: "#ffffffff",
           }}
         >
-          <div className="w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
             <Roadmap />
           </div>
         </section>
@@ -301,10 +315,10 @@ export default function HomeClient() {
           className="flex w-full justify-center"
           style={{
             ...sectionStyleBase,
-            background: "#fff7ed",
+            background: "#000000ff",
           }}
         >
-          <div className="w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
             <Features />
           </div>
         </section>
@@ -315,10 +329,10 @@ export default function HomeClient() {
           className="flex w-full justify-center"
           style={{
             ...sectionStyleBase,
-            background: "#fff7ed",
+            background: "#ffffffff",
           }}
         >
-          <div className="w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
             <Benefits />
             <Footer />
           </div>

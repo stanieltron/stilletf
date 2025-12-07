@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 
@@ -16,20 +16,12 @@ export default function HeroSection({ ctaHref = "/?auth=1", onCtaClick }) {
         </p>
 
         <div className="mt-4">
-          <Link
-            href={ctaHref}
-            onClick={onCtaClick}
-            className={[
-              "inline-flex items-center justify-center gap-2",
-              "border border-[var(--text)] bg-[var(--text)] px-4 py-2.5",
-              "font-extrabold text-[var(--bg)] no-underline uppercase tracking-wide",
-              "hover:opacity-95 active:opacity-90",
-            ].join(" ")}
-          >
-            REGISTER FOR EARLY ACCESS →
+          <Link href={ctaHref} onClick={onCtaClick} className="cta-btn cta-black no-underline">
+            REGISTER FOR EARLY ACCESS &rarr;
           </Link>
         </div>
       </div>
     </section>
   );
 }
+
