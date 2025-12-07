@@ -12,8 +12,8 @@ export default function Roadmap() {
         <div className="py-14">
           <div className="relative w-full">
             {/* Keep the square aspect ratio */}
-            <div className="relative w-full pb-[100%] md:pb-[60%]">
-              <div className="absolute inset-0 overflow-hidden isolate">
+            <div className="relative w-full pb-0 md:pb-[60%] md:h-0">
+              <div className="relative md:absolute md:inset-0 md:overflow-hidden md:isolate md:h-full">
                 {/* Diagonal line (desktop) */}
                 <svg
                   className="absolute inset-0 -z-10 pointer-events-none hidden md:block w-full h-full"
@@ -40,7 +40,7 @@ export default function Roadmap() {
                   <path
                     d="M 50 0 L 50 100"
                     stroke="#2563eb"
-                    strokeWidth="4"
+                    strokeWidth="6"
                     vectorEffect="non-scaling-stroke"
                     fill="none"
                   />
@@ -103,15 +103,23 @@ export default function Roadmap() {
                 </div>
 
                 {/* === Mobile stacked cards === */}
-                <div className="md:hidden absolute inset-0 flex flex-col justify-center gap-8 px-1">
-                  <div className="card-strong">
+                <div className="md:hidden relative flex flex-col justify-center gap-8 px-1">
+                  <div
+                    className="absolute left-1/2 top-0 bottom-0 w-[6px] -translate-x-1/2 bg-[#2563eb] opacity-80"
+                    aria-hidden
+                  />
+
+                  <div
+                    className="card-strong text-white relative z-10"
+                    style={{ backgroundColor: "#000", borderColor: "#000", color: "#fff" }}
+                  >
                     <span className="badge bg-blue-600">
                       The Pilot
                     </span>
                     <h3 className="heading-3">
                       BTC Fund
                     </h3>
-                    <p className="text-body-muted">
+                    <p className="text-body-light">
                       Pure Bitcoin exposure with transparent mechanics.
                     </p>
                     <button className="btn-primary mt-4">
@@ -119,7 +127,7 @@ export default function Roadmap() {
                     </button>
                   </div>
 
-                  <div className="card-strong">
+                  <div className="card-strong relative z-10">
                     <span className="badge bg-black">
                       The Flagship
                     </span>
@@ -131,7 +139,7 @@ export default function Roadmap() {
                     </p>
                   </div>
 
-                  <div className="card-strong">
+                  <div className="card-strong relative z-10">
                     <span className="badge bg-black">
                       The Crypto
                     </span>

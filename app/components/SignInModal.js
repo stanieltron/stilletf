@@ -95,7 +95,7 @@ export default function SignInModal() {
 
   function startOAuth(provider) {
     const base = typeof window !== "undefined" ? window.location.pathname : "/";
-    const callbackUrl = `${base}?auth=1&skipIntro=1#builder`;
+    const callbackUrl = `${base}?auth=1#builder`;
     signIn(provider, { callbackUrl });
   }
 

@@ -28,14 +28,14 @@ function LogoItem({ name, src }) {
   const [failed, setFailed] = useState(!src);
 
   return (
-    <div className="flex items-center justify-center shrink-0 min-w-[160px]"> 
+    <div className="flex items-center justify-center shrink-0 min-w-[200px]">
       {!failed && src && (
         <img
           src={src}
           alt={name}
           onError={() => setFailed(true)}
           className={[
-            "h-20 max-w-[240px] object-contain",            // ⬅️ 2× larger
+            "h-24 max-w-[280px] object-contain",            // ⬅️ 2× larger
             "filter grayscale invert contrast-110 opacity-80",
             "transition-transform transition-opacity duration-300 ease-in-out",
             "hover:opacity-100 hover:scale-105",
@@ -46,7 +46,7 @@ function LogoItem({ name, src }) {
       {(failed || !src) && (
         <span
           className={[
-            "text-white text-sm uppercase tracking-[0.16em] opacity-80", 
+            "text-white text-base uppercase tracking-[0.16em] opacity-80", 
             "transition-opacity duration-300 ease-in-out hover:opacity-100",
             "whitespace-nowrap",
           ].join(" ")}
@@ -63,7 +63,10 @@ export default function LogoCarousel() {
   const logos = [...LOGOS, ...LOGOS]; // duplicate for seamless scroll
 
   return (
-    <section className="section border-y border-[var(--border-soft)] bg-black">
+    <section
+      className="section border-y border-[var(--border-soft)] bg-black"
+      style={{ paddingTop: 0, paddingBottom: 0 }}
+    >
       <div className="container-main ">
         <div className="w-full overflow-hidden">
           <div className="flex items-center gap-12 animate-logo-scroll">
@@ -76,3 +79,4 @@ export default function LogoCarousel() {
     </section>
   );
 }
+

@@ -57,7 +57,6 @@ export default function Header() {
     const base = typeof window !== "undefined" ? window.location.pathname : "/";
     const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
     params.set("auth", "1");
-    params.set("skipIntro", "1");
     router.push(`${base}?${params.toString()}#builder`, { scroll: false });
   }
 
@@ -84,7 +83,7 @@ export default function Header() {
 
   function handleBrandClick(e) {
     e.preventDefault();
-    router.push("/?skipIntro=1", { scroll: true });
+    router.push("/", { scroll: true });
     if (typeof window !== "undefined") {
       requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
     }

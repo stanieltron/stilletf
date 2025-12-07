@@ -56,7 +56,6 @@ export default function HomeClient() {
     if (typeof window === "undefined") return;
     if (!search) return;
 
-    const skipIntroParam = search.get("skipIntro") === "1";
     const shareParam = search.get("share") === "1";
     const afterAuth = cameFromSignupOrAuth();
     const reload = isReloadNavigation();
@@ -64,15 +63,15 @@ export default function HomeClient() {
     // Hard reload should *always* be a fresh experience (no assets kept),
     // unless we're explicitly coming back from auth or a share flow.
     if (reload && !afterAuth) {
-      if (!(skipIntroParam || shareParam)) {
+      if (!shareParam) {
         setKeepAssets(false);
         return;
       }
     }
 
-    // Returning flows (internal navigation with skipIntro=1, auth return or share return)
+    // Returning flows (auth return or share return)
     // keep assets and skip "first fill" behavior.
-    setKeepAssets(skipIntroParam || afterAuth || shareParam);
+    setKeepAssets(afterAuth || shareParam);
   }, [search]);
 
   /* ===== sticky header height for layout ===== */
@@ -201,7 +200,7 @@ export default function HomeClient() {
 
       {/* Left-side section panel (responsive) */}
       <nav
-        className="hidden md:flex fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[9998] flex-col items-center gap-3 md:gap-4 bg-white/80 backdrop-blur-md rounded-md px-2 py-3 shadow-sm"
+        className="hidden md:flex fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[9998] flex-col items-center gap-3 md:gap-4 bg-white/80 backdrop-blur-md rounded-md px-2 py-3 shadow-sm border-0"
         aria-label="Page sections"
       >
         {/* UP ARROW */}

@@ -22,7 +22,7 @@ export default function ShareModal({
   const [generating, setGenerating] = useState(false);
   const [imgDataUrl, setImgDataUrl] = useState(null);
   const [error, setError] = useState(null);
-  const [copying, setCopying] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const shareText =
     "I created this portfolio on stilletf.com - can you do better?";
@@ -38,9 +38,8 @@ export default function ShareModal({
       typeof window !== "undefined" ? window.location.search : ""
     );
 
-    // mark that we're going through auth and want to skip intro on return
+    // mark that we're going through auth so we can reopen on return
     params.set("auth", "1");
-    params.set("skipIntro", "1");
 
     // remember that auth was triggered from the Share modal so we can reopen it
     params.set("share", "1");
@@ -54,7 +53,7 @@ export default function ShareModal({
     setGenerating(false);
     setImgDataUrl(null);
     setError(null);
-    setCopying(false);
+    setSharing(false);
   }, [open]);
 
   const handleCaptureChartReady = () => {
@@ -105,30 +104,30 @@ export default function ShareModal({
     a.click();
   };
 
-  const handleCopyImage = async () => {
+  const handleShareNative = async () => {
     if (!imgDataUrl) return;
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.clipboard ||
-      typeof window === "undefined" ||
-      !window.ClipboardItem
-    ) {
-      setError("Copy to clipboard is not supported in this browser.");
+    if (typeof navigator === "undefined" || typeof window === "undefined" || !navigator.share) {
+      setError("Sharing is not supported on this device/browser.");
       return;
     }
-
-    setCopying(true);
+    setSharing(true);
     setError(null);
     try {
       const res = await fetch(imgDataUrl);
       const blob = await res.blob();
-      const item = new window.ClipboardItem({ [blob.type]: blob });
-      await navigator.clipboard.write([item]);
+      const file = new File([blob], "portfolio-share.png", { type: blob.type || "image/png" });
+      const data = {
+        files: navigator.canShare && navigator.canShare({ files: [file] }) ? [file] : undefined,
+        text: shareText,
+        title: "My portfolio",
+        url: shareUrl,
+      };
+      await navigator.share(data);
     } catch (err) {
-      console.error("Error copying image", err);
-      setError("Could not copy image to clipboard.");
+      console.error("Error sharing image", err);
+      setError("Could not open the share sheet.");
     } finally {
-      setCopying(false);
+      setSharing(false);
     }
   };
 
@@ -306,14 +305,14 @@ export default function ShareModal({
             <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={handleCopyImage}
-                disabled={!imgDataUrl || copying}
+                onClick={handleShareNative}
+                disabled={!imgDataUrl || sharing}
                 className="cta-btn cta-btn-sm cta-white gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {copying ? "Copying..." : "Copy image"}
+                {sharing ? "Opening share sheet..." : "Share image from device"}
               </button>
               <span className="text-sm text-[var(--muted)]">
-                (then paste straight into X, Discord or anywhere else)
+                Uses your device share sheet (Twitter app, Messages, etc.)
               </span>
             </div>
 
