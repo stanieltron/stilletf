@@ -27,7 +27,7 @@ function compositionSpans(assets = [], weights = [], meta = {}) {
       <span
         key={key}
         style={{ color }}
-        className="px-2 py-1 bg-[var(--bg-soft,#f4f4f4)] text-sm sm:text-base md:text-xl font-semibold"
+        className="px-2 py-0.5 bg-[var(--bg-soft,#f4f4f4)] text-[11px] sm:text-xs md:text-sm font-semibold"
       >
         {label}: {w}
       </span>
@@ -219,7 +219,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
   return (
     <div
       onClick={openDetails}
-      className="border border-[var(--border)] px-3 py-3 sm:px-4 sm:py-4 bg-white flex flex-col lg:flex-row items-stretch gap-3 sm:gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft,#fafafa)]"
+      className="border border-[var(--border)] px-3 py-3 sm:px-4 sm:py-4 bg-white flex flex-col gap-3 sm:gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft,#fafafa)]"
     >
       {/* Rank bubble uses GLOBAL rank */}
       {typeof rank === "number" && (
@@ -230,7 +230,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
         </div>
       )}
 
-      {/* Content: name + chart + metrics in a compact row on mobile */}
+      {/* Content: name + compact chart/metrics */}
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <div className="font-bold truncate text-base sm:text-xl md:text-2xl">
@@ -241,8 +241,8 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
           </span>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-center">
-          <div className="w-full sm:w-1/2">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-[55%] min-w-[150px]">
             <div className="w-full h-[90px] sm:h-[120px]">
               {sumPoints(p.weights) > 0 ? (
                 <ChartBuilder
@@ -261,7 +261,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
             </div>
           </div>
 
-          <div className="w-full sm:w-1/2 flex items-center justify-end">
+          <div className="flex-1 min-w-[120px] flex justify-end">
             <div className="w-full sm:w-auto scale-[0.75] sm:scale-90 origin-top-right">
               <MiniMetrics assets={p.assets} weights={p.weights} />
             </div>
@@ -272,7 +272,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
           <span className="text-xs sm:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-1">
             Composition
           </span>
-          <div className="text-[11px] sm:text-xs md:text-xl text-[var(--fg)] max-w-full">
+          <div className="text-[10px] sm:text-xs md:text-xl text-[var(--fg)] max-w-full">
             {comp}
           </div>
         </div>
