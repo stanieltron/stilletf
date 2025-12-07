@@ -116,13 +116,18 @@ export default function ShareModal({
       const res = await fetch(imgDataUrl);
       const blob = await res.blob();
       const file = new File([blob], "portfolio-share.png", { type: blob.type || "image/png" });
-      const data = {
-        files: navigator.canShare && navigator.canShare({ files: [file] }) ? [file] : undefined,
+
+      // Ensure the device can share the image file; if not, surface a clear error.
+      if (navigator.canShare && !navigator.canShare({ files: [file] })) {
+        setError("This device/browser cannot share images via the native sheet.");
+        return;
+      }
+
+      await navigator.share({
+        files: [file],
         text: shareText,
         title: "My portfolio",
-        url: shareUrl,
-      };
-      await navigator.share(data);
+      });
     } catch (err) {
       console.error("Error sharing image", err);
       setError("Could not open the share sheet.");
