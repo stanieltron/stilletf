@@ -11,17 +11,17 @@ export default function ETFsPage() {
       <Header />
 
       <main className="flex flex-col">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 flex flex-col py-12">
-          <h1 className="mt-0 text-3xl md:text-4xl font-extrabold tracking-tight">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col py-12">
+          <h1 className="mt-0 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
             Skill-ETFs roadmap
           </h1>
-          <p className="mt-2 text-sm md:text-base text-neutral-600 max-w-xl">
+          <p className="mt-2 text-sm sm:text-base md:text-lg text-neutral-600 max-w-xl">
             Three on-chain funds that mirror the way you actually invest:
             pure Bitcoin, a balanced wealth basket, and a focused crypto fund.
           </p>
 
           {/* Stacked full-width cards */}
-          <div className="mt-16 mb-24 flex flex-col gap-10">
+          <div className="mt-10 sm:mt-16 mb-16 sm:mb-24 flex flex-col gap-8 sm:gap-10">
             <FundCard
               variant="dark"
               tag="THE PILOT"
@@ -81,7 +81,7 @@ function FundCard({
   const Wrapper = href && active ? Link : "div";
 
   const baseClasses =
-    "w-full border px-10 py-16 rounded-none no-underline transition-transform transition-shadow";
+    "w-full border px-5 py-8 md:px-10 md:py-16 rounded-none no-underline transition-transform transition-shadow";
   const activeClasses = active
     ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_10px_0_rgba(0,0,0,1)]"
     : "cursor-default";
@@ -91,17 +91,17 @@ function FundCard({
       : "bg-white text-black border-black hover:border-blue-600";
 
   const tagClasses =
-    "inline-block bg-blue-600 text-white text-sm md:text-base font-semibold tracking-[0.16em] px-4 py-1 uppercase";
+    "inline-block bg-blue-600 text-white text-xs sm:text-sm md:text-base font-semibold tracking-[0.16em] px-3 sm:px-4 py-1 uppercase";
   const titleClasses =
-    "mt-5 mb-2 text-4xl md:text-5xl font-semibold tracking-tight";
+    "mt-5 mb-2 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight";
   const subtitleClasses =
-    "text-2xl md:text-3xl" +
+    "text-xl sm:text-2xl md:text-3xl" +
     (variant === "dark" ? " text-white/80" : " text-neutral-800");
   const bodyClasses =
-    "mt-6 text-2xl md:text-3xl leading-relaxed" +
+    "mt-6 text-lg sm:text-xl md:text-3xl leading-relaxed" +
     (variant === "dark" ? " text-white/80" : " text-neutral-800");
   const ctaClasses =
-    "mt-10 text-2xl md:text-3xl font-semibold tracking-tight" +
+    "mt-8 sm:mt-10 text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight" +
     (active
       ? " text-blue-600"
       : variant === "dark"

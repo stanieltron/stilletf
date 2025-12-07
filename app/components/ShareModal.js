@@ -23,6 +23,7 @@ export default function ShareModal({
   const [imgDataUrl, setImgDataUrl] = useState(null);
   const [error, setError] = useState(null);
   const [sharing, setSharing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const shareText =
     "I created this portfolio on stilletf.com - can you do better?";
@@ -55,6 +56,22 @@ export default function ShareModal({
     setError(null);
     setSharing(false);
   }, [open]);
+
+  // Detect mobile viewport for UI/behavior toggles
+  useEffect(() => {
+    const check = () =>
+      setIsMobile(
+        typeof window !== "undefined"
+          ? window.matchMedia("(max-width: 768px)").matches
+          : false
+      );
+    check();
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", check, { passive: true });
+      return () => window.removeEventListener("resize", check);
+    }
+    return undefined;
+  }, []);
 
   const handleCaptureChartReady = () => {
     setChartReady(true);
@@ -292,91 +309,94 @@ export default function ShareModal({
           <div className="flex-1 flex flex-col gap-4 min-w-0">
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-semibold leading-snug">
-                Share your portfolio in one click
+                {isMobile ? "SHARE YOUR ETF" : "Share your portfolio in one click"}
               </h2>
-              <p className="text-base text-[var(--muted)]">
-                Copy the image and paste it straight into a post.
-              </p>
-              {userDisplay && (
+              {!isMobile && (
                 <p className="text-base text-[var(--muted)]">
-                  Created by{" "}
-                  <span className="font-semibold text-white">
-                    {userDisplay}
-                  </span>
+                  Share from your device or directly to socials.
                 </p>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={handleShareNative}
-                disabled={!imgDataUrl || sharing}
-                className="cta-btn cta-btn-sm cta-white gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sharing ? "Opening share sheet..." : "Share image from device"}
-              </button>
-              <span className="text-sm text-[var(--muted)]">
-                Uses your device share sheet (Twitter app, Messages, etc.)
-              </span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <span className="text-sm text-[var(--muted)]">
-                ...or share directly:
-              </span>
-              <div className="flex flex-wrap gap-3 text-base">
-                {/* black background -> white on hover */}
+            {/* Sharing controls */}
+            {isMobile ? (
+              <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={handleShareX}
-                  className="cta-btn cta-btn-sm cta-black gap-2"
+                  onClick={handleShareNative}
+                  disabled={!imgDataUrl || sharing}
+                  className="cta-btn cta-btn-sm cta-white gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="text-2xl font-bold leading-none">X</span>
-                  <span>X</span>
+                  {sharing ? "Opening share sheet..." : "Share image"}
                 </button>
-
-                {/* white background -> black on hover */}
+                <div className="text-sm text-[var(--muted)] font-semibold uppercase tracking-[0.08em]">
+                  Sign in to share ETF, get votes and future rewards
+                </div>
                 <button
                   type="button"
-                  onClick={handleShareFacebook}
-                  className="cta-btn cta-btn-sm cta-white gap-2"
+                  onClick={openSignIn}
+                  className="cta-btn cta-btn-sm cta-white w-full disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="text-2xl font-bold leading-none">f</span>
-                  <span>Facebook</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleShareLinkedIn}
-                  className="cta-btn cta-btn-sm cta-white gap-2"
-                >
-                  <span className="text-xl font-bold leading-none">in</span>
-                  <span>LinkedIn</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleShareReddit}
-                  className="cta-btn cta-btn-sm cta-white gap-2"
-                >
-                  <span className="text-2xl font-bold leading-none">r</span>
-                  <span>Reddit</span>
+                  Sign in
                 </button>
               </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <span className="text-sm text-[var(--muted)]">
+                    ...or share directly:
+                  </span>
+                  <div className="flex flex-wrap gap-3 text-base">
+                    {/* black background -> white on hover */}
+                    <button
+                      type="button"
+                      onClick={handleShareX}
+                      className="cta-btn cta-btn-sm cta-black gap-2"
+                    >
+                      <span className="text-2xl font-bold leading-none">X</span>
+                      <span>X</span>
+                    </button>
 
-            {/* full-width sign-in */}
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={openSignIn}
-                className="cta-btn cta-btn-sm cta-white w-full disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Sign in to share, get votes and future rewards
-              </button>
-            </div>
+                    {/* white background -> black on hover */}
+                    <button
+                      type="button"
+                      onClick={handleShareFacebook}
+                      className="cta-btn cta-btn-sm cta-white gap-2"
+                    >
+                      <span className="text-2xl font-bold leading-none">f</span>
+                      <span>Facebook</span>
+                    </button>
 
+                    <button
+                      type="button"
+                      onClick={handleShareLinkedIn}
+                      className="cta-btn cta-btn-sm cta-white gap-2"
+                    >
+                      <span className="text-xl font-bold leading-none">in</span>
+                      <span>LinkedIn</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleShareReddit}
+                      className="cta-btn cta-btn-sm cta-white gap-2"
+                    >
+                      <span className="text-2xl font-bold leading-none">r</span>
+                      <span>Reddit</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={openSignIn}
+                    className="cta-btn cta-btn-sm cta-white w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Sign in to share, get votes and future rewards
+                  </button>
+                </div>
+              </>
+            )}
             {error && (
               <div className="text-base text-red-500 mt-2">{error}</div>
             )}

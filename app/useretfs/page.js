@@ -27,7 +27,7 @@ function compositionSpans(assets = [], weights = [], meta = {}) {
       <span
         key={key}
         style={{ color }}
-        className="px-3 py-1 bg-[var(--bg-soft,#f4f4f4)] text-base md:text-xl font-semibold"
+        className="px-2 py-1 bg-[var(--bg-soft,#f4f4f4)] text-sm sm:text-base md:text-xl font-semibold"
       >
         {label}: {w}
       </span>
@@ -36,7 +36,7 @@ function compositionSpans(assets = [], weights = [], meta = {}) {
 
   if (!parts.length) {
     return (
-      <span className="text-xl md:text-2xl text-[var(--muted)] font-semibold">
+      <span className="text-base sm:text-xl md:text-2xl text-[var(--muted)] font-semibold">
         No positions
       </span>
     );
@@ -96,20 +96,20 @@ function MiniMetrics({ assets = [], weights = [] }) {
   }, [assets, weights]);
 
   return (
-    <div className="grid grid-cols-1 gap-2 text-right text-lg md:text-xl">
+    <div className="grid grid-cols-1 gap-1.5 text-right text-sm sm:text-base md:text-xl">
       <div>
-        <div className="text-sm md:text-base text-[var(--muted)]">
+        <div className="text-xs sm:text-sm md:text-base text-[var(--muted)]">
           End value ($, with yield)
         </div>
-        <div className="text-xl md:text-2xl font-extrabold tracking-[0.2px]">
+        <div className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-[0.2px]">
           {endVal.toFixed(2)}
         </div>
       </div>
       <div>
-        <div className="text-sm md:text-base text-[var(--muted)]">
+        <div className="text-xs sm:text-sm md:text-base text-[var(--muted)]">
           Total return % (with yield)
         </div>
-        <div className="text-xl md:text-2xl font-extrabold tracking-[0.2px]">
+        <div className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-[0.2px]">
           {retPct.toFixed(2)}
         </div>
       </div>
@@ -137,31 +137,31 @@ function PortfolioCard({ p, meta, rank, onVote }) {
   return (
     <div
       onClick={openDetails}
-      className="border border-[var(--border)] bg-white p-6 flex flex-col h-full shadow-md cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-xl hover:bg-[var(--bg-soft,#fafafa)]"
+      className="border border-[var(--border)] bg-white p-3 sm:p-5 md:p-6 flex flex-col h-full shadow-md cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-xl hover:bg-[var(--bg-soft,#fafafa)]"
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         {/* Rank inside card – uses GLOBAL rank */}
         <div className="flex items-start mr-2">
-          <div className="w-16 h-16 flex items-center justify-center text-3xl md:text-4xl font-extrabold text-black">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-black">
             #{rank}
           </div>
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="font-extrabold truncate text-2xl md:text-3xl">
+          <div className="font-extrabold truncate text-lg sm:text-2xl md:text-3xl">
             {p.nickname || "Untitled portfolio"}
           </div>
 
           {/* fixed-height comment block so cards align */}
           <div className="mt-3 min-h-[72px]">
             {p.comment && (
-              <div className="text-[var(--muted)] text-lg md:text-xl line-clamp-3">
+              <div className="text-[var(--muted)] text-sm sm:text-lg md:text-xl line-clamp-3">
                 {p.comment}
               </div>
             )}
           </div>
 
-          <div className="text-[var(--muted)] text-lg md:text-xl flex gap-3 mt-2 font-semibold">
+          <div className="text-[var(--muted)] text-sm sm:text-lg md:text-xl flex gap-3 mt-2 font-semibold">
             <span>{p._count?.votes ?? 0} votes</span>
           </div>
         </div>
@@ -169,14 +169,14 @@ function PortfolioCard({ p, meta, rank, onVote }) {
         <button
           type="button"
           onClick={handleVoteClick}
-          className="shrink-0 border border-[var(--border)] bg-black text-white px-4 py-2 text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
+          className="shrink-0 border border-[var(--border)] bg-black text-white px-2.5 py-2 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
         >
           Vote
         </button>
       </div>
 
       {/* Chart from ChartBuilder */}
-      <div className="mt-6 h-[220px]">
+      <div className="mt-5 h-[120px] sm:h-[180px]">
         {sumPoints(p.weights) > 0 ? (
           <ChartBuilder
             assets={p.assets}
@@ -194,7 +194,7 @@ function PortfolioCard({ p, meta, rank, onVote }) {
       </div>
 
       {/* Metrics from MetricsBuilder */}
-      <div className="mt-6 h-[260px]">
+      <div className="mt-5 h-[160px] sm:h-[220px]">
         <MetricsBuilder assets={p.assets} weights={p.weights} showYield={true} />
       </div>
 
@@ -203,7 +203,7 @@ function PortfolioCard({ p, meta, rank, onVote }) {
         <div className="text-sm md:text-base uppercase tracking-wide text-[var(--muted)] mb-3 font-semibold">
           Composition
         </div>
-        <div className="text-xl md:text-2xl leading-snug max-w-full">
+        <div className="text-lg sm:text-xl md:text-2xl leading-snug max-w-full">
           {comp}
         </div>
       </div>
@@ -231,12 +231,12 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
   return (
     <div
       onClick={openDetails}
-      className="border border-[var(--border)] px-4 py-4 bg-white flex items-stretch gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft,#fafafa)]"
+      className="border border-[var(--border)] px-3 py-3 sm:px-4 sm:py-4 bg-white flex flex-col lg:flex-row items-stretch gap-3 sm:gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft,#fafafa)]"
     >
       {/* Rank bubble uses GLOBAL rank */}
       {typeof rank === "number" && (
         <div className="flex items-center">
-          <div className="w-20 h-20 flex items-center justify-center text-3xl md:text-4xl font-extrabold text-[var(--muted)]">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-[var(--muted)]">
             #{rank}
           </div>
         </div>
@@ -245,10 +245,10 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
       {/* Left: name + meta + composition */}
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         <div className="flex items-center gap-3">
-          <div className="font-bold truncate text-xl md:text-2xl">
+          <div className="font-bold truncate text-lg sm:text-xl md:text-2xl">
             {p.nickname || "Untitled portfolio"}
           </div>
-          <span className="text-base md:text-lg text-[var(--muted)] font-semibold">
+          <span className="text-sm sm:text-base md:text-lg text-[var(--muted)] font-semibold">
             {p._count?.votes ?? 0} votes
           </span>
         </div>
@@ -256,17 +256,17 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
         {/* fixed-height comment so rows align */}
         <div className="mt-2 min-h-[56px]">
           {p.comment && (
-            <div className="text-lg md:text-xl text-[var(--muted)] line-clamp-2">
+            <div className="text-base sm:text-lg md:text-xl text-[var(--muted)] line-clamp-2">
               {p.comment}
             </div>
           )}
         </div>
 
         <div className="mt-3">
-          <span className="text-xs md:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-2">
+          <span className="text-xs sm:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-2">
             Composition
           </span>
-          <div className="text-xl md:text-2xl text-[var(--fg)] max-w-full">
+          <div className="text-lg sm:text-xl md:text-2xl text-[var(--fg)] max-w-full">
             {comp}
           </div>
         </div>
@@ -293,14 +293,14 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
       </div>
 
       {/* Right: tiny metrics + vote button */}
-      <div className="flex flex-col items-end justify-between min-w-[220px] gap-4">
+      <div className="flex flex-col items-end justify-between w-full lg:w-auto gap-4">
         <div className="w-full">
           <MiniMetrics assets={p.assets} weights={p.weights} />
         </div>
         <button
           type="button"
           onClick={handleVoteClick}
-          className="border border-[var(--border)] bg-black text-white px-4 py-2 text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
+          className="border border-[var(--border)] bg-black text-white px-3 py-2 text-base sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
         >
           Vote
         </button>
@@ -426,19 +426,19 @@ export default function UserETFsPage() {
       <Header />
 
       <main className="flex flex-col">
-        <div className="mx-auto w-[80%] flex flex-col pb-12 text-xl md:text-2xl">
-          <h2 className="mt-8 text-4xl md:text-5xl font-extrabold">
+        <div className="mx-auto w-full max-w-6xl px-3 sm:px-5 md:px-8 flex flex-col pb-10 text-sm sm:text-lg md:text-2xl">
+          <h2 className="mt-6 sm:mt-8 text-3xl sm:text-4xl md:text-5xl font-extrabold">
             Leaderboard
           </h2>
-          <p className="mt-2 text-lg md:text-2xl text-[var(--muted)]">
+          <p className="mt-2 text-sm sm:text-lg md:text-2xl text-[var(--muted)]">
             Collect votes for future rewards.
           </p>
 
           {/* Tabs */}
-          <div className="flex gap-4 mt-6">
+          <div className="flex gap-3 flex-wrap mt-6">
             <button
               className={[
-                "border border-[var(--border)] bg-white px-5 py-3 font-bold leading-none text-xl md:text-2xl",
+                "border border-[var(--border)] bg-white px-4 sm:px-5 py-2.5 sm:py-3 font-bold leading-none text-lg sm:text-xl md:text-2xl",
                 tab === "all" ? "opacity-100" : "opacity-60",
               ].join(" ")}
               onClick={() => setTab("all")}
@@ -447,7 +447,7 @@ export default function UserETFsPage() {
             </button>
             <button
               className={[
-                "border border-[var(--border)] bg-white px-5 py-3 font-bold leading-none text-xl md:text-2xl",
+                "border border-[var(--border)] bg-white px-4 sm:px-5 py-2.5 sm:py-3 font-bold leading-none text-lg sm:text-xl md:text-2xl",
                 tab === "mine" ? "opacity-100" : "opacity-60",
                 !userId ? "cursor-not-allowed opacity-50" : "",
               ].join(" ")}
@@ -565,3 +565,5 @@ export default function UserETFsPage() {
     </div>
   );
 }
+
+
