@@ -3,23 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-} from "recharts";
 import { portfolioCalculator, fetchAssets } from "../../lib/portfolio";
+import ChartBuilder from "../components/ChartBuilder";
+import MetricsBuilder from "../components/MetricsBuilder";
 
 /* --- helpers --- */
 function sumPoints(weights = []) {
   return (weights || []).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 }
+
 function compositionSpans(assets = [], weights = [], meta = {}) {
   const parts = [];
   for (let i = 0; i < Math.min(assets.length, weights.length); i++) {
@@ -29,95 +24,32 @@ function compositionSpans(assets = [], weights = [], meta = {}) {
     const label = meta?.[key]?.name || key;
     const color = meta?.[key]?.color || "inherit";
     parts.push(
-      <span key={key} style={{ color }}>
-        {label}:{w}
+      <span
+        key={key}
+        style={{ color }}
+        className="px-2 py-0.5 bg-[var(--bg-soft,#f4f4f4)] text-[11px] sm:text-xs md:text-sm font-semibold"
+      >
+        {label}: {w}
       </span>
     );
   }
-  // Insert comma separators
-  const out = [];
-  parts.forEach((el, i) => {
-    if (i)
-      out.push(
-        <span key={`sep-${i}`} style={{ color: "var(--muted)" }}>
-          ,{" "}
-        </span>
-      );
-    out.push(el);
-  });
-  return out.length
-    ? out
-    : [
-        <span key="none" className="text-sm text-[var(--muted)]">
-          No positions
-        </span>,
-      ];
-}
 
-/* --- tiny chart: portfolio-with-yield only --- */
-function MiniYieldChart({ assets = [], weights = [] }) {
-  const [rows, setRows] = useState([]);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        if (!sumPoints(weights)) {
-          if (alive) setRows([]);
-          return;
-        }
-        const res = await portfolioCalculator(assets, weights);
-        const series = res?.seriesWithYield || [];
-        if (!series.length) {
-          if (alive) setRows([]);
-          return;
-        }
-
-        const end = new Date(2025, 10, 1);
-        const data = series.map((v, idx) => {
-          const d = new Date(end);
-          d.setMonth(end.getMonth() - (series.length - 1 - idx));
-          return { i: idx, v, y: d.getFullYear() };
-        });
-        if (alive) setRows(data);
-      } catch {
-        if (alive) setRows([]);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [assets, weights]);
-
-  if (!rows.length) return <div className="text-sm text-[var(--muted)]">No data</div>;
-
-  const years = rows.map((r) => r.y);
-  const yearTicks = [];
-  for (let i = 0; i < rows.length; i++) if (i === 0 || years[i] !== years[i - 1]) yearTicks.push(i);
+  if (!parts.length) {
+    return (
+      <span className="text-base sm:text-xl md:text-2xl text-[var(--muted)] font-semibold">
+        No positions
+      </span>
+    );
+  }
 
   return (
-    <div className="w-full h-[110px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="i" ticks={yearTicks} tickFormatter={(i) => years[i]} />
-          <YAxis />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="v"
-            name="Portfolio ($, with yield)"
-            dot={false}
-            stroke="var(--pos)"
-            strokeWidth={2}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="flex flex-wrap gap-2 max-w-full">
+      {parts}
     </div>
   );
 }
 
-/* --- quick metrics (end value + total return %) --- */
+/* --- simple metrics for REST cards (end value + total return with yield) --- */
 function MiniMetrics({ assets = [], weights = [] }) {
   const [endVal, setEndVal] = useState(0);
   const [retPct, setRetPct] = useState(0);
@@ -134,7 +66,9 @@ function MiniMetrics({ assets = [], weights = [] }) {
           return;
         }
         const res = await portfolioCalculator(assets, weights);
-        const s = res?.seriesWithYield?.length ? res.seriesWithYield : res?.series || [];
+        const s = res?.seriesWithYield?.length
+          ? res.seriesWithYield
+          : res?.series || [];
         if (!s.length) {
           if (alive) {
             setEndVal(0);
@@ -162,51 +96,196 @@ function MiniMetrics({ assets = [], weights = [] }) {
   }, [assets, weights]);
 
   return (
-    <div className="grid grid-cols-2 gap-3 mt-2">
+    <div className="grid grid-cols-1 gap-1.5 text-right text-sm sm:text-base md:text-xl">
       <div>
-        <div className="text-sm text-[var(--muted)]">End value ($)</div>
-        <div className="text-[24px] font-extrabold tracking-[0.2px]">{endVal.toFixed(2)}</div>
+        <div className="text-xs sm:text-sm md:text-base text-[var(--muted)]">
+          End value ($, with yield)
+        </div>
+        <div className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-[0.2px]">
+          {endVal.toFixed(2)}
+        </div>
       </div>
       <div>
-        <div className="text-sm text-[var(--muted)]">Total return %</div>
-        <div className="text-[24px] font-extrabold tracking-[0.2px]">{retPct.toFixed(2)}</div>
+        <div className="text-xs sm:text-sm md:text-base text-[var(--muted)]">
+          Total return % (with yield)
+        </div>
+        <div className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-[0.2px]">
+          {retPct.toFixed(2)}
+        </div>
       </div>
     </div>
   );
 }
 
-function PortfolioCard({ p, meta }) {
-  const comp = useMemo(() => compositionSpans(p.assets, p.weights, meta), [p.assets, p.weights, meta]);
+/* --- TOP 3 CARD (for ALL tab only) --- */
+function PortfolioCard({ p, meta, rank, onVote }) {
+  const router = useRouter();
+  const comp = useMemo(
+    () => compositionSpans(p.assets, p.weights, meta),
+    [p.assets, p.weights, meta]
+  );
+
+  function openDetails() {
+    router.push(`/useretfs/${p.id}`);
+  }
+
+  function handleVoteClick(e) {
+    e.stopPropagation();
+    onVote();
+  }
 
   return (
-    <div className="border border-[var(--border)] rounded-lg p-4 bg-white">
-      <div className="flex items-center gap-3">
-        <div className="min-w-0">
-          <div className="font-bold truncate">{p.nickname || "Untitled portfolio"}</div>
-          {p.comment && (
-            <div className="text-[var(--muted)] mt-0.5 text-xs truncate">{p.comment}</div>
-          )}
-          <div className="text-[var(--muted)] text-xs flex gap-1.5 mt-1.5">
-            <span>{p._count?.votes ?? 0} votes</span>
+    <div
+      onClick={openDetails}
+      className="border border-[var(--border)] bg-white p-3 sm:p-5 md:p-6 flex flex-col h-full shadow-md cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-xl hover:bg-[var(--bg-soft,#fafafa)]"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-extrabold text-black">
+            #{rank}
+          </div>
+          <div className="flex flex-col min-w-0 leading-tight">
+            <div className="font-extrabold truncate text-base sm:text-xl md:text-3xl">
+              {p.nickname || "Untitled portfolio"}
+            </div>
+            <div className="text-[var(--muted)] text-[11px] sm:text-sm md:text-xl font-semibold">
+              {p._count?.votes ?? 0} votes
+            </div>
           </div>
         </div>
-        <Link
-          href={`/useretfs/${p.id}`}
-          className="ml-auto inline-block border border-[var(--border)] bg-white rounded-lg px-2.5 py-1.5 font-bold leading-none"
+
+        <button
+          type="button"
+          onClick={handleVoteClick}
+          className="shrink-0 border border-[var(--border)] bg-black text-white px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
         >
-          Open
-        </Link>
+          Vote
+        </button>
       </div>
 
-      {/* tiny yield-only chart */}
-      <MiniYieldChart assets={p.assets} weights={p.weights} />
+      {/* Chart from ChartBuilder */}
+      <div className="mt-4 h-[150px] sm:h-[200px]">
+        {sumPoints(p.weights) > 0 ? (
+          <ChartBuilder
+            assets={p.assets}
+            weights={p.weights}
+            showYield={true}
+            animated={true}
+            yieldOnly={false}
+            legendOff={false}
+          />
+        ) : (
+          <div className="text-xl md:text-2xl text-[var(--muted)]">
+            No data
+          </div>
+        )}
+      </div>
 
-      {/* compact metrics */}
-      <MiniMetrics assets={p.assets} weights={p.weights} />
+      {/* Metrics from MetricsBuilder */}
+      <div className="mt-3 h-[130px] sm:h-[190px]">
+        <MetricsBuilder assets={p.assets} weights={p.weights} showYield={true} />
+      </div>
 
-      {/* colored composition summary */}
-      <div className="text-sm text-[var(--muted)] mt-2">
-        Composition: {comp}
+      {/* composition */}
+      <div className="mt-4">
+        <div className="text-xs sm:text-sm md:text-base uppercase tracking-wide text-[var(--muted)] mb-2 font-semibold">
+          Composition
+        </div>
+        <div className="text-base sm:text-lg md:text-2xl leading-snug max-w-full">
+          {comp}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --- ROW CARD FOR THE REST (used in ALL + MINE) --- */
+function PortfolioRowCard({ p, meta, rank, onVote }) {
+  const router = useRouter();
+  const comp = useMemo(
+    () => compositionSpans(p.assets, p.weights, meta),
+    [p.assets, p.weights, meta]
+  );
+
+  function openDetails() {
+    router.push(`/useretfs/${p.id}`);
+  }
+
+  function handleVoteClick(e) {
+    e.stopPropagation();
+    onVote();
+  }
+
+  return (
+    <div
+      onClick={openDetails}
+      className="border border-[var(--border)] px-3 py-3 sm:px-4 sm:py-4 bg-white flex flex-col gap-3 sm:gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft,#fafafa)]"
+    >
+      {/* Rank bubble uses GLOBAL rank */}
+      {typeof rank === "number" && (
+        <div className="flex items-center">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center text-2xl sm:text-3xl md:text-4xl font-extrabold text-[var(--muted)]">
+            #{rank}
+          </div>
+        </div>
+      )}
+
+      {/* Content: name + compact chart/metrics */}
+      <div className="flex-1 min-w-0 flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-bold truncate text-base sm:text-xl md:text-2xl">
+            {p.nickname || "Untitled portfolio"}
+          </div>
+          <span className="text-xs sm:text-base md:text-lg text-[var(--muted)] font-semibold">
+            {p._count?.votes ?? 0} votes
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="w-[55%] min-w-[150px]">
+            <div className="w-full h-[90px] sm:h-[120px]">
+              {sumPoints(p.weights) > 0 ? (
+                <ChartBuilder
+                  assets={p.assets}
+                  weights={p.weights}
+                  showYield={true}
+                  animated={false}
+                  yieldOnly={true}
+                  legendOff={true}
+                />
+              ) : (
+                <div className="text-sm sm:text-base text-[var(--muted)]">
+                  No data
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-[120px] flex justify-end">
+            <div className="w-full sm:w-auto scale-[0.75] sm:scale-90 origin-top-right">
+              <MiniMetrics assets={p.assets} weights={p.weights} />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-1">
+          <span className="text-xs sm:text-sm uppercase tracking-wide text-[var(--muted)] font-semibold block mb-1">
+            Composition
+          </span>
+          <div className="text-[10px] sm:text-xs md:text-xl text-[var(--fg)] max-w-full">
+            {comp}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end w-full lg:w-auto">
+        <button
+          type="button"
+          onClick={handleVoteClick}
+          className="border border-[var(--border)] bg-black text-white px-2.5 py-1.5 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111] w-full lg:w-auto"
+        >
+          Vote
+        </button>
       </div>
     </div>
   );
@@ -215,6 +294,8 @@ function PortfolioCard({ p, meta }) {
 export default function UserETFsPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id || null;
+  const userEmail = session?.user?.email || null;
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [all, setAll] = useState([]);
@@ -263,21 +344,83 @@ export default function UserETFsPage() {
     };
   }, [userId]);
 
-  const list = tab === "mine" ? mine : all;
+  // GLOBAL ranking based on ALL portfolios
+  const sortedAll = [...all].sort(
+    (a, b) => (b?._count?.votes || 0) - (a?._count?.votes || 0)
+  );
+  const globalRankById = new Map(
+    sortedAll.map((p, idx) => [p.id, idx + 1]) // 1-based global rank
+  );
+  const top3All = sortedAll.slice(0, 3);
+  const othersAll = sortedAll.slice(3);
+
+  // MINE tab: keep global ranking, just filter to my portfolios
+  const sortedMineByGlobal = [...mine].sort((a, b) => {
+    const ra = globalRankById.get(a.id) || Infinity;
+    const rb = globalRankById.get(b.id) || Infinity;
+    return ra - rb;
+  });
+
+  async function handleVote(portfolioId) {
+    if (!userId && !userEmail) {
+      router.push("?auth=1", { scroll: false });
+      return;
+    }
+
+    try {
+      const r = await fetch(`/api/portfolios/${portfolioId}/vote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userId || null,
+          userEmail: userEmail || null,
+        }),
+      });
+
+      const j = await r.json().catch(() => ({}));
+
+      if (r.ok && j?.portfolio) {
+        const updated = j.portfolio;
+        setAll((prev) =>
+          Array.isArray(prev)
+            ? prev.map((p) => (p.id === portfolioId ? updated : p))
+            : prev
+        );
+        setMine((prev) =>
+          Array.isArray(prev)
+            ? prev.map((p) => (p.id === portfolioId ? updated : p))
+            : prev
+        );
+      } else {
+        alert(
+          j?.error === "already_voted"
+            ? "You have already voted for this portfolio."
+            : "Could not vote."
+        );
+      }
+    } catch {
+      alert("Could not vote.");
+    }
+  }
 
   return (
     <div className="min-h-full flex flex-col">
       <Header />
 
       <main className="flex flex-col">
-        <div className="mx-auto w-[80%] flex flex-col">
-          <h2>User ETFs</h2>
+        <div className="mx-auto w-full max-w-6xl px-3 sm:px-5 md:px-8 flex flex-col pb-10 text-sm sm:text-lg md:text-2xl">
+          <h2 className="mt-6 sm:mt-8 text-3xl sm:text-4xl md:text-5xl font-extrabold">
+            Leaderboard
+          </h2>
+          <p className="mt-2 text-sm sm:text-lg md:text-2xl text-[var(--muted)]">
+            Collect votes for future rewards.
+          </p>
 
           {/* Tabs */}
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-3 flex-wrap mt-6">
             <button
               className={[
-                "border border-[var(--border)] bg-white rounded-lg px-2.5 py-1.5 font-bold leading-none",
+                "border border-[var(--border)] bg-white px-4 sm:px-5 py-2.5 sm:py-3 font-bold leading-none text-lg sm:text-xl md:text-2xl",
                 tab === "all" ? "opacity-100" : "opacity-60",
               ].join(" ")}
               onClick={() => setTab("all")}
@@ -286,7 +429,7 @@ export default function UserETFsPage() {
             </button>
             <button
               className={[
-                "border border-[var(--border)] bg-white rounded-lg px-2.5 py-1.5 font-bold leading-none",
+                "border border-[var(--border)] bg-white px-4 sm:px-5 py-2.5 sm:py-3 font-bold leading-none text-lg sm:text-xl md:text-2xl",
                 tab === "mine" ? "opacity-100" : "opacity-60",
                 !userId ? "cursor-not-allowed opacity-50" : "",
               ].join(" ")}
@@ -298,21 +441,103 @@ export default function UserETFsPage() {
             </button>
           </div>
 
-          {err && <div className="text-sm text-[var(--neg)] mt-8">{err}</div>}
-          {loading && <div className="text-sm text-[var(--muted)] mt-8">Loading…</div>}
+          {err && (
+            <div className="text-xl md:text-2xl text-[var(--neg)] mt-10">
+              {err}
+            </div>
+          )}
+          {loading && (
+            <div className="text-xl md:text-2xl text-[var(--muted)] mt-10">
+              Loading…
+            </div>
+          )}
 
-          {!loading && (
+          {!loading && !err && (
             <>
+              {/* MINE: empty state */}
               {tab === "mine" && userId && mine.length === 0 && (
-                <div className="text-sm text-[var(--muted)] mt-8">
+                <div className="text-xl md:text-2xl text-[var(--muted)] mt-10">
                   You haven’t saved any portfolios yet.
                 </div>
               )}
-              <div className="grid gap-3 mt-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
-                {list.map((p) => (
-                  <PortfolioCard key={p.id} p={p} meta={meta} />
-                ))}
-              </div>
+
+              {/* ALL: empty state */}
+              {tab === "all" && sortedAll.length === 0 && (
+                <div className="text-xl md:text-2xl text-[var(--muted)] mt-10">
+                  No user portfolios yet.
+                </div>
+              )}
+
+              {/* ALL TAB CONTENT */}
+              {tab === "all" && sortedAll.length > 0 && (
+                <>
+                  {/* TOP 3 BIG CARDS (use global ranks) */}
+                  <section className="mt-10">
+                    <div className="mt-5 grid gap-6 md:grid-cols-3">
+                      {top3All.map((p) => (
+                        <PortfolioCard
+                          key={p.id}
+                          p={p}
+                          meta={meta}
+                          rank={globalRankById.get(p.id)}
+                          onVote={() => handleVote(p.id)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* blue separator */}
+                  {othersAll.length > 0 && (
+                    <div className="mt-10 mb-6 h-2 w-full bg-blue-600" />
+                  )}
+
+                  {/* full-width black discover button BELOW separator */}
+                  {othersAll.length > 0 && (
+                    <div className="mb-8">
+                      <Link
+                        href="/ETFs"
+                        className="w-full inline-flex items-center justify-center px-6 py-3 border border-black bg-black text-white text-lg md:text-2xl font-semibold transition-transform duration-150 hover:-translate-y-1 hover:bg-white hover:text-black hover:shadow-md"
+                      >
+                        discover STILLETFs and interact on testnet for additional rewards
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* REST AS WIDE SLIM ROWS (still global ranks) */}
+                  {othersAll.length > 0 && (
+                    <section>
+                      <div className="flex flex-col gap-5 w-full">
+                        {othersAll.map((p) => (
+                          <PortfolioRowCard
+                            key={p.id}
+                            p={p}
+                            meta={meta}
+                            rank={globalRankById.get(p.id)}
+                            onVote={() => handleVote(p.id)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
+
+              {/* MINE TAB CONTENT – no top 3, just rows with GLOBAL ranks */}
+              {tab === "mine" && mine.length > 0 && (
+                <section className="mt-10">
+                  <div className="flex flex-col gap-5 w-full">
+                    {sortedMineByGlobal.map((p) => (
+                      <PortfolioRowCard
+                        key={p.id}
+                        p={p}
+                        meta={meta}
+                        rank={globalRankById.get(p.id)}
+                        onVote={() => handleVote(p.id)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
             </>
           )}
         </div>
@@ -322,3 +547,6 @@ export default function UserETFsPage() {
     </div>
   );
 }
+
+
+

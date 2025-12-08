@@ -44,6 +44,9 @@ model Portfolio {
 
   votes      Vote[]   // relation to votes
 
+  ogImage       Bytes?   // raw image bytes (Postgres: bytea)
+  ogImageMime   String?  // e.g. "image/png"
+
   // convenient index for filtering by user
   @@index([userId])
 }

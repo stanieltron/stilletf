@@ -34,6 +34,24 @@ export default function SignInModal() {
 
   useEffect(() => setOpen(wantsOpen), [wantsOpen]);
 
+  // Disable background scroll when the modal is open (supports multiple modals via a ref counter)
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const body = document.body;
+    const current = parseInt(body.dataset.modalLocks || "0", 10) || 0;
+    const next = open ? current + 1 : Math.max(0, current - 1);
+    body.dataset.modalLocks = String(next);
+    body.style.overflow = next > 0 ? "hidden" : "";
+
+    return () => {
+      if (!open) return;
+      const cur = parseInt(body.dataset.modalLocks || "0", 10) || 0;
+      const n = Math.max(0, cur - 1);
+      body.dataset.modalLocks = String(n);
+      body.style.overflow = n > 0 ? "hidden" : "";
+    };
+  }, [open]);
+
   useEffect(() => {
     if (needsSignup) {
       const seedSource =
@@ -77,7 +95,7 @@ export default function SignInModal() {
 
   function startOAuth(provider) {
     const base = typeof window !== "undefined" ? window.location.pathname : "/";
-    const callbackUrl = `${base}?auth=1&skipIntro=1#builder`;
+    const callbackUrl = `${base}?auth=1#builder`;
     signIn(provider, { callbackUrl });
   }
 

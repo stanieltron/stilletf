@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
+  <rect width="120" height="40" fill="black"/>
+  <circle cx="20" cy="20" r="14" fill="none" stroke="white" stroke-width="2"/>
+  <text x="20" y="24" text-anchor="middle" fill="white" font-size="14" font-family="system-ui">Ξ</text>
+  <text x="46" y="24" fill="white" font-size="12" font-family="system-ui">Ethereum</text>
+</svg>
