@@ -40,11 +40,27 @@ export default function ShareModalSignedIn({
   if (!open) return null;
 
   const baseShareText =
-    "I built this ETF-style crypto portfolio on STILL ΓÇô can you beat it?";
+    "I built this ETF-style crypto portfolio on Sona — can you beat it?";
 
   const fullShareText = shareUrl
     ? `${baseShareText}\n\n${shareUrl}`
     : baseShareText;
+
+  const shareHost = (() => {
+    try {
+      return shareUrl
+        ? new URL(shareUrl).hostname.replace(/^www\\./, "")
+        : "sonaetf.com";
+    } catch {
+      return "sonaetf.com";
+    }
+  })();
+
+  const qrLink =
+    shareUrl || process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+    qrLink
+  )}`;
 
   const handleCaptureChartReady = () => {
     setChartReady(true);
@@ -120,7 +136,7 @@ export default function ShareModalSignedIn({
       setShareUrl(url);
       setSaved(true);
 
-      // ≡ƒöÑ Generate the REAL OG image (logo + QR + chart + metrics)
+      // =ƒöÑ Generate the REAL OG image (logo + QR + chart + metrics)
       generateOgImageForPortfolio(portfolio.id).catch((err) => {
         console.error("[OG] failed to generate real OG image", err);
       });
@@ -166,7 +182,7 @@ export default function ShareModalSignedIn({
     const url = `https://www.reddit.com/submit?url=${encodeURIComponent(
       shareUrl
     )}&title=${encodeURIComponent(
-      "My ETF-style crypto portfolio on STILL"
+      "My ETF-style crypto portfolio on Sona"
     )}`;
     openShareWindow(url);
   }
@@ -219,7 +235,7 @@ export default function ShareModalSignedIn({
                   disabled={saving}
                   className="cta-btn cta-btn-sm cta-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? "SavingΓÇª" : "Save portfolio"}
+                  {saving ? "SavingGÇª" : "Save portfolio"}
                 </button>
               </div>
             )}
@@ -282,7 +298,7 @@ export default function ShareModalSignedIn({
 
                 {generatingOg && (
                   <p className="text-xs text-[var(--muted)]">
-                    Generating share image in the backgroundΓÇª
+                    Generating share image in the backgroundGÇª
                   </p>
                 )}
               </div>
@@ -350,7 +366,7 @@ export default function ShareModalSignedIn({
           </div>
         </div>
 
-        {/* ≡ƒöÆ HIDDEN LIVE CARD ΓÇô SAME layout as ShareModal.js, used ONLY for OG capture */}
+        {/* =ƒöÆ HIDDEN LIVE CARD GÇô SAME layout as ShareModal.js, used ONLY for OG capture */}
         {open && (
           <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
             <div
@@ -369,18 +385,18 @@ export default function ShareModalSignedIn({
                   <div className="flex items-center justify-center">
                     <img
                       src="/logos/stilllogo.png"
-                      alt="stillwater logo"
+                      alt="Sona logo"
                       className="w-[220px] h-[220px] object-contain"
                     />
                   </div>
                   <div className="flex flex-col items-center">
                     <img
-                      src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fstilletf.com"
-                      alt="stilletf.com QR"
+                      src={qrSrc}
+                      alt={`${shareHost} share QR`}
                       className="w-[220px] h-[220px]"
                     />
                     <span className="mt-2 text-[11px] text-slate-500">
-                      stilletf.com
+                      {shareHost}
                     </span>
                   </div>
                 </div>
@@ -405,7 +421,7 @@ export default function ShareModalSignedIn({
 
                   <p className="mt-10 mb-6 text-center text-[22px] font-semibold leading-snug text-black">
                     I created this portfolio on{" "}
-                    <span className="font-bold">stilletf.com</span> ΓÇö can you
+                    <span className="font-bold">Sona</span> &mdash; can you
                     do better?
                   </p>
 
@@ -426,6 +442,7 @@ export default function ShareModalSignedIn({
     </section>
   );
 }
+
 
 
 

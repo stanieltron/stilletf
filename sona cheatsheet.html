@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Sona — Premium Minimalist Design Cheatsheet</title>
+<style>
+  :root {
+    /* --------- SONA PALETTE --------- */
+    --sona-gold: #caa34a;      /* Primary gold */
+    --sona-gold-soft: #e3c674; /* Soft gold / hover */
+    --sona-ink: #111318;       /* Primary text / background */
+    --sona-ink-soft: #2a2e38;  /* Cards, panels */
+    --sona-ivory: #f7f3eb;     /* Page background */
+    --sona-silver: #c5ccd8;    /* Neutral gray */
+    --sona-line: #dde1eb;      /* Subtle borders */
+    --white: #ffffff;
+
+    /* --------- TYPE SCALE --------- */
+    --fs-h1: 42px;
+    --fs-h2: 26px;
+    --fs-h3: 18px;
+    --fs-body: 16px;
+    --fs-small: 13px;
+
+    /* --------- SPACING --------- */
+    --space-1: 6px;
+    --space-2: 12px;
+    --space-3: 20px;
+    --space-4: 32px;
+    --space-5: 48px;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --shadow-soft: 0 14px 40px rgba(0,0,0,0.12);
+    --shadow-subtle: 0 8px 20px rgba(0,0,0,0.08);
+    --border-thin: 1px solid rgba(255,255,255,0.08);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                 Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(circle at top left, #fdf7ea 0, var(--sona-ivory) 50%, #f2f0ec 100%);
+    color: var(--sona-ink);
+  }
+
+  .screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--space-4);
+  }
+
+  .stage {
+    width: 100%;
+    max-width: 1240px;
+    display: grid;
+    grid-template-columns: 1.7fr 1fr;
+    gap: var(--space-4);
+  }
+
+  @media (max-width: 1000px) {
+    .stage {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* --------- HERO / HEADER --------- */
+  .hero-header {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    margin-bottom: var(--space-3);
+  }
+
+  .sona-logo-mark {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--sona-ink-soft), var(--sona-ink));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .sona-logo-mark svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .sona-wordmark {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .sona-wordmark-title {
+    font-size: var(--fs-h1);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-weight: 640;
+  }
+
+  .sona-wordmark-sub {
+    font-size: var(--fs-small);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #6a6f7c;
+  }
+
+  .hero-lead {
+    margin-top: var(--space-2);
+    max-width: 560px;
+    font-size: var(--fs-body);
+    line-height: 1.7;
+    color: #494d59;
+  }
+
+  /* --------- LEFT COLUMN CONTENT --------- */
+  .column-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .panel-main {
+    background: rgba(255,255,255,0.96);
+    border-radius: 20px;
+    padding: var(--space-3);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .panel-main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-3);
+  }
+
+  .chip {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(202,163,74,0.09);
+    color: #6d5a2e;
+    border: 1px solid rgba(202,163,74,0.35);
+  }
+
+  /* --------- PALETTE --------- */
+  .palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .swatch {
+    width: 110px;
+    padding: 10px;
+    border-radius: 14px;
+    background: var(--sona-ink-soft);
+    box-shadow: var(--shadow-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .swatch-color {
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+
+  .swatch-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #a1a7b5;
+    letter-spacing: 0.12em;
+  }
+
+  .swatch-name {
+    font-size: 12px;
+    color: #f3f4f8;
+  }
+
+  .swatch-hex {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 11px;
+    color: #d0d4e0;
+  }
+
+  /* --------- TYPOGRAPHY --------- */
+  .type-section {
+    margin-top: var(--space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 900px) {
+    .type-section {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .type-samples {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .type-h1 {
+    font-size: var(--fs-h2);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .type-h2 {
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  .type-h3 {
+    font-size: var(--fs-h3);
+    font-weight: 500;
+  }
+
+  .type-body {
+    font-size: var(--fs-body);
+    color: #555a66;
+    line-height: 1.7;
+  }
+
+  .type-small {
+    font-size: var(--fs-small);
+    color: #7c8190;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .type-meta {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #9aa1b0;
+  }
+
+  /* --------- BUTTONS --------- */
+  .buttons-block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn {
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 550;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+    box-shadow: 0 10px 26px rgba(0,0,0,0.12);
+  }
+
+  .btn-primary {
+    background: var(--sona-gold);
+    color: var(--sona-ink);
+  }
+
+  .btn-primary:hover {
+    background: var(--sona-gold-soft);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.16);
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.9);
+    color: #3b4150;
+    border: 1px solid rgba(17,19,24,0.15);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+  }
+
+  .btn-ghost:hover {
+    background: #ffffff;
+    transform: translateY(-1px);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: #3b4150;
+    border: 1px solid rgba(17,19,24,0.25);
+    box-shadow: none;
+  }
+
+  .btn-outline:hover {
+    background: rgba(255,255,255,0.06);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.09);
+  }
+
+  .btn-quiet {
+    background: transparent;
+    color: #7c8190;
+    border-radius: 6px;
+    padding-inline: 8px;
+    box-shadow: none;
+  }
+
+  .btn-quiet:hover {
+    background: rgba(0,0,0,0.04);
+  }
+
+  /* --------- COMPONENT CARDS --------- */
+  .components {
+    margin-top: var(--space-3);
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 900px) {
+    .components {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .component-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .card {
+    border-radius: 18px;
+    background: rgba(255,255,255,0.98);
+    padding: var(--space-3);
+    box-shadow: var(--shadow-subtle);
+    border: 1px solid rgba(17,19,24,0.03);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 3px;
+    background: linear-gradient(90deg, rgba(202,163,74,0.2), rgba(202,163,74,1), rgba(202,163,74,0.2));
+    opacity: 0;
+    transition: opacity 0.16s ease;
+  }
+
+  .card:hover::before {
+    opacity: 1;
+  }
+
+  .card-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: #a3a9b8;
+  }
+
+  .card-title {
+    font-size: 17px;
+    font-weight: 550;
+    color: var(--sona-ink);
+  }
+
+  .card-body {
+    font-size: 14px;
+    color: #656b7a;
+    line-height: 1.6;
+  }
+
+  .metric-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .metric-value {
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--sona-gold);
+  }
+
+  .metric-tag {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: #8c92a2;
+  }
+
+  .pill {
+    align-self: flex-start;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    background: rgba(17,19,24,0.04);
+    color: #727887;
+  }
+
+  .pill-gold {
+    background: rgba(202,163,74,0.16);
+    color: #755c21;
+  }
+
+  /* --------- RIGHT SIDEBAR --------- */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .sidebar-section {
+    background: rgba(17,19,24,0.94);
+    border-radius: 18px;
+    padding: var(--space-3);
+    color: #f3f4f8;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .sidebar-header {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: rgba(255,255,255,0.54);
+    margin-bottom: 6px;
+  }
+
+  .sidebar-title {
+    font-size: 15px;
+    font-weight: 560;
+    margin-bottom: 6px;
+  }
+
+  .sidebar-body {
+    font-size: 13px;
+    line-height: 1.7;
+    color: rgba(255,255,255,0.78);
+  }
+
+  .sidebar-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.78);
+  }
+
+  .sidebar-list li + li {
+    margin-top: 4px;
+  }
+
+  .token-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .token {
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.04);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.7);
+  }
+
+  /* --------- SPACING SCALE VISUAL --------- */
+  .spacing-scale {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .spacing-bar {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(202,163,74,0.7);
+  }
+
+  .spacing-label {
+    font-size: 11px;
+    color: rgba(255,255,255,0.76);
+  }
+</style>
+</head>
+<body>
+<div class="screen">
+  <div class="stage">
+
+    <!-- LEFT COLUMN -->
+    <div class="column-main">
+      <header class="hero-header">
+        <div class="sona-logo-mark">
+          <!-- Simple geometric S logo -->
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <path fill="none" stroke="var(--sona-gold)" stroke-width="5" stroke-linejoin="round" d="
+              M18 18h24v11H27v7h15v11H18v-11h15v-7H18z" />
+          </svg>
+        </div>
+        <div class="sona-wordmark">
+          <div class="sona-wordmark-title" style="color: var(--sona-ink);">Sona</div>
+          <div class="sona-wordmark-sub">Gold-Native Financial Infrastructure</div>
+        </div>
+      </header>
+
+      <p class="hero-lead">
+        Sona is a serious IT &amp; financial web product anchored in trust, clarity and gold-backed value.
+        This cheatsheet collects the core visual language: palette, typography, components and motion
+        that keep Sona interfaces calm, precise and premium.
+      </p>
+
+      <section class="panel-main">
+        <div class="panel-main-header">
+          <div>
+            <div class="chip">Design tokens</div>
+            <h2 style="margin: 10px 0 4px; font-size: var(--fs-h2); font-weight: 560;">
+              Color &amp; surface system
+            </h2>
+            <div style="font-size: 13px; color:#7c8190;">
+              Gold is always the hero. Ink grounds data, ivory keeps screens breathable.
+            </div>
+          </div>
+          <div style="text-align:right; font-size:12px; color:#a0a6b6;">
+            Version 1.0<br/>For web apps &amp; dashboards
+          </div>
+        </div>
+
+        <!-- PALETTE -->
+        <div class="palette">
+          <div class="swatch">
+            <div class="swatch-color" style="background:var(--sona-gold);"></div>
+            <div class="swatch-meta">Primary</div>
+            <div class="swatch-name">Sona Gold</div>
+            <div class="swatch-hex">#CAA34A</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:var(--sona-ink);"></div>
+            <div class="swatch-meta">Background</div>
+            <div class="swatch-name">Core Ink</div>
+            <div class="swatch-hex">#111318</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:var(--sona-ivory); border:1px solid rgba(0,0,0,0.06);"></div>
+            <div class="swatch-meta">Surface</div>
+            <div class="swatch-name">Ivory</div>
+            <div class="swatch-hex">#F7F3EB</div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:var(--sona-silver);"></div>
+            <div class="swatch-meta">Neutral</div>
+            <div class="swatch-name">Ledger Grey</div>
+            <div class="swatch-hex">#C5CCD8</div>
+          </div>
+        </div>
+
+        <!-- TYPOGRAPHY + BUTTONS -->
+        <div class="type-section">
+          <div>
+            <div class="type-meta">Typography</div>
+            <div class="type-samples">
+              <div class="type-h1">H1 / 42px — Page title</div>
+              <div class="type-h2">H2 / 26px — Section heading</div>
+              <div class="type-h3">H3 / 18px — Card title</div>
+              <div class="type-body">
+                Body / 16px — Used for narrative copy, product explanation and transactional summaries.
+                Line-height stays between 1.6–1.8 for long-form reading.
+              </div>
+              <div class="type-small">
+                Small / 13px — Labels, pill text, meta-data and compact UI elements.
+              </div>
+            </div>
+          </div>
+
+          <div class="buttons-block">
+            <div class="type-meta">Buttons</div>
+            <div class="button-row">
+              <button class="btn btn-primary">Primary action</button>
+              <button class="btn btn-ghost">Secondary</button>
+              <button class="btn btn-outline">Tertiary</button>
+            </div>
+            <div class="button-row">
+              <button class="btn btn-quiet">View ledger</button>
+              <button class="btn btn-quiet">Export</button>
+            </div>
+            <div style="font-size:12px;color:#8a90a0;margin-top:4px;">
+              Primary buttons are limited to one per view. Never pair two gold fills on the same row.
+            </div>
+          </div>
+        </div>
+
+        <!-- COMPONENTS -->
+        <section class="components">
+          <div class="component-group">
+            <div class="type-meta">Cards</div>
+            <article class="card">
+              <div class="card-label">Account overview</div>
+              <div class="card-title">Consolidated gold balance</div>
+              <div class="card-body">
+                High-level view for portfolio dashboards. Use a single emphasized metric
+                and keep secondary copy short and factual.
+              </div>
+              <div class="metric-row">
+                <div class="metric-value">+12.4%</div>
+                <div class="metric-tag">12M performance</div>
+              </div>
+              <div class="pill pill-gold">Real assets linked</div>
+            </article>
+
+            <article class="card">
+              <div class="card-label">List row</div>
+              <div class="card-title">Single transaction line</div>
+              <div class="card-body">
+                Use muted text, no dividers between every row, and a soft gold accent
+                only when an item is new or requires user action.
+              </div>
+              <div class="pill">New settlement</div>
+            </article>
+          </div>
+
+          <div class="component-group">
+            <div class="type-meta">States</div>
+            <article class="card">
+              <div class="card-label">Success state</div>
+              <div class="card-title">Transfer confirmed</div>
+              <div class="card-body">
+                Gold bar at top, concise message, and a single primary button.
+                Avoid emoji and decorative icons: Sona stays factual and calm.
+              </div>
+              <div class="button-row" style="margin-top:8px;">
+                <button class="btn btn-primary">View receipt</button>
+                <button class="btn btn-ghost">Back to accounts</button>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar">
+      <section class="sidebar-section">
+        <div class="sidebar-header">Principles</div>
+        <div class="sidebar-title">Gold as a behavior, not decoration</div>
+        <div class="sidebar-body">
+          Sona uses gold sparingly to mark commitments, ownership and confirmed value.
+          It never appears on destructive or uncertain actions.
+          Dark ink surfaces are reserved for data-heavy contexts like ledgers and order books.
+        </div>
+        <ul class="sidebar-list">
+          <li>Max one gold primary action per view.</li>
+          <li>Never place gold on error or warning states.</li>
+          <li>Pair gold with spacious ivory backgrounds for primary screens.</li>
+        </ul>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="sidebar-header">Type & rhythm</div>
+        <div class="sidebar-title">Spacing scale</div>
+        <div class="sidebar-body">
+          Base unit is <strong>4px</strong>, exposed as 6 / 12 / 20 / 32 / 48 tokens. Use larger steps for vertical
+          rhythm and keep line-length between 60–80 characters.
+        </div>
+        <div class="spacing-scale">
+          <div class="spacing-bar" style="width:24px;"></div>
+          <div class="spacing-bar" style="width:40px; opacity:0.7;"></div>
+          <div class="spacing-bar" style="width:64px; opacity:0.5;"></div>
+        </div>
+        <div class="token-row">
+          <div class="token">S1 · 6px</div>
+          <div class="token">S2 · 12px</div>
+          <div class="token">S3 · 20px</div>
+          <div class="token">S4 · 32px</div>
+          <div class="token">S5 · 48px</div>
+        </div>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="sidebar-header">Components</div>
+        <div class="sidebar-title">Interaction & motion</div>
+        <div class="sidebar-body">
+          Motion exists only to confirm intent. Hover states lift slightly, clicks
+          settle quickly. Avoid playful easing curves.
+        </div>
+        <ul class="sidebar-list">
+          <li>Hover lift: 1–2px translateY, 120ms.</li>
+          <li>Pressed: drop shadow reduces, background darkens by ~4%.</li>
+          <li>Use subtle opacity fades for loading; no spinners where possible.</li>
+        </ul>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="sidebar-header">Usage</div>
+        <div class="sidebar-title">Where this cheatsheet applies</div>
+        <div class="sidebar-body">
+          This system applies to Sona dashboards, onboarding flows, settings,
+          KYC/AML forms and transaction journeys. Marketing pages may expand the
+          palette but must keep the same core gold &amp; ink relationship.
+        </div>
+      </section>
+    </aside>
+
+  </div>
+</div>
+</body>
+</html>

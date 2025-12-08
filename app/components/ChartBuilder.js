@@ -288,7 +288,7 @@ export default function ChartBuilder({
           name="ETF"
           dot={false}
           activeDot={{ r: 3 }}
-          stroke="var(--pos, #2563eb)"
+          stroke="var(--text)"
           strokeWidth={5}
           strokeLinecap="round"
           isAnimationActive={animated}
@@ -303,7 +303,7 @@ export default function ChartBuilder({
           name="ETF (with yield)"
           dot={false}
           activeDot={{ r: 3 }}
-          stroke="var(--accent, #1d4ed8)"
+          stroke="var(--accent)"
           strokeWidth={5}
           strokeLinecap="round"
           strokeOpacity={0.98}

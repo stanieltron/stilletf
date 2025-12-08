@@ -1,4 +1,4 @@
-// app/useretfs/[id]/page.js
+﻿// app/useretfs/[id]/page.js
 import PortfolioDetailClient from "./ClientPortfolioDetail";
 import { Metadata } from "next";
 
@@ -6,11 +6,11 @@ export async function generateMetadata({ params }) {
   const id = params.id;
 
   const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || "https://stilletf.com";
+    process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
 
-  let title = "Still ETF portfolio";
+  let title = "Sona ETF portfolio";
   let description =
-    "User-created ETF-style crypto portfolio on STILL with custom composition and on-chain metrics.";
+    "User-created ETF-style crypto portfolio on Sona with custom composition and on-chain metrics.";
 
   try {
     const res = await fetch(`${baseUrl}/api/portfolios/${id}`, {
@@ -59,15 +59,15 @@ export async function generateMetadata({ params }) {
       "crypto ETF",
       "onchain ETF",
       "DeFi portfolio",
-      "STILL",
-      "stilletf",
+      "Sona",
+      "sonaetf",
       "user portfolio",
       "crypto index",
     ],
 
     openGraph: {
       type: "website",
-      siteName: "STILL ETF",
+      siteName: "Sona ETF",
       title,
       description,
       url: canonicalPath,
@@ -76,7 +76,7 @@ export async function generateMetadata({ params }) {
           url: ogImagePath,
           width: 1200,
           height: 675,
-          alt: `${title} – STILL ETF portfolio`,
+                    alt: `${title} – Sona ETF portfolio`,
         },
       ],
     },
@@ -86,12 +86,12 @@ export async function generateMetadata({ params }) {
       title,
       description,
       // set these if/when you have the actual handle
-      site: "@stilletf",
-      creator: "@stilletf",
+      site: "@sonaetf",
+      creator: "@sonaetf",
       images: [
         {
           url: ogImagePath,
-          alt: `${title} – STILL ETF portfolio`,
+                    alt: `${title} – Sona ETF portfolio`,
         },
       ],
     },
@@ -101,3 +101,5 @@ export async function generateMetadata({ params }) {
 export default function Page({ params }) {
   return <PortfolioDetailClient id={params.id} />;
 }
+
+

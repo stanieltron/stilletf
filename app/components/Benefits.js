@@ -5,7 +5,7 @@ export default function Benefits() {
     <section className="section">
       <div className="container-main">
         <h2 className="heading-2">
-          Why people choose Tokenized Wealth
+          Why people choose Sona
         </h2>
 
         <div className="grid [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))] gap-8">

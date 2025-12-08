@@ -2,27 +2,26 @@ import { NextResponse } from "next/server";
 
 // Colors split out by asset id (no TS types)
 const COLORS = {
-  asset1:  "#ff6b00", // vivid orange
-  asset2:  "#ff1744", // bright red-pink
-  asset3:  "#ffb300", // strong amber
-  asset4:  "#ff4081", // hot pink
-  asset5:  "#d500f9", // electric magenta
-  asset6:  "#c51162", // deep crimson pink
-  asset7:  "#f50057", // neon pink-red
-  asset8:  "#e040fb", // vivid purple-magenta
-  asset9:  "#ab47bc", // amethyst purple
-  asset10: "#8e24aa", // deep purple
-  asset11: "#ff7043", // vivid orange-salmon
-  asset12: "#ffca28", // bright golden yellow
-  asset13: "#ff5252", // coral red
-  asset14: "#ff8f00", // strong dark amber
-  asset15: "#ffc400", // bright gold
-  asset16: "#ffea00", // neon lemon
-  asset17: "#b71c1c", // deep red
-  asset18: "#4a148c", // rich violet
-  asset19: "#ad1457", // dark raspberry
-  asset20: "#bf360c", // burnt orange
-
+  asset1:  "#ff0000", // bright red
+  asset2:  "#ff7f00", // orange
+  asset3:  "#00b3ffff", // pure yellow (not gold)
+  asset4:  "#00ff00", // lime green
+  asset5:  "#008000", // classic green
+  asset6:  "#00ffff", // cyan / aqua
+  asset7:  "#0000ff", // blue
+  asset8:  "#4b0082", // indigo
+  asset9:  "#8a2be2", // blue-violet
+  asset10: "#ff00ff", // magenta
+  asset11: "#ff1493", // deep pink
+  asset12: "#00ced1", // dark turquoise
+  asset13: "#40e0d0", // turquoise
+  asset14: "#ffa07a", // light salmon
+  asset15: "#8b4513", // brown
+  asset16: "#708090", // slate gray
+  asset17: "#ff69b4", // hot pink
+  asset18: "#7fff00", // chartreuse
+  asset19: "#ff4500", // orange-red
+  asset20: "#6a5acd", // slate blue
 };
 
 

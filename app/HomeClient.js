@@ -48,6 +48,9 @@ function cameFromSignupOrAuth() {
 export default function HomeClient() {
   const search = useSearchParams();
 
+  const sharedSectionInner =
+    "w-[95%] md:w-[80%] mx-auto flex flex-col gap-8 md:gap-10 py-12";
+
   // default to "fresh" – only later turn true if we detect a returning flow
   const [keepAssets, setKeepAssets] = useState(false);
 
@@ -189,7 +192,7 @@ export default function HomeClient() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-[var(--bg)]">
       {/* Fixed header */}
       <div
         ref={headerRef}
@@ -200,7 +203,7 @@ export default function HomeClient() {
 
       {/* Left-side section panel (responsive) */}
       <nav
-        className="hidden md:flex fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[9998] flex-col items-center gap-3 md:gap-4 bg-white/80 backdrop-blur-md rounded-md px-2 py-3 shadow-sm border-0"
+        className="hidden md:flex fixed left-3 md:left-6 top-1/2 -translate-y-1/2 z-[40] flex-col items-center gap-3 md:gap-4 px-2 py-3"
         aria-label="Page sections"
       >
         {/* UP ARROW */}
@@ -232,7 +235,7 @@ export default function HomeClient() {
                 onClick={() => scrollToSection(section.index)}
                 className={`text-base font-semibold tracking-[0.25em] uppercase text-left transition-colors ${
                   isActive
-                    ? "text-blue-600"
+                    ? "text-[var(--accent)]"
                     : "text-slate-400 hover:text-slate-100"
                 }`}
                 title={section.label}
@@ -267,13 +270,13 @@ export default function HomeClient() {
         {/* Section 0: Hero + Builder */}
         <section
           ref={(el) => setSectionRef(el, 0)}
-          className="flex w-full justify-center"
+          className="flex w-full justify-center bg-[var(--bg)]"
           style={{
             ...sectionStyleBase,
             paddingTop: `${headerH}px`,
           }}
         >
-          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className={sharedSectionInner}>
             <HeroSection />
             <BuilderSection keepAssets={keepAssets} />
           </div>
@@ -282,13 +285,10 @@ export default function HomeClient() {
         {/* Section 1: Mission */}
         <section
           ref={(el) => setSectionRef(el, 1)}
-          className="flex w-full justify-center"
-          style={{
-            ...sectionStyleBase,
-            background: "#ffffffff",
-          }}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={sectionStyleBase}
         >
-          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className={`${sharedSectionInner} gap-0 md:gap-0`}>
             <Carousel />
             <MissionStatement />
           </div>
@@ -297,13 +297,10 @@ export default function HomeClient() {
         {/* Section 2: Roadmap */}
         <section
           ref={(el) => setSectionRef(el, 2)}
-          className="flex w-full justify-center"
-          style={{
-            ...sectionStyleBase,
-            background: "#ffffffff",
-          }}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={sectionStyleBase}
         >
-          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className={sharedSectionInner}>
             <Roadmap />
           </div>
         </section>
@@ -311,13 +308,10 @@ export default function HomeClient() {
         {/* Section 3: Features */}
         <section
           ref={(el) => setSectionRef(el, 3)}
-          className="flex w-full justify-center"
-          style={{
-            ...sectionStyleBase,
-            background: "#000000ff",
-          }}
+          className="flex w-full justify-center bg-[var(--bg-dark)]"
+          style={sectionStyleBase}
         >
-          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className={sharedSectionInner}>
             <Features />
           </div>
         </section>
@@ -325,18 +319,16 @@ export default function HomeClient() {
         {/* Section 4: Benefits */}
         <section
           ref={(el) => setSectionRef(el, 4)}
-          className="flex w-full justify-center"
-          style={{
-            ...sectionStyleBase,
-            background: "#ffffffff",
-          }}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={sectionStyleBase}
         >
-          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-10 py-10">
+          <div className={sharedSectionInner}>
             <Benefits />
-            <Footer />
           </div>
         </section>
       </main>
+
+      <Footer />
 
       <SignInModal />
     </div>
