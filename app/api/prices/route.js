@@ -1,26 +1,28 @@
 import { NextResponse } from "next/server";
 
-// Palette aligned to Sona design tokens (uses CSS variables)
-const PALETTE = [
-  "var(--accent)",
-  "var(--accent-soft)",
-  "var(--pos)",
-  "var(--chrome)",
-  "var(--text)",
-  "var(--muted)",
-  "var(--line)",
-  "var(--accent-strong)",
-  "var(--bg-dark)",
-  "var(--bg-alt)",
-];
-
-const COLORS = Object.fromEntries(
-  Array.from({ length: 20 }, (_, i) => {
-    const key = `asset${i + 1}`;
-    const color = PALETTE[i % PALETTE.length];
-    return [key, color];
-  })
-);
+// Colors split out by asset id (no TS types)
+const COLORS = {
+  asset1:  "#ff0000", // bright red
+  asset2:  "#ff7f00", // orange
+  asset3:  "#00b3ffff", // pure yellow (not gold)
+  asset4:  "#00ff00", // lime green
+  asset5:  "#008000", // classic green
+  asset6:  "#00ffff", // cyan / aqua
+  asset7:  "#0000ff", // blue
+  asset8:  "#4b0082", // indigo
+  asset9:  "#8a2be2", // blue-violet
+  asset10: "#ff00ff", // magenta
+  asset11: "#ff1493", // deep pink
+  asset12: "#00ced1", // dark turquoise
+  asset13: "#40e0d0", // turquoise
+  asset14: "#ffa07a", // light salmon
+  asset15: "#8b4513", // brown
+  asset16: "#708090", // slate gray
+  asset17: "#ff69b4", // hot pink
+  asset18: "#7fff00", // chartreuse
+  asset19: "#ff4500", // orange-red
+  asset20: "#6a5acd", // slate blue
+};
 
 
 // Base assets WITHOUT color
