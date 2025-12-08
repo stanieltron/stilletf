@@ -4,12 +4,12 @@ export default function Roadmap() {
   return (
     <section className="section-compact">
       <div className="container-main">
-        <div className="eyebrow text-slate-500">
+        <h2 className="heading-2">
           Product Roadmap
-        </div>
+        </h2>
 
         {/* Roadmap stage area */}
-        <div className="py-14">
+        <div className="py-0">
           <div className="relative w-full">
             {/* Keep the square aspect ratio */}
             <div className="relative w-full pb-0 md:pb-[60%] md:h-0">
@@ -23,7 +23,7 @@ export default function Roadmap() {
                 >
                   <path
                     d="M 0 0 L 100 100"
-                    stroke="#2563eb"
+                    stroke="var(--accent)"
                     strokeWidth="8"
                     vectorEffect="non-scaling-stroke"
                     fill="none"
@@ -39,7 +39,7 @@ export default function Roadmap() {
                 >
                   <path
                     d="M 50 0 L 50 100"
-                    stroke="#2563eb"
+                    stroke="var(--accent)"
                     strokeWidth="6"
                     vectorEffect="non-scaling-stroke"
                     fill="none"
@@ -52,7 +52,7 @@ export default function Roadmap() {
                   <div className="absolute left-[0%] top-[0%] w-[25%] h-[33%]">
                     <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
                       <div className="card-overlay" />
-                      <span className="badge bg-blue-600">
+                      <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
                         The Pilot
                       </span>
                       <h3 className="heading-3">
@@ -105,15 +105,15 @@ export default function Roadmap() {
                 {/* === Mobile stacked cards === */}
                 <div className="md:hidden relative flex flex-col justify-center gap-8 px-1">
                   <div
-                    className="absolute left-1/2 top-0 bottom-0 w-[6px] -translate-x-1/2 bg-[#2563eb] opacity-80"
+                    className="absolute left-1/2 top-0 bottom-0 w-[6px] -translate-x-1/2 bg-[var(--accent)] opacity-80"
                     aria-hidden
                   />
 
                   <div
                     className="card-strong text-white relative z-10"
-                    style={{ backgroundColor: "#000", borderColor: "#000", color: "#fff" }}
+                    style={{ backgroundColor: "var(--bg-dark)", borderColor: "var(--bg-dark)", color: "var(--bg-alt)" }}
                   >
-                    <span className="badge bg-blue-600">
+                    <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
                       The Pilot
                     </span>
                     <h3 className="heading-3">

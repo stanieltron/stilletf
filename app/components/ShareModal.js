@@ -25,9 +25,20 @@ export default function ShareModal({
   const [sharing, setSharing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  const shareUrl =
+    process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
   const shareText =
-    "I created this portfolio on stilletf.com - can you do better?";
-  const shareUrl = "https://stilletf.com";
+    "I created this portfolio on Sona — can you do better?";
+  const shareHost = (() => {
+    try {
+      return new URL(shareUrl).hostname.replace(/^www\\./, "");
+    } catch {
+      return "sonaetf.com";
+    }
+  })();
+  const shareQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+    shareUrl
+  )}`;
 
   const router = useRouter();
 
@@ -226,7 +237,7 @@ export default function ShareModal({
           <div className="flex items-center justify-center w-full h-full bg-white">
             <img
               src="/logos/stilllogo.png"
-              alt="stillwater logo"
+              alt="Sona logo"
               className="w-full h-full object-contain"
             />
           </div>
@@ -260,8 +271,7 @@ export default function ShareModal({
           style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
         >
           <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
-            I created this portfolio on{" "}
-            <span className="font-bold">stilletf.com</span> - can you do better?
+            I created this portfolio on <span className="font-bold">Sona</span> — can you do better?
           </p>
         </div>
 
@@ -271,8 +281,8 @@ export default function ShareModal({
           style={{ gridColumn: "1 / span 1", gridRow: "3 / span 1", padding: 10 }}
         >
           <img
-            src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fstilletf.com"
-            alt="stilletf.com QR"
+            src={shareQrUrl}
+            alt={`${shareHost} share QR`}
             className="w-full h-full object-contain"
           />
         </div>

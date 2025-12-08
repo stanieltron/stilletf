@@ -85,9 +85,9 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
 
   return (
     <div className="relative flex flex-col bg-white overflow-hidden w-full h-full">
-      <section className="flex flex-col flex-1 min-h-0 gap-1.5 sm:gap-3">
+      <section className="flex flex-col flex-1 min-h-0 gap-1.5 sm:gap-0">
         {/* KPIs: one line, centered, smooth 1300ms */}
-        <div className="flex flex-nowrap items-stretch justify-between w-full mt-0.5 sm:mt-1 flex-none gap-1">
+        <div className="flex flex-nowrap items-stretch justify-between w-full mt-0.5 sm:mt-1 flex-none gap-">
           <div
             className="shrink-0"
             style={{ width: `${widthPercent}%`, transition: "width 1300ms ease" }}
@@ -121,7 +121,7 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
         </div>
 
         {/* Gauges: fill remaining vertical space */}
-        <div className="grid grid-cols-3 grid-rows-2 gap-x-1.5 sm:gap-x-3 gap-y-1 sm:gap-y-2 mt-1 flex-1 items-stretch content-stretch min-h-0">
+        <div className="grid grid-cols-3 grid-rows-2 gap-x-1.5 sm:gap-x-3 gap-y-1 sm:gap-y-0 mt-1 flex-1 items-stretch content-stretch min-h-0">
           <GaugeRow category="Growth"     score={scoreGrowth}  hint={<Hint text={tips.growth} />} />
           <GaugeRow category="Stability"  score={scoreStab}    hint={<Hint text={tips.stab} />} />
           <GaugeRow category="Resilience" score={scoreResil}   hint={<Hint text={tips.resil} />} />
@@ -168,25 +168,12 @@ function GaugeRow({ category, score, hint }) {
       </div>
 
       {/* 8px thick line that never scales */}
-      <div className="w-full">
-        <svg width="100%" height="6" viewBox="0 0 100 8" preserveAspectRatio="none">
-          <path
-            d="M 0 4 L 100 4"
-            stroke="#d1d5db"
-            strokeWidth="6"
-            vectorEffect="non-scaling-stroke"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <path
-            d={`M 0 4 L ${pct} 4`}
-            stroke="#2563eb"
-            strokeWidth="6"
-            vectorEffect="non-scaling-stroke"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </svg>
+      <div className="w-full h-[8px] rounded-[var(--radius-sm)] bg-gray-300 overflow-hidden">
+        <div
+          className="h-full bg-[var(--accent)] rounded-[var(--radius-sm)]"
+          style={{ width: `${pct}%` }}
+          aria-hidden="true"
+        />
       </div>
     </div>
   );

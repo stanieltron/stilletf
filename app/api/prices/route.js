@@ -1,29 +1,26 @@
 import { NextResponse } from "next/server";
 
-// Colors split out by asset id (no TS types)
-const COLORS = {
-  asset1:  "#ff6b00", // vivid orange
-  asset2:  "#ff1744", // bright red-pink
-  asset3:  "#ffb300", // strong amber
-  asset4:  "#ff4081", // hot pink
-  asset5:  "#d500f9", // electric magenta
-  asset6:  "#c51162", // deep crimson pink
-  asset7:  "#f50057", // neon pink-red
-  asset8:  "#e040fb", // vivid purple-magenta
-  asset9:  "#ab47bc", // amethyst purple
-  asset10: "#8e24aa", // deep purple
-  asset11: "#ff7043", // vivid orange-salmon
-  asset12: "#ffca28", // bright golden yellow
-  asset13: "#ff5252", // coral red
-  asset14: "#ff8f00", // strong dark amber
-  asset15: "#ffc400", // bright gold
-  asset16: "#ffea00", // neon lemon
-  asset17: "#b71c1c", // deep red
-  asset18: "#4a148c", // rich violet
-  asset19: "#ad1457", // dark raspberry
-  asset20: "#bf360c", // burnt orange
+// Palette aligned to Sona design tokens (uses CSS variables)
+const PALETTE = [
+  "var(--accent)",
+  "var(--accent-soft)",
+  "var(--pos)",
+  "var(--chrome)",
+  "var(--text)",
+  "var(--muted)",
+  "var(--line)",
+  "var(--accent-strong)",
+  "var(--bg-dark)",
+  "var(--bg-alt)",
+];
 
-};
+const COLORS = Object.fromEntries(
+  Array.from({ length: 20 }, (_, i) => {
+    const key = `asset${i + 1}`;
+    const color = PALETTE[i % PALETTE.length];
+    return [key, color];
+  })
+);
 
 
 // Base assets WITHOUT color

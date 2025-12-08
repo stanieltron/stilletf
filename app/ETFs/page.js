@@ -87,11 +87,11 @@ function FundCard({
     : "cursor-default";
   const variantClasses =
     variant === "dark"
-      ? "bg-black text-white border-white hover:border-blue-600"
-      : "bg-white text-black border-black hover:border-blue-600";
+      ? "bg-black text-white border-white hover:border-[var(--accent)]"
+      : "bg-white text-black border-black hover:border-[var(--accent)]";
 
   const tagClasses =
-    "inline-block bg-blue-600 text-white text-xs sm:text-sm md:text-base font-semibold tracking-[0.16em] px-3 sm:px-4 py-1 uppercase";
+    "inline-block bg-[var(--accent)] text-[var(--accent-text)] text-xs sm:text-sm md:text-base font-semibold tracking-[0.16em] px-3 sm:px-4 py-1 uppercase";
   const titleClasses =
     "mt-5 mb-2 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight";
   const subtitleClasses =
@@ -103,7 +103,7 @@ function FundCard({
   const ctaClasses =
     "mt-8 sm:mt-10 text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight" +
     (active
-      ? " text-blue-600"
+      ? " text-[var(--accent)]"
       : variant === "dark"
       ? " text-white/60"
       : " text-neutral-500");

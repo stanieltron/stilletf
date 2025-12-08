@@ -68,7 +68,7 @@ export default function DigitalWealthETFPage() {
                   const meta = assetsMeta[k] || {};
                   return (
                     <div key={k} className="metric-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="badge" style={{ background: meta.color || "#999", border: `1px solid ${meta.color || "#999"}` }} />
+                      <span className="badge" style={{ background: meta.color || "var(--accent)", border: `1px solid ${meta.color || "var(--accent)"}` }} />
                       <span style={{ minWidth: 160 }}>{meta.name || k}</span>
                       <span className="strong">{Math.round(weights[i] * 100)}%</span>
                     </div>

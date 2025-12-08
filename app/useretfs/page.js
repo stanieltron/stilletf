@@ -24,11 +24,11 @@ function compositionSpans(assets = [], weights = [], meta = {}) {
     const label = meta?.[key]?.name || key;
     const color = meta?.[key]?.color || "inherit";
     parts.push(
-      <span
-        key={key}
-        style={{ color }}
-        className="px-2 py-0.5 bg-[var(--bg-soft,#f4f4f4)] text-[11px] sm:text-xs md:text-sm font-semibold"
-      >
+        <span
+          key={key}
+          style={{ color }}
+          className="px-2 py-0.5 bg-[var(--bg-soft)] text-[11px] sm:text-xs md:text-sm font-semibold"
+        >
         {label}: {w}
       </span>
     );
@@ -137,11 +137,11 @@ function PortfolioCard({ p, meta, rank, onVote }) {
   return (
     <div
       onClick={openDetails}
-      className="border border-[var(--border)] bg-white p-3 sm:p-5 md:p-6 flex flex-col h-full shadow-md cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-xl hover:bg-[var(--bg-soft,#fafafa)]"
+      className="border border-[var(--border)] bg-[var(--bg-alt)] p-3 sm:p-5 md:p-6 flex flex-col h-full shadow-md cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-xl hover:bg-[var(--bg-soft)]"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-extrabold text-black">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-4xl font-extrabold text-[var(--text)]">
             #{rank}
           </div>
           <div className="flex flex-col min-w-0 leading-tight">
@@ -157,7 +157,7 @@ function PortfolioCard({ p, meta, rank, onVote }) {
         <button
           type="button"
           onClick={handleVoteClick}
-          className="shrink-0 border border-[var(--border)] bg-black text-white px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111]"
+          className="shrink-0 border border-[var(--border)] bg-[var(--bg-dark)] text-[var(--bg-alt)] px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-lg md:text-xl font-bold leading-none hover:bg-[var(--chrome)]"
         >
           Vote
         </button>
@@ -219,7 +219,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
   return (
     <div
       onClick={openDetails}
-      className="border border-[var(--border)] px-3 py-3 sm:px-4 sm:py-4 bg-white flex flex-col gap-3 sm:gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft,#fafafa)]"
+      className="border border-[var(--border)] px-3 py-3 sm:px-4 sm:py-4 bg-[var(--bg-alt)] flex flex-col gap-3 sm:gap-4 w-full shadow-sm cursor-pointer transition-transform duration-150 hover:-translate-y-1 hover:shadow-md hover:bg-[var(--bg-soft)]"
     >
       {/* Rank bubble uses GLOBAL rank */}
       {typeof rank === "number" && (
@@ -282,7 +282,7 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
         <button
           type="button"
           onClick={handleVoteClick}
-          className="border border-[var(--border)] bg-black text-white px-2.5 py-1.5 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[#111] w-full lg:w-auto"
+          className="border border-[var(--border)] bg-[var(--bg-dark)] text-[var(--bg-alt)] px-2.5 py-1.5 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[var(--chrome)] w-full lg:w-auto"
         >
           Vote
         </button>
@@ -488,7 +488,7 @@ export default function UserETFsPage() {
 
                   {/* blue separator */}
                   {othersAll.length > 0 && (
-                    <div className="mt-10 mb-6 h-2 w-full bg-blue-600" />
+                    <div className="mt-10 mb-6 h-2 w-full bg-[var(--accent)]" />
                   )}
 
                   {/* full-width black discover button BELOW separator */}
@@ -498,7 +498,7 @@ export default function UserETFsPage() {
                         href="/ETFs"
                         className="w-full inline-flex items-center justify-center px-6 py-3 border border-black bg-black text-white text-lg md:text-2xl font-semibold transition-transform duration-150 hover:-translate-y-1 hover:bg-white hover:text-black hover:shadow-md"
                       >
-                        discover STILLETFs and interact on testnet for additional rewards
+                        discover Sona ETFs and interact on testnet for additional rewards
                       </Link>
                     </div>
                   )}

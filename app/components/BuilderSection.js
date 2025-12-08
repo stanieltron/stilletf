@@ -275,6 +275,11 @@ export default function BuilderSection({ keepAssets = true }) {
   //  - false when >1 (no blinking)
   const max1asset = numActiveAssets <= 1;
 
+  const showFirstYield = isETFComplete && !yieldEverActivated;
+  const showYieldToggle = yieldEverActivated;
+  const showCompleteBtn = isETFComplete && yieldOn;
+  const hasSecondaryAction = showFirstYield || showYieldToggle || showCompleteBtn;
+
   return (
     <main
       className="container-main w-full flex flex-col overflow-hidden"
@@ -303,7 +308,7 @@ export default function BuilderSection({ keepAssets = true }) {
               "split",
               hasPortfolio ? "has-portfolio" : "no-portfolio",
               "relative",
-              "grid items-stretch content-stretch gap-3 md:gap-4 min-h-0 w-full max-w-full box-border overflow-hidden",
+              "grid items-stretch content-stretch gap-4 md:gap-6 min-h-0 w-full max-w-full box-border overflow-visible",
               "grid-cols-1",
               hasPortfolio ? "md:h-[720px] h-auto" : "md:h-[500px] h-auto",
               "md:[grid-template-columns:var(--left-w)_minmax(0,1fr)]",
@@ -317,9 +322,11 @@ export default function BuilderSection({ keepAssets = true }) {
               aria-hidden="true"
               className="pointer-events-none absolute top-0 bottom-0 hidden md:block"
               style={{
-                left: "calc(var(--left-w) + 0.5rem)", // left column width + half the gap (gap-4 = 1rem)
-                width: 0,
-                borderLeft: "8px solid var(--accent)",
+                left: "calc(var(--left-w) + 0.75rem)", // centered in 1.5rem gap
+                width: "8px",
+                transform: "translateX(-50%)",
+                background: "var(--accent)",
+                borderRadius: "999px",
                 zIndex: 10,
               }}
             />
@@ -328,12 +335,11 @@ export default function BuilderSection({ keepAssets = true }) {
             <aside
               ref={leftRef}
               className={[
-                "bg-white ",
+                "bg-white rounded-[var(--radius-md)]",
                 "overflow-hidden min-h-0 w-full flex flex-col",
                 hasPortfolio
                   ? "md:h-[720px] h-[300px] self-stretch"
                   : "md:h-[500px] h-[300px] self-start [grid-row:auto]",
-                "rounded-none",
               ].join(" ")}
               style={{ contain: "content" }}
             >
@@ -437,115 +443,112 @@ export default function BuilderSection({ keepAssets = true }) {
                 hasPortfolio ? "" : "is-empty",
                 "min-h-0 self-stretch",
                 hasPortfolio
-                  ? "md:grid md:gap-0 md:h-[720px] flex flex-col gap-3 h-auto"
+                  ? "flex flex-col gap-4 h-auto"
                   : "md:grid gap-3 [grid-template-rows:500px]",
               ].join(" ")}
-              style={
-                hasPortfolio
-                  ? { gridTemplateRows: "40px 40px 300px 40px 300px" }
-                  : undefined
-              }
             >
               {hasPortfolio ? (
                 <>
-                  {/* Status + actions (40px) */}
-                  <div
-                    className={[
-                      "bg-white",
-                      "rounded-none px-3 flex flex-col sm:flex-row sm:items-center h-auto sm:h-[40px] gap-2 sm:gap-3",
-                      "[font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]",
-                    ].join(" ")}
-                  >
-                    <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3 w-full">
-                      {/* LEFT: ETF STATUS / FILL CTA */}
-                      <div className="flex-1 min-w-0 w-full">
-                        {!isETFComplete ? (
-                          <div className="cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm">
-                            <span className="whitespace-nowrap">
-                              Fill ETF with {pointsRemaining} more points to complete
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm">
-                            <span className="whitespace-nowrap">
-                              ETF complete - 20 / 20 points
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* RIGHT: YIELD INFO / BUTTONS */}
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-                        {/* FIRST-TIME YIELD INTRO (only once, when ETF just complete and yield not yet activated) */}
-                        {isETFComplete && !yieldEverActivated ? (
-                          <div className="flex items-center gap-2 text-right">
-                            <button
-                              type="button"
-                              onClick={handleFirstYieldActivate}
-                              className="relative cta-btn cta-btn-sm cta-blue text-[10px] sm:text-xs shadow-[0_0_18px_rgba(37,99,235,0.9)]"
-                            >
-                              {/* Pulsating blue aura around the button */}
-                              <span
-                                className="pointer-events-none absolute inset-[-4px] rounded-none border border-blue-400/70 animate-ping"
-                                aria-hidden="true"
-                              />
-                              <span className="relative flex items-center gap-1">
-                                <span className="text-[14px] leading-none">[+]</span>
-                                <span>Add STILL yield</span>
+                  {/* Status + actions + progress (rounded group) */}
+                  <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col p-3 gap-3 w-full">
+                    <div
+                      className={[
+                        "w-full h-10 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2",
+                        "[font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]",
+                      ].join(" ")}
+                    >
+                      <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3 w-full">
+                        {/* LEFT: ETF STATUS / FILL CTA */}
+                        <div className="min-w-0 flex-1 w-full flex">
+                          {!isETFComplete ? (
+                            <div className={`cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm flex items-center justify-center flex-1 w-full`}>
+                              <span className="whitespace-nowrap">
+                                Fill ETF with {pointsRemaining} more points to complete
                               </span>
-                            </button>
-                          </div>
-                        ) : null}
-
-                        {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
-                        {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
-                        {yieldEverActivated && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={handleToggleYield}
-                              className={[
-                                "relative cta-btn cta-btn-sm text-[10px] sm:text-xs",
-                                yieldOn
-                                  ? "cta-grey"
-                                  : "cta-blue shadow-[0_0_18px_rgba(37,99,235,0.9)]",
-                              ].join(" ")}
-                              aria-label={yieldOn ? "Turn yield off" : "Add STILL yield"}
-                            >
-                              {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
-                              {isETFComplete && !yieldOn && (
-                                <span
-                                  className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
-                                  aria-hidden="true"
-                                />
-                              )}
-
-                              <span className="relative flex items-center gap-1">
-                                <span className="text-[14px] leading-none">
-                                  {yieldOn ? "[ ]" : "[+]"}
-                                </span>
-                                <span>{yieldOn ? "Turn yield off" : "Add STILL yield"}</span>
+                            </div>
+                          ) : (
+                            <div className={`cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm flex items-center justify-center flex-1 w-full`}>
+                              <span className="whitespace-nowrap">
+                                ETF complete
                               </span>
-                            </button>
+                            </div>
+                          )}
+                        </div>
 
-                            {/* COMPLETE PORTFOLIO BUTTON:
+                        {/* RIGHT: YIELD INFO / BUTTONS (render only when needed) */}
+                        {hasSecondaryAction && (
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                            {/* FIRST-TIME YIELD INTRO (only once, when ETF just complete and yield not yet activated) */}
+                            {showFirstYield ? (
+                              <div className="flex items-center gap-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={handleFirstYieldActivate}
+                                  className="relative cta-btn cta-btn-sm cta-blue text-[10px] sm:text-xs shadow-[0_0_18px_rgba(37,99,235,0.9)]"
+                                >
+                                  {/* Pulsating blue aura around the button */}
+                                  <span
+                                    className="pointer-events-none absolute inset-[-4px] rounded-none border border-blue-400/70 animate-ping"
+                                    aria-hidden="true"
+                                  />
+                                  <span className="relative flex items-center gap-1">
+                                    <span className="text-[14px] leading-none">[+]</span>
+                                    <span>Add STILL yield</span>
+                                  </span>
+                                </button>
+                              </div>
+                            ) : null}
+
+                            {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
+                            {showYieldToggle && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={handleToggleYield}
+                                  className={[
+                                    "relative cta-btn cta-btn-sm text-[10px] sm:text-xs",
+                                    yieldOn
+                                      ? "cta-grey"
+                                      : "cta-blue shadow-[0_0_18px_rgba(37,99,235,0.9)]",
+                                  ].join(" ")}
+                                  aria-label={yieldOn ? "Turn yield off" : "Add STILL yield"}
+                                >
+                                  {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
+                                  {isETFComplete && !yieldOn && (
+                                    <span
+                                      className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
+                                      aria-hidden="true"
+                                    />
+                                  )}
+
+                                  <span className="relative flex items-center gap-1">
+                                    <span className="text-[14px] leading-none">
+                                      {yieldOn ? "[ ]" : "[+]"}
+                                    </span>
+                                    <span>{yieldOn ? "Turn yield off" : "Add STILL yield"}</span>
+                                  </span>
+                                </button>
+
+                                {/* COMPLETE PORTFOLIO BUTTON:
         appears when portfolio is full AND yield is ON.
         Pulsates and opens Save modal after 1s. */}
-                            {isETFComplete && yieldOn && (
-                              <button
-                                type="button"
-                                onClick={handleCompletePortfolioClick}
-                                className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
-                              >
-                                <span
-                                  className="pointer-events-none absolute inset-[-3px] border border-[#ffb347] rounded-none animate-ping"
-                                  aria-hidden="true"
-                                />
-                                <span className="relative flex items-center gap-1">
-                                  <span className="text-[14px] leading-none">*</span>
-                                  <span>Complete portfolio</span>
-                                </span>
-                              </button>
+                                {showCompleteBtn && (
+                                  <button
+                                    type="button"
+                                    onClick={handleCompletePortfolioClick}
+                                  className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
+                                >
+                                  <span
+                                    className="pointer-events-none absolute inset-[-3px] border border-[var(--accent-soft)] rounded-none animate-ping"
+                                    aria-hidden="true"
+                                  />
+                                    <span className="relative flex items-center gap-1">
+                                      <span className="text-[14px] leading-none">*</span>
+                                      <span>Complete portfolio</span>
+                                    </span>
+                                  </button>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
@@ -553,47 +556,47 @@ export default function BuilderSection({ keepAssets = true }) {
 
                       </div>
                     </div>
-                  </div>
 
-                  {/* Progress (30px) */}
-                  <div
-                    className="bg-white rounded-none px-3 flex items-center h-[30px]"
-                    aria-label={`ETF completeness ${pointsForBar} of 20`}
-                  >
-                    <div className="relative h-[6px] w-full bg-gray-300 overflow-hidden rounded-none">
-                      <div
-                        className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width]"
-                        style={{ width: `${(pointsForBar / MAX_TOTAL_POINTS) * 100}%` }}
-                        aria-hidden="true"
-                      />
+                    {/* Progress (12px total height) */}
+                    <div
+                      className="flex items-center h-3"
+                      aria-label={`ETF completeness ${pointsForBar} of 20`}
+                    >
+                      <div className="relative h-[8px] w-full bg-gray-300 overflow-hidden rounded-[var(--radius-sm)]">
+                        <div
+                          className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width] rounded-[var(--radius-sm)]"
+                          style={{ width: `${(pointsForBar / MAX_TOTAL_POINTS) * 100}%` }}
+                          aria-hidden="true"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Chart (200px mobile / 300px desktop) */}
-                  <div className="bg-white rounded-none px-3 flex h-[200px] md:h-[300px]">
-                    <div className="w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
-                      <ChartBuilder
+                  {/* Chart + text + metrics grouped */}
+                  <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col">
+                    <div className="px-3 py-3 flex h-[300px]">
+                      <div className="w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
+                        <ChartBuilder
+                          assets={assetKeys}
+                          weights={weights}
+                          showYield={yieldOn}
+                          size="l"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-white text-center w-full text-[clamp(.95rem,.9vw,1rem)] font-bold flex items-center justify-center h-[40px] px-3">
+                      If you invested $1000 5 years ago, you would have:
+                    </div>
+
+                    <div className="bg-white p-3 h-[300px] overflow-auto flex flex-col">
+                      <PortfolioBuilder
                         assets={assetKeys}
                         weights={weights}
                         showYield={yieldOn}
-                        size="l"
+                        detail
                       />
                     </div>
-                  </div>
-
-                  {/* Text between chart and metrics (30px) */}
-                  <div className="text-center w-full text-[clamp(.95rem,.9vw,1rem)] font-bold flex items-center justify-center h-[30px]">
-                    If you invested $1000 5 years ago, you would have:
-                  </div>
-
-                  {/* Metrics section (200px mobile / 300px desktop) */}
-                  <div className="bg-white rounded-none p-3 h-[200px] md:h-[300px] overflow-auto flex flex-col">
-                    <PortfolioBuilder
-                      assets={assetKeys}
-                      weights={weights}
-                      showYield={yieldOn}
-                      detail
-                    />
                   </div>
                 </>
               ) : (
@@ -699,7 +702,7 @@ function WeightInput({
         {/* - button */}
         <button
           type="button"
-          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-[var(--brand)] hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-[var(--radius-sm)]"
           onClick={dec}
           disabled={decDisabled}
           aria-label={`Decrease ${label}`}
@@ -709,7 +712,7 @@ function WeightInput({
             className={[
               "relative -translate-y-[1px] transition-[text-shadow,transform]",
               highlightMinus
-                ? "[text-shadow:0_0_14px_rgba(37,99,235,0.95)] animate-pulse"
+                ? "[text-shadow:0_0_14px_rgba(202,163,74,0.9)] animate-pulse"
                 : "",
             ].join(" ")}
           >
@@ -721,13 +724,13 @@ function WeightInput({
         <button
           type="button"
           onClick={handleBarClick}
-          className="relative h-[6px] md:h-[8px] w-full rounded-none bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
+          className="relative h-[8px] md:h-[10px] w-full rounded-[var(--radius-sm)] bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
           aria-label={`${label}: current ${v} of 10`}
           title={`${v} / 10`}
         >
           {/* filled value */}
           <span
-            className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width]"
+            className="absolute inset-y-0 left-0 bg-[var(--accent)] transition-[width] rounded-[var(--radius-sm)]"
             style={{ width: `${coloredPct}%` }}
             aria-hidden="true"
           />
@@ -735,7 +738,7 @@ function WeightInput({
           {/* free grey part (from remaining global points) */}
           {freeHere > 0 && (
             <span
-              className="absolute inset-y-0 bg-gray-300"
+              className="absolute inset-y-0 bg-gray-300 rounded-[var(--radius-sm)]"
               style={{
                 left: `${coloredPct}%`,
                 width: `${freePct}%`,
@@ -748,7 +751,7 @@ function WeightInput({
         {/* + button */}
         <button
           type="button"
-          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-blue-600 hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-none"
+          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-[var(--brand)] hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-[var(--radius-sm)]"
           onClick={inc}
           disabled={incDisabled}
           aria-label={`Increase ${label}`}
@@ -758,7 +761,7 @@ function WeightInput({
             className={[
               "relative -translate-y-[1px] transition-[text-shadow,transform]",
               highlightPlus
-                ? "[text-shadow:0_0_14px_rgba(37,99,235,0.95)] animate-pulse"
+                ? "[text-shadow:0_0_14px_rgba(202,163,74,0.9)] animate-pulse"
                 : "",
             ].join(" ")}
           >

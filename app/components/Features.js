@@ -37,7 +37,8 @@ export default function Features() {
           </div>
         </div>
 
-        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))] gap-8 border-t-8 border-blue-600 mt-14 pt-14 text-center">
+        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))] gap-8 mt-14 pt-14 text-center">
+          <div className="col-span-full h-2 bg-[var(--accent)] rounded-[var(--radius-md)] mb-8" aria-hidden />
           <div>
             <div className="text-body-light mb-2.5">
               Built on

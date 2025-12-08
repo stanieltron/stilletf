@@ -143,7 +143,7 @@ export default function ChartBuilder({
       const idx = assets.indexOf(key);
       const meta = assetMap?.[key] || {};
       const name = meta.name || key;
-      const color = meta.color || "#8884d8";
+      const color = meta.color || "var(--accent)";
       const prices = Array.isArray(meta.prices) ? meta.prices : [];
       const alloc = (pct[idx] ?? 0) * initialCapital;
       const p0 = prices[0] || 1;
@@ -288,7 +288,7 @@ export default function ChartBuilder({
           name="ETF"
           dot={false}
           activeDot={{ r: 3 }}
-          stroke="var(--pos, #2563eb)"
+          stroke="var(--text)"
           strokeWidth={5}
           strokeLinecap="round"
           isAnimationActive={animated}
@@ -303,7 +303,7 @@ export default function ChartBuilder({
           name="ETF (with yield)"
           dot={false}
           activeDot={{ r: 3 }}
-          stroke="var(--accent, #1d4ed8)"
+          stroke="var(--accent)"
           strokeWidth={5}
           strokeLinecap="round"
           strokeOpacity={0.98}
@@ -321,7 +321,7 @@ export default function ChartBuilder({
             name={a.name}
             dot={false}
             activeDot={{ r: 2 }}
-            stroke={a.color || "#8884d8"}
+            stroke={a.color || "var(--muted)"}
             strokeWidth={2}
             strokeOpacity={0.9}
             isAnimationActive={animated}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -91,20 +92,27 @@ export default function Header() {
 
   return (
     <header className="relative w-full bg-[var(--bg-dark)] text-[var(--header-text)] border-b border-[var(--chrome)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-4 grid grid-cols-[auto_1fr_auto] items-center gap-4 w-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-2 min-h-[70px] grid grid-cols-[auto_1fr_auto] items-center gap-4 w-full">
         {/* Left: logo/brand */}
         <Link
           href="/"
           onClick={handleBrandClick}
-          className="text-inherit no-underline font-extrabold tracking-tight text-base sm:text-lg"
+          className="text-inherit no-underline font-extrabold tracking-tight text-base sm:text-lg flex items-center gap-2"
         >
-          STILLWATER
+          <Image
+            src="/logos/sona3.png"
+            alt="Sona"
+            width={210}
+            height={70}
+            priority
+            className="h-[50px] w-[150px] object-cover"
+          />
         </Link>
 
         {/* Center: nav */}
         <nav className="justify-self-center flex gap-5 items-center text-sm sm:text-base">
           <Link href="/ETFs" className="text-inherit no-underline">
-            Still-ETFs
+            Sona-ETFs
           </Link>
           <Link href="/useretfs" className="text-inherit no-underline">
             Leaderboard
