@@ -14,9 +14,10 @@ import ShareModalSignedIn from "./ShareModalSignedIn";
 
 /**
  * BuilderSection
- * Takes a single prop: keepAssets (boolean).
- * - If keepAssets === false (hard reload not after auth): reset local data and start empty.
- * - Otherwise: restore from localStorage if available.
+ * Takes a single prop: keepAssets (boolean | null).
+ * - false: reset local data and start empty.
+ * - true: restore from localStorage if available.
+ * - null: defer decision (do nothing until resolved).
  */
 export default function BuilderSection({ keepAssets = true }) {
   const { data: sessionData } = useSession();
@@ -35,12 +36,12 @@ export default function BuilderSection({ keepAssets = true }) {
 
   // If we shouldn't keep assets (hard reload without auth), clear storage *once* on mount.
   useEffect(() => {
-    if (!keepAssets) {
+    if (keepAssets === false) {
       try {
         localStorage.removeItem(LS_WEIGHTS);
         localStorage.removeItem(LS_EVER_COMPLETE);
         localStorage.removeItem(LS_YIELD_ON);
-      } catch { }
+      } catch {}
     }
   }, [keepAssets]);
 
@@ -108,7 +109,7 @@ export default function BuilderSection({ keepAssets = true }) {
   // persist weights if we are keeping assets
   useEffect(() => {
     if (!assetKeys.length) return;
-    if (!keepAssets) return; // do not persist when we purposely reset
+    if (keepAssets === false) return; // skip only when explicitly resetting
     try {
       localStorage.setItem(
         LS_WEIGHTS,
@@ -164,6 +165,13 @@ export default function BuilderSection({ keepAssets = true }) {
   /* ===== Yield flow (new spec) ===== */
   const [yieldOn, setYieldOn] = useState(false);
   const [yieldEverActivated, setYieldEverActivated] = useState(false);
+
+  // Close share modal when user logs out to prevent showing signed-in flows
+  useEffect(() => {
+    if (!isAuthed) {
+      setShareOpen(false);
+    }
+  }, [isAuthed]);
 
   // restore yield state
   useEffect(() => {
