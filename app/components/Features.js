@@ -37,32 +37,37 @@ export default function Features() {
           </div>
         </div>
 
-        <div className="grid [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))] gap-8 mt-14 pt-14 text-center">
-          <div className="col-span-full h-2 bg-[var(--accent)] rounded-[var(--radius-md)] mb-8" aria-hidden />
-          <div>
-            <div className="text-body-light mb-2.5">
-              Built on
+        <div className="mt-14 pt-14">
+          <div
+            className="mx-auto mb-10 h-1.5 w-full max-w-4xl bg-[var(--accent)] rounded-full"
+            aria-hidden
+          />
+          <div className="grid [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))] gap-10 text-center">
+            <div>
+              <h4 className="heading-4 tracking-wide uppercase">
+                Built on
+              </h4>
+              <p className="text-body-light">
+                3 chains
+              </p>
             </div>
-            <div className="heading-4 uppercase tracking-wide">
-              3 chains
-            </div>
-          </div>
 
-          <div>
-            <div className="text-body-light mb-2.5">
-              Used in
+            <div>
+              <h4 className="heading-4 tracking-wide uppercase">
+                Used in
+              </h4>
+              <p className="text-body-light">
+                Dozens of apps
+              </p>
             </div>
-            <div className="heading-4 uppercase tracking-wide">
-              Dozens of apps
-            </div>
-          </div>
 
-          <div>
-            <div className="text-body-light mb-2.5">
-              Trusted by
-            </div>
-            <div className="heading-4 uppercase tracking-wide">
-              Thousands of users
+            <div>
+              <h4 className="heading-4 tracking-wide uppercase">
+                Trusted by
+              </h4>
+              <p className="text-body-light">
+                Thousands of users
+              </p>
             </div>
           </div>
         </div>

@@ -81,7 +81,7 @@ function FundCard({
   const Wrapper = href && active ? Link : "div";
 
   const baseClasses =
-    "w-full border px-5 py-8 md:px-10 md:py-16 rounded-none no-underline transition-transform transition-shadow";
+    "w-full border px-5 py-8 md:px-10 md:py-16 rounded-3xl no-underline transition-transform transition-shadow";
   const activeClasses = active
     ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_10px_0_rgba(0,0,0,1)]"
     : "cursor-default";

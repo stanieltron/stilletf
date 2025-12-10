@@ -144,12 +144,6 @@ export default function SignInModal() {
             >
               Continue with Google
             </button>
-            <button
-              onClick={() => startOAuth("github")}
-              className="block w-full px-[14px] py-[10px] rounded-lg border border-[var(--border)] bg-white cursor-pointer font-medium text-left"
-            >
-              Continue with GitHub
-            </button>
           </div>
         ) : needsSignup ? (
           // First-time signup
