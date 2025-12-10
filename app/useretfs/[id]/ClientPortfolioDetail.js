@@ -39,7 +39,7 @@ function compositionSpans(assets = [], weights = [], meta = {}) {
         <span
           key={item.key}
           style={{ color: item.color, borderColor: item.color }}
-          className="inline-flex items-center gap-1 px-3 py-1 rounded-full border bg-[var(--bg-alt)] text-xs sm:text-sm font-semibold shadow-sm"
+          className="inline-flex items-center gap-1 px-3 py-1 rounded-md border bg-[var(--bg-alt)] text-xs sm:text-sm font-semibold shadow-sm"
         >
           <span className="text-[var(--muted)]">*</span>
           <span className="truncate max-w-[200px]">{item.label}</span>
@@ -119,7 +119,7 @@ export default function ClientPortfolioDetail({ id }) {
   const LoadingState = (
     <main className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col py-12">
-        <div className="w-full p-6 sm:p-8 rounded-2xl border border-[var(--border)] bg-[var(--bg-alt)] shadow-md">
+        <div className="w-full p-6 sm:p-8 rounded-xl border border-[var(--border)] bg-[var(--bg-alt)] shadow-md">
           <div className="text-base sm:text-lg text-[var(--muted)]">Loading...</div>
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function ClientPortfolioDetail({ id }) {
   const ErrorState = (
     <main className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col py-12">
-        <div className="w-full p-6 sm:p-8 rounded-2xl border border-[var(--neg)] bg-[var(--bg-alt)] shadow-md">
+        <div className="w-full p-6 sm:p-8 rounded-xl border border-[var(--neg)] bg-[var(--bg-alt)] shadow-md">
           <div className="text-base sm:text-lg text-[var(--neg)]">
             {err || "Error loading portfolio."}
           </div>
@@ -145,18 +145,18 @@ export default function ClientPortfolioDetail({ id }) {
     <main className="min-h-screen flex flex-col bg-[var(--bg)] text-[var(--text)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col py-10 sm:py-14 lg:py-16 gap-10">
         {/* Title row */}
-        <div className="w-full rounded-3xl border border-[var(--border)] bg-gradient-to-r from-[var(--bg-alt)] to-[var(--bg-soft)] p-6 sm:p-8 shadow-lg">
+        <div className="w-full rounded-xl border border-[var(--border)] bg-gradient-to-r from-[var(--bg-alt)] to-[var(--bg-soft)] p-6 sm:p-8 shadow-lg">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <h1 className="m-0 text-3xl sm:text-4xl font-extrabold tracking-tight">
               {p.nickname || "Portfolio"}
             </h1>
 
-            <span className="text-sm sm:text-base text-[var(--muted)] bg-[var(--bg)] border border-[var(--border)] px-3 py-1.5 rounded-full shadow-sm">
+            <span className="text-sm sm:text-base text-[var(--muted)] bg-[var(--bg)] border border-[var(--border)] px-3 py-1.5 rounded-md shadow-sm">
               Votes: <span className="font-semibold text-[var(--text)]">{p._count?.votes ?? 0}</span>
             </span>
 
             <button
-              className="px-4 sm:px-5 py-2 rounded-full border border-[var(--border)] bg-[var(--accent)] text-[var(--bg)] text-sm sm:text-base font-semibold uppercase tracking-tight shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all"
+              className="px-4 sm:px-5 py-2 rounded-md border border-[var(--border)] bg-[var(--accent)] text-[var(--bg)] text-sm sm:text-base font-semibold uppercase tracking-tight shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all"
               onClick={onVote}
             >
               Vote
@@ -182,7 +182,7 @@ export default function ClientPortfolioDetail({ id }) {
         {/* Two-column content */}
         <div className="grid gap-8 lg:gap-10 grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)]">
           {/* Left pane: composition */}
-          <aside className="border border-[var(--border)] rounded-3xl p-6 sm:p-7 bg-[var(--bg-alt)] shadow-md flex flex-col gap-4">
+          <aside className="border border-[var(--border)] rounded-xl p-6 sm:p-7 bg-[var(--bg-alt)] shadow-md flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="m-0 text-xl sm:text-2xl font-semibold tracking-tight">
                 Composition
@@ -199,7 +199,7 @@ export default function ClientPortfolioDetail({ id }) {
           {/* Right pane: chart + metrics */}
           <section className="grid gap-6 sm:gap-8 min-h-0 self-start">
             {/* Chart area */}
-            <div className="flex flex-col overflow-hidden border border-[var(--border)] rounded-3xl bg-[var(--bg-alt)] p-6 sm:p-8 shadow-md">
+            <div className="flex flex-col overflow-hidden border border-[var(--border)] rounded-xl bg-[var(--bg-alt)] p-6 sm:p-8 shadow-md">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h3 className="m-0 text-xl sm:text-2xl font-semibold tracking-tight">
                   Performance preview
@@ -208,17 +208,17 @@ export default function ClientPortfolioDetail({ id }) {
                   yield on
                 </span>
               </div>
-              <div className="mt-0 w-full overflow-hidden flex-1 min-h-[260px] max-w-full rounded-2xl bg-[var(--bg)] border border-[var(--border)]">
+              <div className="mt-0 w-full overflow-hidden flex-1 min-h-[260px] max-w-full rounded-lg bg-[var(--bg)] border border-[var(--border)]">
                 <ChartBuilder assets={assets} weights={weights} showYield={true} />
               </div>
             </div>
 
             {/* Metrics card */}
-            <div className="min-h-0 min-w-0 flex flex-col overflow-hidden border border-[var(--border)] rounded-3xl bg-[var(--bg-alt)] p-6 sm:p-8 shadow-md gap-3">
+            <div className="min-h-0 min-w-0 flex flex-col overflow-hidden border border-[var(--border)] rounded-xl bg-[var(--bg-alt)] p-6 sm:p-8 shadow-md gap-3">
               <h3 className="mt-0 text-xl sm:text-2xl font-semibold tracking-tight">
                 Portfolio metrics
               </h3>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
+              <div className="rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4 sm:p-5">
                 <MetricsBuilder assets={assets} weights={weights} showYield={true} detail />
               </div>
             </div>
@@ -228,7 +228,7 @@ export default function ClientPortfolioDetail({ id }) {
         <div className="mt-2">
           <Link
             href="/"
-            className="inline-flex w-full items-center justify-center gap-3 px-6 sm:px-8 py-4 rounded-full bg-[var(--text)] text-[var(--bg)] font-semibold text-base sm:text-lg shadow-lg border border-[var(--border)] hover:-translate-y-0.5 hover:shadow-xl transition-all"
+            className="inline-flex w-full items-center justify-center gap-3 px-6 sm:px-8 py-4 rounded-md bg-[var(--text)] text-[var(--bg)] font-semibold text-base sm:text-lg shadow-lg border border-[var(--border)] hover:-translate-y-0.5 hover:shadow-xl transition-all"
           >
             Can you do better? Try on your own
           </Link>
