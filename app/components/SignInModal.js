@@ -94,8 +94,13 @@ export default function SignInModal() {
   }
 
   function startOAuth(provider) {
-    const base = typeof window !== "undefined" ? window.location.pathname : "/";
-    const callbackUrl = `${base}?auth=1#builder`;
+    const url =
+      typeof window !== "undefined"
+        ? new URL(window.location.href)
+        : new URL("https://sonaetf.com/");
+    // keep existing params (like share=1 from Share modal) and mark auth return
+    url.searchParams.set("auth", "1");
+    const callbackUrl = `${url.pathname}${url.search ? url.search : ""}#builder`;
     signIn(provider, { callbackUrl });
   }
 

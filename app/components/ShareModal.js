@@ -472,6 +472,94 @@ export default function ShareModal({
           {renderCaptureContent(true)}
         </div>
 
+<div
+      
+      className="bg-white overflow-hidden"
+      style={{
+        width: "1200px",
+        height: "675px",
+        boxSizing: "border-box",
+      }}
+    >
+      <div
+        className="w-full h-full grid"
+        style={{
+          gridTemplateColumns: "repeat(4, 300px)",
+          gridTemplateRows: "300px 75px 300px",
+        }}
+      >
+        {/* Row 1 Col 1: Logo */}
+        <div className="flex items-center justify-center" style={{ padding: 10 }}>
+          <div className="flex items-center justify-center w-full h-full bg-white">
+            <img
+              src="/logos/stilllogo.png"
+              alt="Sona logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+
+        {/* Row 1 Col 2-4: Chart */}
+        <div
+          className="flex items-center justify-center"
+          style={{ gridColumn: "2 / span 3", gridRow: "1 / span 1", padding: 10 }}
+        >
+          <div className="w-full h-full bg-white flex items-center justify-center">
+            <ChartBuilder
+              assets={assets}
+              weights={weights}
+              showYield={true}
+              size="l"
+              fixed
+              width={880}
+              height={280}
+              animated={false}
+              yieldOnly={true}
+              onReady={handleCaptureChartReady}
+              legendOff={true}
+            />
+          </div>
+        </div>
+
+        {/* Row 2 Col 1-4: Text */}
+        <div
+          className="flex items-center justify-center text-center"
+          style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
+        >
+          <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
+            I created this portfolio on <span className="font-bold">Sona</span> — can you do better?
+          </p>
+        </div>
+
+        {/* Row 3 Col 1: QR */}
+        <div
+          className="flex flex-col items-center justify-center"
+          style={{ gridColumn: "1 / span 1", gridRow: "3 / span 1", padding: 10 }}
+        >
+          <img
+            src={shareQrUrl}
+            alt={`${shareHost} share QR`}
+            className="w-full h-full object-contain"
+          />
+        </div>
+
+        {/* Row 3 Col 2-4: Metrics */}
+        <div
+          className="flex"
+          style={{ gridColumn: "2 / span 3", gridRow: "3 / span 1", padding: 10 }}
+        >
+          <div className="w-full h-full text-[14px] text-black bg-white">
+            <MetricsBuilder
+              assets={assets}
+              weights={weights}
+              showYield={true}
+              assetMeta={assetMeta}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
       </div>
     </section>
   );
