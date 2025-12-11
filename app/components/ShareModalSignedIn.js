@@ -424,7 +424,7 @@ export default function ShareModalSignedIn({
                   style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
                 >
                   <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
-                    I created this portfolio on <span className="font-bold">Sona</span> ƒ?" can you do better?
+                    I created this portfolio on <span className="font-bold">Sona</span> can you do better?
                   </p>
                 </div>
 
