@@ -19,6 +19,7 @@ export default function SignInModal() {
   const router = useRouter();
   const params = useSearchParams();
   const wantsOpen = params.get("auth") === "1";
+  const fromShareAuth = params.get("shareAuth") === "1";
 
   const { data: session, status } = useSession();
   const isAuthed = status === "authenticated";
@@ -67,6 +68,7 @@ export default function SignInModal() {
     setOpen(false);
     const url = new URL(window.location.href);
     url.searchParams.delete("auth");
+    url.searchParams.delete("shareAuth");
     router.replace(url.pathname + (url.search ? url.search : "") + window.location.hash, { scroll: false });
   }
 
@@ -143,6 +145,11 @@ export default function SignInModal() {
         {!isAuthed ? (
           // Logged out → offer providers
           <div className="grid gap-2.5">
+            {fromShareAuth && (
+              <div className="text-sm text-[var(--muted)]">
+                To share directly on socials, please sign in.
+              </div>
+            )}
             <button
               onClick={() => startOAuth("google")}
               className="block w-full px-[14px] py-[10px] rounded-lg border border-[var(--border)] bg-white cursor-pointer font-medium text-left"

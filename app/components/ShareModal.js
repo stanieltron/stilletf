@@ -48,6 +48,7 @@ export default function ShareModal({
     );
     params.set("auth", "1");
     params.set("share", "1");
+    params.set("shareAuth", "1");
     router.push(`${base}?${params.toString()}#builder`, { scroll: false });
   }
 

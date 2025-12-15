@@ -183,6 +183,7 @@ export default function BuilderSection({ keepAssets = true }) {
         setYieldEverActivated(true);
       } else if (storedEver) {
         // yield was turned on at least once in the past
+        setYieldOn(true);
         setYieldEverActivated(true);
       }
     } catch { }
@@ -211,17 +212,6 @@ export default function BuilderSection({ keepAssets = true }) {
     }
   }
 
-
-  // generic toggle for subsequent visits (can toggle anytime once yieldEverActivated)
-  function handleToggleYield() {
-    // once ever activated, we never "forget" that
-    if (!yieldEverActivated) {
-      // safety: if somehow not set, treat first toggle as first activation
-      handleFirstYieldActivate();
-      return;
-    }
-    setYieldOn((prev) => !prev);
-  }
 
   // clicking "Share portfolio" (appears when ETF full + yield ON)
   function handleCompletePortfolioClick() {
@@ -284,9 +274,8 @@ export default function BuilderSection({ keepAssets = true }) {
   const max1asset = numActiveAssets <= 1;
 
   const showFirstYield = isETFComplete && !yieldEverActivated;
-  const showYieldToggle = yieldEverActivated;
   const showCompleteBtn = isETFComplete && yieldOn;
-  const hasSecondaryAction = showFirstYield || showYieldToggle || showCompleteBtn;
+  const hasSecondaryAction = showFirstYield || showCompleteBtn;
 
   return (
     <main
@@ -508,56 +497,22 @@ export default function BuilderSection({ keepAssets = true }) {
                               </div>
                             ) : null}
 
-                            {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
-                            {showYieldToggle && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={handleToggleYield}
-                                  className={[
-                                    "relative cta-btn cta-btn-sm text-[10px] sm:text-xs",
-                                    yieldOn
-                                      ? "cta-grey"
-                                      : "cta-blue shadow-[0_0_18px_rgba(37,99,235,0.9)]",
-                                  ].join(" ")}
-                                  aria-label={yieldOn ? "Turn yield off" : "Add STILL yield"}
-                                >
-                                  {/* Expanding border (same style as Share portfolio) when ETF is complete and yield is OFF */}
-                                  {isETFComplete && !yieldOn && (
-                                    <span
-                                      className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
-                                      aria-hidden="true"
-                                    />
-                                  )}
-
-                                  <span className="relative flex items-center gap-1">
-                                    <span className="text-[14px] leading-none">
-                                      {yieldOn ? "[ ]" : "[+]"}
-                                    </span>
-                                    <span>{yieldOn ? "Turn yield off" : "Add STILL yield"}</span>
-                                  </span>
-                                </button>
-
-                                {/* COMPLETE PORTFOLIO BUTTON:
-        appears when portfolio is full AND yield is ON.
-        Pulsates and opens Save modal after 1s. */}
-                                {showCompleteBtn && (
-                                  <button
-                                    type="button"
-                                    onClick={handleCompletePortfolioClick}
-                                  className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
-                                >
-                                  <span
-                                    className="pointer-events-none absolute inset-[-3px] border border-[var(--accent-soft)] rounded-none animate-ping"
-                                    aria-hidden="true"
-                                  />
-                                    <span className="relative flex items-center gap-1">
-                                      <span className="text-[14px] leading-none">*</span>
-                                      <span>Share portfolio</span>
-                                    </span>
-                                  </button>
-                                )}
-                              </div>
+                            {/* YIELD stays on once enabled */}
+                            {showCompleteBtn && (
+                              <button
+                                type="button"
+                                onClick={handleCompletePortfolioClick}
+                                className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
+                              >
+                                <span
+                                  className="pointer-events-none absolute inset-[-3px] border border-[var(--accent-soft)] rounded-none animate-ping"
+                                  aria-hidden="true"
+                                />
+                                <span className="relative flex items-center gap-1">
+                                  <span className="text-[14px] leading-none">*</span>
+                                  <span>Share portfolio</span>
+                                </span>
+                              </button>
                             )}
                           </div>
                         )}
@@ -595,7 +550,7 @@ export default function BuilderSection({ keepAssets = true }) {
                     </div>
 
                     <div className="bg-white text-center w-full text-[clamp(.95rem,.9vw,1rem)] font-bold flex items-center justify-center h-[40px] px-3">
-                      If you invested $1000 5 years ago, you would have:
+                      SONA.XYZ
                     </div>
 
                     <div className="bg-white p-3 h-[200px] md:h-[300px] overflow-auto flex flex-col">
