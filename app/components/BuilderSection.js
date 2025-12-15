@@ -461,7 +461,8 @@ export default function BuilderSection({ keepAssets = true }) {
                   <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col p-3 gap-3 w-full">
                     <div
                       className={[
-                        "w-full h-10 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2",
+                        // Allow content to grow vertically on mobile so the progress bar doesn't overlap buttons.
+                        "w-full h-auto sm:h-10 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2",
                         "[font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]",
                       ].join(" ")}
                     >
@@ -582,7 +583,7 @@ export default function BuilderSection({ keepAssets = true }) {
 
                   {/* Chart + text + metrics grouped */}
                   <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col">
-                    <div className="px-3 py-3 flex h-[300px]">
+                    <div className="px-3 py-3 flex h-[200px] md:h-[300px]">
                       <div className="w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
                         <ChartBuilder
                           assets={assetKeys}
@@ -597,7 +598,7 @@ export default function BuilderSection({ keepAssets = true }) {
                       If you invested $1000 5 years ago, you would have:
                     </div>
 
-                    <div className="bg-white p-3 h-[300px] overflow-auto flex flex-col">
+                    <div className="bg-white p-3 h-[200px] md:h-[300px] overflow-auto flex flex-col">
                       <PortfolioBuilder
                         assets={assetKeys}
                         weights={weights}
