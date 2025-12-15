@@ -10,9 +10,9 @@ import HeroSection from "./components/HeroSection";
 import BuilderSection from "./components/BuilderSection";
 import MissionStatement from "./components/MissionStatement";
 import Roadmap from "./components/Roadmap";
-import Features from "./components/Features";
-import Benefits from "./components/Benefits";
+import { LiveSection, LoveSection, PaidSection } from "./components/Sections";
 import Carousel from "./components/Carousel";
+import WantMore from "./components/WantMore";
 
 /* --- helpers to detect reload/auth return (for keepAssets logic) --- */
 function isReloadNavigation() {
@@ -121,8 +121,9 @@ export default function HomeClient() {
       { id: "hero", label: "Builder", index: 0 },
       { id: "mission", label: "Mission", index: 1 },
       { id: "roadmap", label: "Roadmap", index: 2 },
-      { id: "features", label: "Features", index: 3 },
-      { id: "benefits", label: "Benefits", index: 4 },
+      { id: "paid", label: "Benefits", index: 3 },
+      { id: "live", label: "Live", index: 4 },
+      { id: "love", label: "Love", index: 5 },
     ],
     []
   );
@@ -281,6 +282,7 @@ export default function HomeClient() {
           <div className={sharedSectionInner}>
             <HeroSection />
             <BuilderSection keepAssets={keepAssets} />
+            <WantMore />
           </div>
         </section>
 
@@ -307,25 +309,45 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* Section 3: Features */}
+        {/* Section 3: Get paid */}
         <section
           ref={(el) => setSectionRef(el, 3)}
-          className="flex w-full justify-center bg-[var(--bg-dark)]"
-          style={sectionStyleBase}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={{
+            ...sectionStyleBase,
+            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
+          }}
         >
-          <div className={sharedSectionInner}>
-            <Features />
+          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+            <PaidSection />
           </div>
         </section>
 
-        {/* Section 4: Benefits */}
+        {/* Section 4: Live */}
         <section
           ref={(el) => setSectionRef(el, 4)}
           className="flex w-full justify-center bg-[var(--bg)]"
-          style={sectionStyleBase}
+          style={{
+            ...sectionStyleBase,
+            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
+          }}
         >
-          <div className={sharedSectionInner}>
-            <Benefits />
+          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+            <LiveSection />
+          </div>
+        </section>
+
+        {/* Section 5: Love */}
+        <section
+          ref={(el) => setSectionRef(el, 5)}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={{
+            ...sectionStyleBase,
+            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
+          }}
+        >
+          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+            <LoveSection />
           </div>
         </section>
       </main>

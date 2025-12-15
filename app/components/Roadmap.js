@@ -2,14 +2,13 @@
 
 export default function Roadmap() {
   return (
-    <section className="section-compact">
-      <div className="container-main">
-        <h2 className="heading-2">
-          Product Roadmap
-        </h2>
+    <div className="w-full">
+      <h2 className="heading-2 m-0">
+          Roadmap
+      </h2>
 
-        {/* Roadmap stage area */}
-        <div className="py-0">
+      {/* Roadmap stage area */}
+      <div className="mt-8 md:mt-10">
           <div className="relative w-full">
             {/* Keep the square aspect ratio */}
             <div className="relative w-full pb-0 md:pb-[60%] md:h-0">
@@ -53,19 +52,14 @@ export default function Roadmap() {
                     <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
                       <div className="card-overlay" />
                       <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
-                        The Pilot
+                        The core
                       </span>
                       <h3 className="heading-3">
-                        BTC Fund
+                        Bitcoin-based crypto traded fund
                       </h3>
                       <p className="text-body-muted break-words">
-                        Pure Bitcoin exposure with transparent mechanics.
+                        Get paid for owning the best cryptocurrency in the world.
                       </p>
-                    </div>
-                    <div className="mt-4">
-                      <button className="btn-primary">
-                        Try now for future rewards →
-                      </button>
                     </div>
                   </div>
 
@@ -74,13 +68,13 @@ export default function Roadmap() {
                     <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
                       <div className="card-overlay" />
                       <span className="badge bg-black">
-                        The Flagship
+                        The flagship
                       </span>
                       <h3 className="heading-3">
-                        Wealth Fund
+                        Best assets of a generation combined
                       </h3>
                       <p className="text-body-muted break-words">
-                        Balanced growth &amp; defense: BTC + S&amp;P 500 + Gold + T-Bills.
+                        Bitcoin, S&amp;P 500, gold, and US treasuries.
                       </p>
                     </div>
                   </div>
@@ -90,13 +84,13 @@ export default function Roadmap() {
                     <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
                       <div className="card-overlay" />
                       <span className="badge bg-black">
-                        The Crypto
+                        The crypto
                       </span>
                       <h3 className="heading-3">
-                        3crypto
+                        Staples of the digital economy
                       </h3>
                       <p className="text-body-muted break-words">
-                        Focused crypto basket for higher-beta participation.
+                        BTC, ETH, USDT.
                       </p>
                     </div>
                   </div>
@@ -114,40 +108,37 @@ export default function Roadmap() {
                     style={{ backgroundColor: "var(--bg-dark)", borderColor: "var(--bg-dark)", color: "var(--bg-alt)" }}
                   >
                     <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
-                      The Pilot
+                      The core
                     </span>
                     <h3 className="heading-3">
-                      BTC Fund
+                      Bitcoin-based crypto traded fund
                     </h3>
                     <p className="text-body-light">
-                      Pure Bitcoin exposure with transparent mechanics.
-                    </p>
-                    <button className="btn-primary mt-4">
-                      Try now for future rewards →
-                    </button>
-                  </div>
-
-                  <div className="card-strong relative z-10">
-                    <span className="badge bg-black">
-                      The Flagship
-                    </span>
-                    <h3 className="heading-3">
-                      Wealth Fund
-                    </h3>
-                    <p className="text-body-muted">
-                      Balanced growth &amp; defense: BTC + S&amp;P 500 + Gold + T-Bills.
+                      Get paid for owning the best cryptocurrency in the world.
                     </p>
                   </div>
 
                   <div className="card-strong relative z-10">
                     <span className="badge bg-black">
-                      The Crypto
+                      The flagship
                     </span>
                     <h3 className="heading-3">
-                      3crypto
+                      Best assets of a generation combined
                     </h3>
                     <p className="text-body-muted">
-                      Focused crypto basket for higher-beta participation.
+                      Bitcoin, S&amp;P 500, gold, and US treasuries.
+                    </p>
+                  </div>
+
+                  <div className="card-strong relative z-10">
+                    <span className="badge bg-black">
+                      The crypto
+                    </span>
+                    <h3 className="heading-3">
+                      Staples of the digital economy
+                    </h3>
+                    <p className="text-body-muted">
+                      BTC, ETH, USDT.
                     </p>
                   </div>
                 </div>
@@ -155,7 +146,6 @@ export default function Roadmap() {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+    </div>
   );
 }

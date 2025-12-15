@@ -1,29 +1,23 @@
-﻿"use client";
+"use client";
 
-import Link from "next/link";
-
-export default function HeroSection({ ctaHref = "/?auth=1", onCtaClick }) {
+export default function HeroSection() {
   return (
-    <section className="section !py-0">
-      <div className="container-main pb-12">
-        <h1 className="font-bold mb-4 tracking-tight leading-tight [font-size:clamp(2rem,4vw,3rem)]">
-          SONA - Tokenized Wealth
+    <div className="w-full flex flex-col justify-center gap-6">
+      <div className="flex flex-col gap-4">
+        <h1 className="font-bold tracking-tight leading-tight [font-size:clamp(2.25rem,4.4vw,3.4rem)] m-0">
+          Your fund. Your assets. Your yield.
         </h1>
 
-        <p className="text-body-muted max-w-3xl">
-          Build fully on-chain, composable and yield-generating ETF products. Start with proven DeFi
-          strategies and maintain complete control of your assets.
+        <p className="text-body-muted max-w-3xl text-[clamp(1rem,1.25vw,1.1rem)] leading-relaxed m-0">
+          Build your portfolio with best assets on the market. Get paid for it.
         </p>
-
-        <div className="mt-4">
-          <Link href={ctaHref} onClick={onCtaClick} className="cta-btn cta-black no-underline">
-            REGISTER FOR EARLY ACCESS &rarr;
-          </Link>
-        </div>
-
-        <div className="mt-6 h-2 bg-[var(--accent)] rounded-[var(--radius-md)] w-full" aria-hidden />
       </div>
-    </section>
+
+      <div
+        className="h-2 bg-[var(--accent)] rounded-[var(--radius-md)] w-full"
+        aria-hidden
+      />
+    </div>
   );
 }
 

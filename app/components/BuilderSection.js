@@ -223,7 +223,7 @@ export default function BuilderSection({ keepAssets = true }) {
     setYieldOn((prev) => !prev);
   }
 
-  // clicking "Complete portfolio" (appears when ETF full + yield ON)
+  // clicking "Share portfolio" (appears when ETF full + yield ON)
   function handleCompletePortfolioClick() {
     openShareWithDelay();
   }
@@ -295,7 +295,7 @@ export default function BuilderSection({ keepAssets = true }) {
     >
       <div className="w-full flex-1 flex flex-col gap-3 md:gap-5 min-h-0">
         <h2 className="section-hero center font-bold tracking-tight leading-tight [font-size:clamp(1.5rem,2.5vw,2rem)] m-0">
-          header2 placeholder
+          
         </h2>
 
         {errAssets && (
@@ -367,7 +367,7 @@ export default function BuilderSection({ keepAssets = true }) {
                     const sumOthers = totalPointsUsed - current;
                     const maxForThis = Math.max(
                       current,
-                      Math.min(10, 20 - sumOthers)
+                      Math.min(10, MAX_TOTAL_POINTS - sumOthers)
                     );
                     return (
 
@@ -390,10 +390,10 @@ export default function BuilderSection({ keepAssets = true }) {
             : a + (Number.isFinite(b) ? b : 0),
         0
       );
-      const allowed = Math.max(
-        copy[idx] ?? 0,
-        Math.min(10, 20 - others)
-      );
+       const allowed = Math.max(
+         copy[idx] ?? 0,
+         Math.min(10, MAX_TOTAL_POINTS - others)
+       );
       const next = Math.max(
         0,
         Math.min(
@@ -470,14 +470,14 @@ export default function BuilderSection({ keepAssets = true }) {
                         {/* LEFT: ETF STATUS / FILL CTA */}
                         <div className="min-w-0 flex-1 w-full flex">
                           {!isETFComplete ? (
-                            <div className={`cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm flex items-center justify-center flex-1 w-full`}>
-                              <span className="whitespace-nowrap">
-                                Fill ETF with {pointsRemaining} more points to complete
+                            <div className="h-[30px] md:h-[40px] px-3 flex items-center justify-center flex-1 w-full text-[var(--text)] cursor-default select-none">
+                              <span className="whitespace-nowrap text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.08em]">
+                                Fill ETF with {pointsRemaining} more point{pointsRemaining === 1 ? "" : "s"} to complete
                               </span>
                             </div>
                           ) : (
-                            <div className={`cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm flex items-center justify-center flex-1 w-full`}>
-                              <span className="whitespace-nowrap">
+                            <div className="h-[30px] md:h-[40px] px-3 flex items-center justify-center flex-1 w-full text-[var(--text)] cursor-default select-none">
+                              <span className="whitespace-nowrap text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.08em]">
                                 ETF complete
                               </span>
                             </div>
@@ -522,7 +522,7 @@ export default function BuilderSection({ keepAssets = true }) {
                                   ].join(" ")}
                                   aria-label={yieldOn ? "Turn yield off" : "Add STILL yield"}
                                 >
-                                  {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
+                                  {/* Expanding border (same style as Share portfolio) when ETF is complete and yield is OFF */}
                                   {isETFComplete && !yieldOn && (
                                     <span
                                       className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
@@ -553,7 +553,7 @@ export default function BuilderSection({ keepAssets = true }) {
                                   />
                                     <span className="relative flex items-center gap-1">
                                       <span className="text-[14px] leading-none">*</span>
-                                      <span>Complete portfolio</span>
+                                      <span>Share portfolio</span>
                                     </span>
                                   </button>
                                 )}
@@ -569,7 +569,7 @@ export default function BuilderSection({ keepAssets = true }) {
                     {/* Progress (12px total height) */}
                     <div
                       className="flex items-center h-3"
-                      aria-label={`ETF completeness ${pointsForBar} of 20`}
+                      aria-label={`ETF completeness ${pointsForBar} of ${MAX_TOTAL_POINTS}`}
                     >
                       <div className="relative h-[8px] w-full bg-gray-300 overflow-hidden rounded-[var(--radius-sm)]">
                         <div

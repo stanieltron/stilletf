@@ -2,26 +2,26 @@ import { NextResponse } from "next/server";
 
 // Colors split out by asset id (no TS types)
 const COLORS = {
-  asset1:  "#ff0000", // bright red
-  asset2:  "#ff7f00", // orange
-  asset3:  "#00b3ffff", // pure yellow (not gold)
-  asset4:  "#00ff00", // lime green
-  asset5:  "#008000", // classic green
-  asset6:  "#00ffff", // cyan / aqua
-  asset7:  "#0000ff", // blue
-  asset8:  "#4b0082", // indigo
-  asset9:  "#8a2be2", // blue-violet
-  asset10: "#ff00ff", // magenta
-  asset11: "#ff1493", // deep pink
-  asset12: "#00ced1", // dark turquoise
-  asset13: "#40e0d0", // turquoise
-  asset14: "#ffa07a", // light salmon
-  asset15: "#8b4513", // brown
-  asset16: "#708090", // slate gray
-  asset17: "#ff69b4", // hot pink
-  asset18: "#7fff00", // chartreuse
-  asset19: "#ff4500", // orange-red
-  asset20: "#6a5acd", // slate blue
+  asset1:  "#3A7BD5", // cool royal blue (gold complement)
+  asset2:  "#4FA3D1", // muted sky blue
+  asset3:  "#5BC0BE", // soft cyan-teal
+  asset4:  "#2EC4B6", // teal green
+  asset5:  "#3FB984", // cool emerald
+  asset6:  "#6EE7E7", // pale aqua
+  asset7:  "#5A67D8", // indigo blue
+  asset8:  "#6B5BD6", // blue-violet
+  asset9:  "#8B6FD6", // muted violet
+  asset10: "#9F7AEA", // soft purple
+  asset11: "#C084FC", // lavender-magenta (restrained)
+  asset12: "#38BDF8", // cyan blue
+  asset13: "#60A5FA", // light steel blue
+  asset14: "#94A3B8", // cool slate (pairs with Ledger Grey)
+  asset15: "#64748B", // deep slate blue-grey
+  asset16: "#475569", // dark slate (UI-safe neutral)
+  asset17: "#F472B6", // cool pink (balanced vs gold)
+  asset18: "#22D3EE", // vibrant cyan accent
+  asset19: "#FB7185", // cool coral-red (controlled warmth)
+  asset20: "#7C83FD", // periwinkle blue
 };
 
 
@@ -40,7 +40,7 @@ const BASE_ASSETS = {
   },
   asset2: {
     name: "Ethereum",
-    yearlyYield: 0.03,
+    yearlyYield: 0.04,
     prices: [
       737.803406, 1314.986206, 1416.04895, 1918.362061, 2773.207031, 2714.945312, 2274.547607, 2536.209961, 3433.732666, 3001.678955, 4288.074219, 4631.479004,
       3682.632812, 2688.278809, 2919.201172, 3281.642822, 2730.186768, 1942.328003, 1067.298828, 1681.517334, 1553.684937, 1327.978638, 1572.714478, 1295.688599,
@@ -51,7 +51,7 @@ const BASE_ASSETS = {
   },
   asset3: {
     name: "BNB",
-    yearlyYield: 0.0,
+    yearlyYield: 0.02,
     prices: [
       37.376034, 44.275993, 209.574402, 302.063446, 624.080566, 354.329346, 303.295868, 333.549591, 464.418732, 387.057343, 524.364441, 622.669861,
       511.708313, 375.277313, 395.612427, 428.916107, 377.767822, 320.485107, 219.300095, 283.579468, 279.238098, 284.192291, 326.360718, 300.794342,
@@ -62,7 +62,7 @@ const BASE_ASSETS = {
   },
   asset4: {
     name: "Chainlink",
-    yearlyYield: 0.0,
+    yearlyYield: 0.02,
     prices: [
       11.270538, 22.598434, 24.663532, 29.351137, 38.128506, 32.088585, 19.497236, 22.753702, 26.750708, 23.986349, 29.985006, 25.341774,
       19.592325, 17.240427, 15.11647, 16.910994, 10.997047, 7.59467, 6.252963, 7.666137, 6.630673, 7.581146, 7.861647, 7.680302,
@@ -73,7 +73,7 @@ const BASE_ASSETS = {
   },
   asset5: {
     name: "Yield Dollars (T-Bills)",
-    yearlyYield: 0.0432,
+    yearlyYield: 0.1,
     prices: [
       79.009171, 79.011742, 79.00312, 78.994514, 78.994514, 78.985863, 78.968597, 78.959953, 78.951317, 78.959953, 78.951317, 78.934052,
       78.934052, 78.934052, 78.916794, 78.934052, 78.944443, 78.970345, 79.004875, 79.014404, 79.129356, 79.256592, 79.368462, 79.572411,
@@ -84,7 +84,7 @@ const BASE_ASSETS = {
   },
   asset6: {
     name: "S&P 500 (SPY)",
-    yearlyYield: 0.0109,
+    yearlyYield: 0.03,
     prices: [
       348.553558, 346.472351, 356.106171, 371.057953, 391.970367, 394.544037, 402.077209, 413.240448, 425.538422, 404.410431, 434.171814, 430.683289,
       449.023926, 426.836182, 414.237183, 428.477417, 392.084625, 392.969696, 359.014465, 393.768799, 377.702271, 341.382843, 370.645294, 391.250031,
@@ -95,7 +95,7 @@ const BASE_ASSETS = {
   },
   asset7: {
     name: "Nasdaq-100 (QQQ)",
-    yearlyYield: 0.0047,
+    yearlyYield: 0.02,
     prices: [
       304.302887, 305.651154, 305.243073, 310.091766, 328.832428, 324.882446, 344.826965, 355.103638, 370.084351, 348.665314, 376.501282, 384.01947,
       387.949127, 354.467377, 338.601501, 353.96936, 306.222687, 301.364197, 273.992371, 308.975922, 293.118713, 261.766693, 272.726166, 287.846497,
@@ -117,7 +117,7 @@ const BASE_ASSETS = {
   },
   asset9: {
     name: "Emerging Mkts (EEM)",
-    yearlyYield: 0.0222,
+    yearlyYield: 0.08,
     prices: [
       46.158375, 48.115788, 48.494865, 48.14286, 48.720497, 49.523785, 49.776505, 46.776318, 47.510597, 45.670364, 46.159885, 44.274334,
       44.283401, 44.932381, 42.991199, 41.537613, 38.989239, 39.228432, 36.891651, 37.075268, 36.58353, 32.361996, 31.721806, 36.667034,
@@ -128,7 +128,7 @@ const BASE_ASSETS = {
   },
   asset10: {
     name: "AI & Robotics (BOTZ)",
-    yearlyYield: 0.0022,
+    yearlyYield: 0.00,
     prices: [
       32.813034, 33.521084, 33.29332, 32.817978, 34.006325, 33.917198, 34.610397, 33.735767, 36.374321, 36.275127, 37.376179, 35.908108,
       35.650211, 29.460526, 29.331575, 28.776087, 23.657696, 23.657696, 20.156157, 22.38855, 20.479757, 17.974466, 19.505478, 21.304914,
