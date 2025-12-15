@@ -10,7 +10,7 @@ set -euo pipefail
 #   LOCAL_FORK_CONFIG (opt)      - path to JSON with external addresses (default: config/local-fork.json)
 #   ALLOW_MISSING_POOL_CODE (opt)- set true to skip external code checks when RPC lacks bytecode
 #   FORK_BLOCK (opt)             - mainnet block number to fork (default: 19600000)
-#   CHAIN_ID (opt)               - fork chain id (default: 1)
+#   CHAIN_ID (opt)               - fork chain id (default: 31337)
 #   ANVIL_PORT (opt)             - RPC port (default: 8545)
 #   ANVIL_LOG (opt)              - log file for anvil (default: /tmp/anvil-mainnet-fork.log)
 
@@ -18,7 +18,7 @@ MAINNET_RPC_URL=${MAINNET_RPC_URL:-}
 PRIVATE_KEY=${PRIVATE_KEY:-}
 PRIVATE_KEY_ADDRESS=${PRIVATE_KEY_ADDRESS:-}
 FORK_BLOCK=${FORK_BLOCK:-19600000}
-CHAIN_ID=${CHAIN_ID:-1}
+CHAIN_ID=${CHAIN_ID:-31337}
 ANVIL_PORT=${ANVIL_PORT:-8545}
 ANVIL_LOG=${ANVIL_LOG:-/tmp/anvil-mainnet-fork.log}
 RPC_URL="http://127.0.0.1:${ANVIL_PORT}"
@@ -39,16 +39,17 @@ if [[ -z "$PRIVATE_KEY_ADDRESS" ]]; then
 fi
 
 echo "Starting anvil fork on port ${ANVIL_PORT} (chainId=${CHAIN_ID}, block=${FORK_BLOCK})..."
-anvil --fork-url "$MAINNET_RPC_URL" \
+nohup anvil --fork-url "$MAINNET_RPC_URL" \
   --fork-block-number "$FORK_BLOCK" \
   --chain-id "$CHAIN_ID" \
   --port "$ANVIL_PORT" \
   --block-time 1 \
   --code-size-limit 50000 \
-  2> >(tee "$ANVIL_LOG") > >(tee -a "$ANVIL_LOG") &
+  >"$ANVIL_LOG" 2>&1 &
 
 ANVIL_PID=$!
-echo "Anvil PID: ${ANVIL_PID} (logs mirrored to ${ANVIL_LOG})"
+disown "$ANVIL_PID"
+echo "Anvil PID: ${ANVIL_PID} (logs in ${ANVIL_LOG})"
 
 echo "Waiting for anvil to be ready..."
 until cast chain-id --rpc-url "$RPC_URL" >/dev/null 2>&1; do

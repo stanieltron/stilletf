@@ -5,7 +5,8 @@ import path from "path";
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const chainId = searchParams.get("chainId") || process.env.NEXT_PUBLIC_CHAIN_ID || "11155111";
-  const filePath = path.join(process.cwd(), "cache", "deployments", `${chainId}.json`);
+  const basePath = path.join(process.cwd(), "cache", "deployments");
+  const filePathJson = path.join(basePath, `${chainId}.json`);
   const broadcastPath = path.join(
     process.cwd(),
     "broadcast",
@@ -19,10 +20,10 @@ export async function GET(req) {
 
     // Primary source: cache/deployments/<chainId>.json (written by the script)
     try {
-      const raw = fs.readFileSync(filePath, "utf8");
-      Object.assign(addresses, JSON.parse(raw));
-    } catch (e) {
-      console.warn("deployments cache read failed, will try broadcast", e);
+      const rawJson = fs.readFileSync(filePathJson, "utf8");
+      Object.assign(addresses, JSON.parse(rawJson));
+    } catch (err) {
+      console.warn("deployments cache read failed, will try broadcast", err);
     }
 
     // Fallback: pull addresses from the latest broadcast run if cache missing keys

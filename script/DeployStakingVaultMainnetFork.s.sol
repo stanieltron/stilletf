@@ -113,7 +113,7 @@ contract DeployStakingVaultMainnetFork is Script {
 
         string memory dir = "cache/deployments";
         vm.createDir(dir, true);
-        string memory outfile = string.concat(dir, "/", vm.toString(block.chainid), "-fork.json");
+        string memory outfile = string.concat(dir, "/", vm.toString(block.chainid), ".json");
         vm.writeJson(json, outfile);
         console2.log("Saved addresses to", outfile);
     }

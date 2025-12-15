@@ -79,11 +79,11 @@ export async function GET(req) {
     );
   }
 
-  const cfgPath = path.join(process.cwd(), "cache", "deployments", `${chainId}.json`);
+  const cfgPathJson = path.join(process.cwd(), "cache", "deployments", `${chainId}.json`);
   let fileAddresses = {};
   try {
-    const raw = fs.readFileSync(cfgPath, "utf8");
-    fileAddresses = JSON.parse(raw);
+    const rawJson = fs.readFileSync(cfgPathJson, "utf8");
+    fileAddresses = JSON.parse(rawJson);
   } catch (e) {
     // ignore; we still merge env below
   }

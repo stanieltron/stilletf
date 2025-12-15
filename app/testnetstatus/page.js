@@ -113,6 +113,7 @@ export default function TestnetStatusPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
+  const [diagnostics, setDiagnostics] = useState({});
   const [addresses, setAddresses] = useState(ENV_ADDR);
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
@@ -194,23 +195,63 @@ export default function TestnetStatusPage() {
   async function refresh() {
     setLoading(true);
     setErr("");
+    const diag = { rpc: null, chainId: null, chainMismatch: false, addresses: {}, fetch: {} };
     try {
       if (!provider) throw new Error("No provider");
       const [blockNumber, network] = await Promise.all([
-        provider.getBlockNumber(),
-        provider.getNetwork(),
+        provider.getBlockNumber().then((bn) => {
+          diag.rpc = "ok";
+          return bn;
+        }),
+        provider.getNetwork().then((nw) => {
+          diag.chainId = nw.chainId?.toString();
+          if (DEFAULT_CHAIN_ID && diag.chainId && diag.chainId !== DEFAULT_CHAIN_ID) {
+            diag.chainMismatch = true;
+          }
+          return nw;
+        }),
       ]);
 
-      const [oracleData, tokenData, fluidData, vaultData, strategyData, poolData, harvestEst] =
-        await Promise.all([
-          fetchOracle(provider),
-          fetchTokens(provider),
-          fetchFluid(provider),
-          fetchVault(provider),
-          fetchStrategy(provider),
-          fetchPool(provider),
-          estimateHarvest(provider),
-        ]);
+      // address sanity
+      Object.entries(addresses).forEach(([key, val]) => {
+        if (!val || val === "0x0000000000000000000000000000000000000000") {
+          diag.addresses[key] = "missing";
+        }
+      });
+
+      const [
+        oracleRes,
+        tokensRes,
+        fluidRes,
+        vaultRes,
+        strategyRes,
+        poolRes,
+        harvestRes,
+      ] = await Promise.allSettled([
+        fetchOracle(provider),
+        fetchTokens(provider),
+        fetchFluid(provider),
+        fetchVault(provider),
+        fetchStrategy(provider),
+        fetchPool(provider),
+        estimateHarvest(provider),
+      ]);
+
+      const oracleData = oracleRes.status === "fulfilled" ? oracleRes.value : null;
+      const tokenData = tokensRes.status === "fulfilled" ? tokensRes.value : null;
+      const fluidData = fluidRes.status === "fulfilled" ? fluidRes.value : null;
+      const vaultData = vaultRes.status === "fulfilled" ? vaultRes.value : null;
+      const strategyData = strategyRes.status === "fulfilled" ? strategyRes.value : null;
+      const poolData = poolRes.status === "fulfilled" ? poolRes.value : null;
+      const harvestEst = harvestRes.status === "fulfilled" ? harvestRes.value : null;
+
+      if (oracleRes.status === "rejected") diag.fetch.oracle = oracleRes.reason?.message || "oracle fetch failed";
+      if (tokensRes.status === "rejected") diag.fetch.tokens = tokensRes.reason?.message || "token fetch failed";
+      if (fluidRes.status === "rejected") diag.fetch.fluid = fluidRes.reason?.message || "fluid fetch failed";
+      if (vaultRes.status === "rejected") diag.fetch.vault = vaultRes.reason?.message || "vault fetch failed";
+      if (strategyRes.status === "rejected") diag.fetch.strategy = strategyRes.reason?.message || "strategy fetch failed";
+      if (poolRes.status === "rejected") diag.fetch.pool = poolRes.reason?.message || "pool fetch failed";
+      if (harvestRes.status === "rejected") diag.fetch.harvest = harvestRes.reason?.message || "harvest est failed";
 
       setData({
         blockNumber,
@@ -225,8 +266,13 @@ export default function TestnetStatusPage() {
       setHarvestEstimate(harvestEst);
     } catch (e) {
       console.error(e);
-      setErr("Failed to load status. Connect wallet and check addresses.");
+      const parts = [];
+      if (diag.chainMismatch) parts.push(`Chain mismatch: expected ${DEFAULT_CHAIN_ID}, got ${diag.chainId || "unknown"}`);
+      if (Object.keys(diag.fetch || {}).length) parts.push("Fetch errors: " + Object.entries(diag.fetch).map(([k, v]) => `${k}: ${v}`).join("; "));
+      if (!parts.length) parts.push(e?.message || "Failed to load status. Connect wallet and check addresses.");
+      setErr(parts.join(" | "));
     } finally {
+      setDiagnostics(diag);
       setLoading(false);
     }
   }
@@ -355,8 +401,9 @@ export default function TestnetStatusPage() {
         uaBalance: uaInVault,
         usdcBalance: usdcInVault,
       };
-    } catch {
-      return null;
+    } catch (e) {
+      console.warn("vault fetch failed", e);
+      throw e;
     }
   }
 
@@ -395,8 +442,9 @@ export default function TestnetStatusPage() {
         stethBal,
         usdcBal,
       };
-    } catch {
-      return null;
+    } catch (e) {
+      console.warn("strategy fetch failed", e);
+      throw e;
     }
   }
 
@@ -547,6 +595,46 @@ export default function TestnetStatusPage() {
       {err && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
           {err}
+        </div>
+      )}
+      {diagnostics && Object.keys(diagnostics).length > 0 && (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 space-y-2">
+          <div className="font-semibold text-slate-900">Diagnostics</div>
+          <div className="flex justify-between">
+            <span>RPC</span>
+            <span className="font-mono text-slate-900">{diagnostics.rpc || "not reached"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Chain</span>
+            <span className="font-mono text-slate-900">
+              {diagnostics.chainId || "unknown"}
+              {diagnostics.chainMismatch ? ` (expected ${DEFAULT_CHAIN_ID})` : ""}
+            </span>
+          </div>
+          {diagnostics.addresses && Object.keys(diagnostics.addresses).length > 0 && (
+            <div>
+              <div className="font-semibold text-slate-900">Address issues</div>
+              <ul className="list-disc pl-4">
+                {Object.entries(diagnostics.addresses).map(([k, v]) => (
+                  <li key={k} className="font-mono text-rose-700">
+                    {k}: {v}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {diagnostics.fetch && Object.keys(diagnostics.fetch).length > 0 && (
+            <div>
+              <div className="font-semibold text-slate-900">Fetch errors</div>
+              <ul className="list-disc pl-4">
+                {Object.entries(diagnostics.fetch).map(([k, v]) => (
+                  <li key={k} className="font-mono text-rose-700">
+                    {k}: {v}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
