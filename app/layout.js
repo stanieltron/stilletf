@@ -6,7 +6,7 @@ import Providers from "./providers"; // client wrapper
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body className="sona-shell">
         <Providers>{children}</Providers>
       </body>
     </html>

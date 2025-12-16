@@ -7,21 +7,25 @@ import Footer from "../components/Footer";
 
 export default function ETFsPage() {
   return (
-    <div className="min-h-full flex flex-col bg-white text-black">
+    <div className="min-h-screen flex flex-col text-[var(--text)]">
       <Header />
 
       <main className="flex flex-col">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col py-12">
-          <h1 className="mt-0 text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
-            Skill-ETFs roadmap
-          </h1>
-          <p className="mt-2 text-sm sm:text-base md:text-lg text-neutral-600 max-w-xl">
-            Three on-chain funds that mirror the way you actually invest:
-            pure Bitcoin, a balanced wealth basket, and a focused crypto fund.
-          </p>
+        <div className="sona-container flex flex-col py-12 gap-6">
+          <div className="flex flex-col gap-2 max-w-3xl">
+            <div className="sona-chip w-fit">Sona funds</div>
+            <h1 className="mt-0 text-4xl sm:text-5xl font-extrabold tracking-tight">
+              Skill ETFs with Sona discipline
+            </h1>
+            <p className="text-body max-w-2xl">
+              Three on-chain funds that mirror how sophisticated investors allocate:
+              pure Bitcoin conviction, a balanced wealth basket, and a focused crypto trio.
+            </p>
+            <div className="sona-divider w-full max-w-lg" aria-hidden />
+          </div>
 
           {/* Stacked full-width cards */}
-          <div className="mt-10 sm:mt-16 mb-16 sm:mb-24 flex flex-col gap-8 sm:gap-10">
+          <div className="mt-6 sm:mt-10 mb-16 sm:mb-24 flex flex-col gap-8 sm:gap-10">
             <FundCard
               variant="dark"
               tag="THE PILOT"
@@ -55,9 +59,9 @@ export default function ETFsPage() {
           <div className="mt-4">
             <Link
               href="/"
-              className="inline-block border border-black bg-white px-4 py-2 text-sm font-bold tracking-tight uppercase hover:bg-black hover:text-white transition-colors rounded-none"
+              className="inline-flex items-center gap-2 sona-btn sona-btn-outline"
             >
-              Back to builder
+              ← Back to builder
             </Link>
           </div>
         </div>
@@ -81,27 +85,26 @@ function FundCard({
   const Wrapper = href && active ? Link : "div";
 
   const baseClasses =
-    "w-full border px-5 py-8 md:px-10 md:py-16 rounded-3xl no-underline transition-transform transition-shadow";
+    "w-full sona-card relative overflow-hidden no-underline transition-transform duration-200";
   const activeClasses = active
-    ? "cursor-pointer hover:-translate-y-1 hover:shadow-[0_10px_0_rgba(0,0,0,1)]"
+    ? "cursor-pointer hover:-translate-y-1"
     : "cursor-default";
   const variantClasses =
     variant === "dark"
-      ? "bg-black text-white border-white hover:border-[var(--accent)]"
-      : "bg-white text-black border-black hover:border-[var(--accent)]";
+      ? "bg-[var(--bg-dark)] text-[var(--footer-text)] border border-[var(--chrome)]"
+      : "bg-[rgba(255,255,255,0.98)] text-[var(--text)] border border-[rgba(17,19,24,0.08)]";
 
-  const tagClasses =
-    "inline-block bg-[var(--accent)] text-[var(--accent-text)] text-xs sm:text-sm md:text-base font-semibold tracking-[0.16em] px-3 sm:px-4 py-1 uppercase";
+  const tagClasses = "sona-chip";
   const titleClasses =
     "mt-5 mb-2 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight";
   const subtitleClasses =
     "text-xl sm:text-2xl md:text-3xl" +
     (variant === "dark" ? " text-white/80" : " text-neutral-800");
   const bodyClasses =
-    "mt-6 text-lg sm:text-xl md:text-3xl leading-relaxed" +
-    (variant === "dark" ? " text-white/80" : " text-neutral-800");
+    "mt-6 text-lg sm:text-xl md:text-2xl leading-relaxed" +
+    (variant === "dark" ? " text-white/80" : " text-neutral-700");
   const ctaClasses =
-    "mt-8 sm:mt-10 text-xl sm:text-2xl md:text-3xl font-semibold tracking-tight" +
+    "mt-8 sm:mt-10 flex items-center gap-3 text-base sm:text-lg md:text-xl font-semibold tracking-[0.1em]" +
     (active
       ? " text-[var(--accent)]"
       : variant === "dark"

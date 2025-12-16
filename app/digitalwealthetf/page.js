@@ -45,58 +45,86 @@ export default function DigitalWealthETFPage() {
   const weights = resolved.weights;
 
   return (
-    <div className="page">
-    <Header />
-    <main className="site-content">
-      <div className="container">
-         
-        <h1 className="mt-0">Tokenized Wealth <span className="metric-label">(TWLTH)</span></h1>
-        <p className="metric-label">
-          Objective: diversified exposure across digital assets (Bitcoin), global equities (S&amp;P 500),
-          and defensive assets (Gold, T-Bills). Quarterly rebalanced to targets.
-        </p>
+    <div className="min-h-screen flex flex-col text-[var(--text)]">
+      <Header />
+      <main className="flex-1">
+        <div className="sona-container py-12 flex flex-col gap-8">
+          <div className="flex flex-col gap-3 max-w-3xl">
+            <div className="sona-chip w-fit">Flagship mix</div>
+            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mt-0">
+              Tokenized Wealth <span className="text-[var(--muted)]">(TWLTH)</span>
+            </h1>
+            <p className="text-body max-w-2xl">
+              Diversified exposure across Bitcoin, global equities, gold, and T-Bills — rebalanced quarterly to stay
+              disciplined through cycles.
+            </p>
+            <div className="sona-divider max-w-md" aria-hidden />
+          </div>
 
-        {err && <div className="metric-label neg mt-8">{err}</div>}
-        {loading && <div className="metric-label mt-8">Loading…</div>}
-
-        {!loading && (
-          <>
-            <div className="split">
-              <aside className="left-pane">
-                <h2 className="section-title">Holdings</h2>
-                {assets.map((k, i) => {
-                  const meta = assetsMeta[k] || {};
-                  return (
-                    <div key={k} className="metric-label" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span className="badge" style={{ background: meta.color || "var(--accent)", border: `1px solid ${meta.color || "var(--accent)"}` }} />
-                      <span style={{ minWidth: 160 }}>{meta.name || k}</span>
-                      <span className="strong">{Math.round(weights[i] * 100)}%</span>
-                    </div>
-                  );
-                })}
-                <div className="mt-32">
-                  <h3 className="mt-0">Additional info</h3>
-                  <ul className="metric-label">
-                    <li>Rebalancing: Quarterly</li>
-                    <li>Suggested horizon: 3–5 years</li>
-                    <li>Risk: Medium–High</li>
-                  </ul>
-                </div>
-              </aside>
-
-              <section className="right-pane">
-                <ChartBuilder assets={assets} weights={weights} />
-                <PortfolioBuilder assets={assets} weights={weights} />
-              </section>
+          {err && (
+            <div className="sona-card border border-rose-100 text-rose-800">
+              {err}
             </div>
+          )}
+          {loading && (
+            <div className="sona-card text-body">Loading…</div>
+          )}
 
-            <div className="mt-32">
-              <Link href="/ETFs" className="btn-step">← Back to ETFs</Link>
-              <Link href="/" className="btn-step" style={{ marginLeft: 8 }}>Back to Builder</Link>
-            </div>
-          </>
-        )}
-     
+          {!loading && (
+            <>
+              <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr]">
+                <aside className="sona-card flex flex-col gap-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="heading-3 mb-0">Holdings</h2>
+                    <div className="sona-pill-gold sona-pill">Quarterly rebalance</div>
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    {assets.map((k, i) => {
+                      const meta = assetsMeta[k] || {};
+                      return (
+                        <div
+                          key={k}
+                          className="flex items-center gap-3 text-body"
+                        >
+                          <span
+                            className="w-8 h-8 rounded-full border border-[rgba(17,19,24,0.08)]"
+                            style={{ background: meta.color || "var(--accent)" }}
+                          />
+                          <span className="flex-1 font-semibold">{meta.name || k}</span>
+                          <span className="font-extrabold text-lg text-[var(--text)]">
+                            {Math.round(weights[i] * 100)}%
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="pt-4 border-t border-[rgba(17,19,24,0.06)]">
+                    <h3 className="heading-4 mb-1">Additional info</h3>
+                    <ul className="text-body-muted list-disc pl-5 space-y-1">
+                      <li>Rebalancing: Quarterly</li>
+                      <li>Suggested horizon: 3–5 years</li>
+                      <li>Risk: Medium–High</li>
+                    </ul>
+                  </div>
+                </aside>
+
+                <section className="sona-card flex flex-col gap-4">
+                  <ChartBuilder assets={assets} weights={weights} />
+                  <MetricsBuilder assets={assets} weights={weights} showYield />
+                </section>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 mt-6">
+                <Link href="/ETFs" className="sona-btn sona-btn-outline">
+                  ← Back to ETFs
+                </Link>
+                <Link href="/" className="sona-btn sona-btn-primary">
+                  Back to Builder
+                </Link>
+              </div>
+            </>
+          )}
+
         </div>
       </main>
       <Footer />

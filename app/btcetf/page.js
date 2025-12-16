@@ -379,37 +379,41 @@ export default function BTCETFPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f7f9fc] via-[#eef2f8] to-[#e8edf7] text-slate-900 flex flex-col">
+    <div className="min-h-screen flex flex-col text-[var(--text)]">
       <main className="flex-1 flex flex-col">
-        <div className="max-w-5xl mx-auto px-6 py-6 flex flex-col gap-6 flex-1">
-          <header className="flex items-start justify-between gap-6 pb-2">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <p className="uppercase text-[0.7rem] tracking-[0.35em] text-slate-500">BTC ETF</p>
-                <div className="flex items-center gap-2 text-[0.7rem] text-slate-500">
+        <div className="sona-container py-8 flex flex-col gap-6 flex-1">
+          <header className="flex flex-col md:flex-row items-start justify-between gap-6 pb-2">
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="sona-chip">BTC ETF</div>
+                <div className="flex items-center gap-2 text-[12px] text-[var(--muted)]">
                   <span
-                    className={`h-2 w-2 rounded-full ${loadingData ? "bg-amber-400 animate-pulse" : "bg-emerald-500"}`}
+                    className={`h-2 w-2 rounded-full ${loadingData ? "bg-[var(--accent)] animate-pulse" : "bg-[var(--pos)]"}`}
                   />
                   <span>{loadingData ? "Updating" : "Live data"}</span>
                 </div>
               </div>
-              <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
-                earn USD yield for holding crypto assets
+              <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                Earn USD yield for holding crypto assets
               </h1>
+              <p className="text-body max-w-2xl">
+                Stake WBTC into the Sona vault, keep your Bitcoin, and collect {REWARD_SYMBOL} yield backed by disciplined strategy.
+              </p>
+              <div className="sona-divider max-w-md" aria-hidden />
             </div>
-            <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col items-stretch md:items-end gap-2 w-full md:w-auto">
               <button
                 onClick={walletAddress ? resetWallet : connectWallet}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-900 text-sm font-semibold shadow-sm hover:bg-slate-100 transition"
+                className="sona-btn sona-btn-ghost justify-center"
               >
                 <span
-                  className={`h-2 w-2 rounded-full ${walletAddress && networkOk ? "bg-emerald-500" : "bg-amber-400"}`}
+                  className={`h-2 w-2 rounded-full ${walletAddress && networkOk ? "bg-[var(--pos)]" : "bg-[var(--accent)]"}`}
                 />
                 {walletAddress ? shorten(walletAddress) : "Connect wallet"}
               </button>
               <Link
                 href={HOW_TO_WALLET_HREF}
-                className="text-xs underline text-slate-700 hover:text-slate-900"
+                className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)] hover:text-[var(--accent)] text-right"
               >
                 How to use wallets
               </Link>
@@ -417,23 +421,23 @@ export default function BTCETFPage() {
           </header>
 
           {err && (
-            <div className="rounded-2xl border border-red-500/30 bg-red-100 px-4 py-3 text-sm text-red-800">
+            <div className="sona-card border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
               {err}
             </div>
           )}
 
           <div className="flex flex-col flex-1 justify-center">
-            <section className="rounded-3xl border border-slate-200 bg-white shadow-md p-6 md:p-7 space-y-6">
+            <section className="sona-card space-y-6">
               <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4">
                 <div className="flex flex-col gap-1">
-                  <span className="text-base md:text-lg font-semibold text-slate-900 tracking-tight">
+                  <span className="text-base md:text-lg font-semibold tracking-tight">
                     My WBTC in the fund
                   </span>
-                  <span className="text-xs text-slate-500">Wallet: {walletBalance} WBTC</span>
+                  <span className="text-xs text-[var(--muted)]">Wallet: {walletBalance} WBTC</span>
                 </div>
                 <div className="flex items-center justify-center">
                   <span
-                    className="text-4xl md:text-5xl font-semibold text-amber-500 tabular-nums font-mono text-center min-w-[170px]"
+                    className="text-4xl md:text-5xl font-semibold text-[var(--accent)] tabular-nums font-mono text-center min-w-[170px]"
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
                     {vaultHoldings} BTC
@@ -443,38 +447,39 @@ export default function BTCETFPage() {
                   <button
                     onClick={() => openDialog("deposit")}
                     disabled={!ready}
-                    className="px-4 py-2 rounded-xl bg-amber-500 text-white font-semibold shadow hover:bg-amber-400 disabled:opacity-50"
+                    className="sona-btn sona-btn-primary disabled:opacity-50"
                   >
                     Add WBTC
                   </button>
                   <button
                     onClick={() => openDialog("withdraw")}
                     disabled={!ready || userStats.shares === 0n}
-                    className="px-4 py-2 rounded-xl border border-slate-300 text-slate-900 font-semibold hover:bg-slate-50 disabled:opacity-50"
+                    className="sona-btn sona-btn-outline disabled:opacity-50"
                   >
                     Withdraw
                   </button>
                 </div>
               </div>
 
-              <div className="h-px w-full bg-slate-200" />
+              <div className="sona-divider w-full" />
 
               <div className="grid md:grid-cols-[1fr_auto_1fr] items-center gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-base md:text-lg font-semibold text-slate-900 tracking-tight">
+                  <span className="text-base md:text-lg font-semibold tracking-tight">
                     My {REWARD_SYMBOL} yield
                   </span>
                   <button
                     type="button"
                     onClick={() => setShowMoreInfo((prev) => !prev)}
-                    className="px-3 py-1 rounded-full border border-amber-500 text-amber-700 text-xs font-semibold hover:bg-amber-500 hover:text-white transition shadow-sm"
+                    className="sona-pill sona-pill-gold"
+                    title="Show more info"
                   >
-                    *
+                    Details
                   </button>
                 </div>
                 <div className="flex items-center justify-center">
                   <span
-                    className="text-4xl md:text-5xl font-semibold text-emerald-600 tabular-nums font-mono text-center min-w-[170px]"
+                    className="text-4xl md:text-5xl font-semibold text-[var(--pos)] tabular-nums font-mono text-center min-w-[170px]"
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
                     {yieldAmount} {REWARD_SYMBOL}
@@ -484,7 +489,7 @@ export default function BTCETFPage() {
                   <button
                     onClick={withdrawYield}
                     disabled={!ready || userStats.pendingRewards === 0n}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-white font-semibold shadow hover:bg-emerald-400 disabled:opacity-50"
+                    className="sona-btn sona-btn-ghost disabled:opacity-50"
                   >
                     Claim
                   </button>
@@ -494,8 +499,8 @@ export default function BTCETFPage() {
               {showInlineStatus && <ActionStatus state={actionState} />}
 
               {showMoreInfo && (
-                <div className="border-t border-slate-200 pt-4 space-y-2 text-sm">
-                  <p className="text-slate-600">More info</p>
+                <div className="border-t border-[rgba(17,19,24,0.08)] pt-4 space-y-2 text-sm">
+                  <p className="text-[var(--muted)]">More info</p>
                   <div className="space-y-2">
                     <DataStat label="Total WBTC in fund" value={`${vaultTvl} BTC`} />
                     <DataStat
@@ -515,7 +520,7 @@ export default function BTCETFPage() {
           <div className="mt-4 text-center">
             <Link
               href={HOW_IT_WORKS_HREF}
-              className="text-sm underline text-slate-700 hover:text-slate-900"
+              className="text-sm uppercase tracking-[0.18em] text-[var(--muted)] hover:text-[var(--accent)]"
             >
               How it works
             </Link>
@@ -524,10 +529,10 @@ export default function BTCETFPage() {
 
         {dialogOpen && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-30 px-4">
-            <div className="bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="sona-card-dark max-w-md w-full p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-white/70">
                     {dialogMode === "deposit" ? "Add WBTC" : "Withdraw WBTC"}
                   </p>
                   <h3 className="text-xl font-semibold text-white">
@@ -536,29 +541,29 @@ export default function BTCETFPage() {
                 </div>
                 <button
                   onClick={() => setDialogOpen(false)}
-                  className="text-slate-400 hover:text-white"
+                  className="text-white/70 hover:text-white"
                 >
                   ✕
                 </button>
               </div>
 
               <div>
-                <div className="mb-4 flex gap-2 rounded-xl bg-slate-900 p-1 border border-slate-800">
+                <div className="mb-4 flex gap-2 rounded-xl bg-[rgba(255,255,255,0.05)] p-1 border border-[rgba(255,255,255,0.08)]">
                   <button
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                       dialogMode === "deposit"
-                        ? "bg-white text-slate-950 shadow"
-                        : "text-slate-300 hover:text-white"
+                        ? "bg-white text-[var(--text)] shadow"
+                        : "text-white/80 hover:text-white"
                     }`}
                     onClick={() => setDialogMode("deposit")}
                   >
                     Deposit
                   </button>
                   <button
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold ${
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
                       dialogMode === "withdraw"
-                        ? "bg-white text-slate-950 shadow"
-                        : "text-slate-300 hover:text-white"
+                        ? "bg-white text-[var(--text)] shadow"
+                        : "text-white/80 hover:text-white"
                     }`}
                     onClick={() => setDialogMode("withdraw")}
                   >
@@ -566,35 +571,35 @@ export default function BTCETFPage() {
                   </button>
                 </div>
 
-                <label className="text-sm text-slate-300">Amount (WBTC)</label>
+                <label className="text-sm text-white/80">Amount (WBTC)</label>
                 <input
                   type="number"
                   min="0"
                   step="any"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full mt-2 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white outline-none focus:border-amber-300 focus:ring-amber-300/30"
+                  className="w-full mt-2 bg-[rgba(255,255,255,0.06)] border border-[rgba(255,255,255,0.12)] rounded-xl px-3 py-2 text-white outline-none focus:border-[var(--accent)] focus:ring-[var(--accent)]/30"
                   placeholder="0.0"
                 />
 
-                <div className="mt-4 text-xs text-slate-400 space-y-1">
+                <div className="mt-4 text-xs text-white/70 space-y-1">
                   <p>Wallet: {walletBalance} WBTC</p>
                   <p>Vault balance: {vaultHoldings} BTC</p>
                 </div>
 
-                {actionBusy && <ActionStatus state={actionState} />}
+                {actionBusy && <ActionStatus state={actionState} dark />}
 
                 <div className="mt-6 flex justify-end gap-3">
                   <button
                     onClick={() => setDialogOpen(false)}
-                    className="px-4 py-2 rounded-xl border border-slate-800 text-slate-200 hover:bg-white/5"
+                    className="sona-btn sona-btn-outline bg-transparent border border-[rgba(255,255,255,0.2)] text-white hover:text-[var(--accent-text)]"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSubmitAction}
                     disabled={actionBusy || !ready}
-                    className="px-4 py-2 rounded-xl bg-amber-400 text-slate-950 font-semibold shadow hover:bg-amber-300 disabled:opacity-50"
+                    className="sona-btn sona-btn-primary disabled:opacity-50"
                   >
                     {dialogMode === "deposit" ? "Confirm deposit" : "Confirm withdrawal"}
                   </button>
@@ -615,16 +620,22 @@ function shorten(address = "") {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
-function ActionStatus({ state }) {
+function ActionStatus({ state, dark = false }) {
   if (!state || state.phase === "idle") return null;
-  const tone = state.phase === "success" ? "text-emerald-600" : "text-amber-600";
+  const tone =
+    state.phase === "success"
+      ? dark ? "text-[var(--accent-soft)]" : "text-[var(--pos)]"
+      : dark ? "text-[var(--accent-soft)]" : "text-[var(--accent)]";
   const showSpinner = state.phase !== "success";
+  const baseClasses = dark
+    ? "mt-4 flex items-center gap-2 rounded-xl border border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.06)] px-3 py-2 text-xs text-white"
+    : "mt-4 flex items-center gap-2 rounded-xl border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] px-3 py-2 text-xs";
   return (
-    <div className="mt-4 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+    <div className={baseClasses}>
       {showSpinner && (
-        <span className="h-3 w-3 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+        <span className="h-3 w-3 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
       )}
-      {!showSpinner && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
+      {!showSpinner && <span className="h-2 w-2 rounded-full bg-[var(--pos)]" />}
       <span className={tone}>{state.label}</span>
     </div>
   );
@@ -632,9 +643,9 @@ function ActionStatus({ state }) {
 
 function DataStat({ label, value }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-      <span className="text-slate-700 text-sm">{label}</span>
-      <span className="text-slate-900 font-mono text-sm">{value}</span>
+    <div className="flex items-center justify-between rounded-xl border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.92)] px-3 py-2">
+      <span className="text-[var(--muted)] text-sm">{label}</span>
+      <span className="text-[var(--text)] font-mono text-sm">{value}</span>
     </div>
   );
 }
