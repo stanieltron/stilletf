@@ -1,34 +1,31 @@
 import { prisma } from "../../../../../lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../../lib/auth";
 
 // POST /api/portfolios/:id/vote
-// body: { userId? , userEmail? }
 export async function POST(req, { params }) {
-  const body = await req.json().catch(() => ({}));
   const portfolioId = String(params.id);
+  const session = await getServerSession(authOptions).catch(() => null);
+  const userId = session?.user?.id ? String(session.user.id) : null;
 
   // Resolve the portfolio first
   const exists = await prisma.portfolio.findUnique({
     where: { id: portfolioId },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
-  if (!exists) {
+  if (!exists || !exists.userId) {
     return new Response(JSON.stringify({ error: "not_found" }), { status: 404 });
   }
 
-  // Resolve user server-side
-  const userIdFromClient = body?.userId || null;
-  const userEmailFromClient = body?.userEmail || null;
-
-  let userId = null;
-  if (userIdFromClient) {
-    const u = await prisma.user.findUnique({ where: { id: String(userIdFromClient) }, select: { id: true } });
-    if (u) userId = u.id;
-  }
-  if (!userId && userEmailFromClient) {
-    const u = await prisma.user.findUnique({ where: { email: String(userEmailFromClient) }, select: { id: true } });
-    if (u) userId = u.id;
-  }
   if (!userId) {
+    return new Response(JSON.stringify({ error: "not_authed" }), { status: 401 });
+  }
+
+  const userExists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+  if (!userExists) {
     return new Response(JSON.stringify({ error: "not_authed" }), { status: 401 });
   }
 

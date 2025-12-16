@@ -1,10 +1,9 @@
-﻿"use client";
+"use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as htmlToImage from "html-to-image";
 import ChartBuilder from "./ChartBuilder";
 import MetricsBuilder from "./MetricsBuilder";
-import Link from "next/link";
 
 export default function ShareModalSignedIn({
   open,
@@ -15,137 +14,204 @@ export default function ShareModalSignedIn({
   userDisplay = "",
   assetMeta = {},
 }) {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const captureRef = useRef(null);
+  const savePromiseRef = useRef(null);
+  const ogUploadedPortfolioIdRef = useRef(null);
 
-  const [saved, setSaved] = useState(false);
+  const [chartReady, setChartReady] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [imgDataUrl, setImgDataUrl] = useState(null);
+  const [error, setError] = useState(null);
+  const [sharing, setSharing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [portfolioId, setPortfolioId] = useState(null);
   const [shareUrl, setShareUrl] = useState("");
 
-  // For OG generation
-  const captureRef = useRef(null);
-  const [chartReady, setChartReady] = useState(false);
-  const [generatingOg, setGeneratingOg] = useState(false);
+  const baseSiteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
+  const shareText = "I created this portfolio on Sona - can you do better?";
 
-  useEffect(() => {
-    if (open) {
-      setSaving(false);
-      setError(null);
-      setSaved(false);
-      setShareUrl("");
-      setChartReady(false);
-      setGeneratingOg(false);
-    }
-  }, [open]);
-
-  if (!open) return null;
-
-  const baseShareText =
-    "I built this ETF-style crypto portfolio on Sona — can you beat it?";
-
-  const fullShareText = shareUrl
-    ? `${baseShareText}\n\n${shareUrl}`
-    : baseShareText;
+  const qrLink =
+    shareUrl ||
+    (typeof window !== "undefined" ? window.location.origin : baseSiteUrl);
 
   const shareHost = (() => {
     try {
-      return shareUrl
-        ? new URL(shareUrl).hostname.replace(/^www\\./, "")
-        : "sonaetf.com";
+      return new URL(qrLink).hostname.replace(/^www\./, "");
     } catch {
       return "sonaetf.com";
     }
   })();
 
-  const qrLink =
-    shareUrl || process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
+  const shareQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
     qrLink
   )}`;
 
-  const handleCaptureChartReady = () => {
-    setChartReady(true);
-  };
+  useEffect(() => {
+    setChartReady(false);
+    setGenerating(false);
+    setImgDataUrl(null);
+    setError(null);
+    setSharing(false);
+    setSaving(false);
+    setPortfolioId(null);
+    setShareUrl("");
+    savePromiseRef.current = null;
+    ogUploadedPortfolioIdRef.current = null;
+  }, [open]);
 
-  // Capture the hidden card and upload PNG to the OG-image API
-  const doCaptureAndUpload = async (portfolioId) => {
+  useEffect(() => {
+    const check = () =>
+      setIsMobile(
+        typeof window !== "undefined"
+          ? window.matchMedia("(max-width: 768px)").matches
+          : false
+      );
+    check();
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", check, { passive: true });
+      return () => window.removeEventListener("resize", check);
+    }
+    return undefined;
+  }, []);
+
+  const doCapture = async () => {
     if (!captureRef.current) return;
-
-    try {
-      // small delay so ChartBuilder/MetricsBuilder finish rendering
-      if (!chartReady) {
-        await new Promise((r) => setTimeout(r, 200));
-      }
-
-      const dataUrl = await htmlToImage.toPng(captureRef.current, {
-        width: 1200,
-        height: 675,
-        pixelRatio: 2,
-      });
-
-      await fetch(`/api/portfolios/${portfolioId}/og-image`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
-      });
-    } catch (err) {
-      console.error("[OG] error capturing/uploading real image", err);
-    }
+    const dataUrl = await htmlToImage.toPng(captureRef.current, {
+      width: 1200,
+      height: 675,
+      pixelRatio: 2,
+    });
+    setImgDataUrl(dataUrl);
   };
 
-  const generateOgImageForPortfolio = async (portfolioId) => {
-    setGeneratingOg(true);
-    try {
-      await doCaptureAndUpload(portfolioId);
-    } finally {
-      setGeneratingOg(false);
-    }
-  };
-
-  async function handleSave() {
+  const ensureReadyAndCapture = async () => {
+    if (!captureRef.current) return;
+    setGenerating(true);
     setError(null);
     try {
-      setSaving(true);
-
-      const res = await fetch("/api/portfolios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nickname: userDisplay || "",
-          assets,
-          weights,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error || "Could not save portfolio.");
-      }
-
-      const data = await res.json();
-      const portfolio = data?.portfolio;
-      if (!portfolio || !portfolio.id) {
-        throw new Error("Saved, but missing portfolio id from server.");
-      }
-
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
-      const url = origin
-        ? `${origin}/useretfs/${portfolio.id}`
-        : `/useretfs/${portfolio.id}`;
-
-      setShareUrl(url);
-      setSaved(true);
-
-      // =ƒöÑ Generate the REAL OG image (logo + QR + chart + metrics)
-      generateOgImageForPortfolio(portfolio.id).catch((err) => {
-        console.error("[OG] failed to generate real OG image", err);
-      });
-    } catch (e) {
-      console.error(e);
-      setError(e.message || "Could not save portfolio.");
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      await doCapture();
+    } catch (err) {
+      console.error("Error generating share image", err);
+      setError("Something went wrong while generating the image.");
     } finally {
-      setSaving(false);
+      setGenerating(false);
     }
+  };
+
+  useEffect(() => {
+    if (open && chartReady && !imgDataUrl && !generating) {
+      ensureReadyAndCapture();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, chartReady]);
+
+  useEffect(() => {
+    if (open && chartReady && shareUrl && !generating) {
+      ensureReadyAndCapture();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shareUrl]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const body = document.body;
+    const current = parseInt(body.dataset.modalLocks || "0", 10) || 0;
+    const next = open ? current + 1 : Math.max(0, current - 1);
+    body.dataset.modalLocks = String(next);
+    body.style.overflow = next > 0 ? "hidden" : "";
+
+    return () => {
+      if (!open) return;
+      const cur = parseInt(body.dataset.modalLocks || "0", 10) || 0;
+      const n = Math.max(0, cur - 1);
+      body.dataset.modalLocks = String(n);
+      body.style.overflow = n > 0 ? "hidden" : "";
+    };
+  }, [open]);
+
+  const handleDownload = () => {
+    if (!imgDataUrl) return;
+    const a = document.createElement("a");
+    a.href = imgDataUrl;
+    a.download = "portfolio-share.png";
+    a.click();
+  };
+
+  async function savePortfolio() {
+    const res = await fetch("/api/portfolios", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nickname: userDisplay || "",
+        assets,
+        weights,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || "Could not save portfolio.");
+    }
+
+    const data = await res.json().catch(() => ({}));
+    const portfolio = data?.portfolio;
+    if (!portfolio?.id) throw new Error("Saved, but missing portfolio id.");
+
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = origin
+      ? `${origin}/useretfs/${portfolio.id}`
+      : `/useretfs/${portfolio.id}`;
+
+    setPortfolioId(portfolio.id);
+    setShareUrl(url);
+    return { id: portfolio.id, url };
+  }
+
+  async function ensureSaved() {
+    if (shareUrl && portfolioId) return { id: portfolioId, url: shareUrl };
+    if (savePromiseRef.current) return savePromiseRef.current;
+
+    savePromiseRef.current = (async () => {
+      setSaving(true);
+      setError(null);
+      try {
+        return await savePortfolio();
+      } finally {
+        setSaving(false);
+        savePromiseRef.current = null;
+      }
+    })();
+
+    return savePromiseRef.current;
+  }
+
+  async function captureSharePng() {
+    if (!captureRef.current) throw new Error("Share preview is not ready yet.");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const dataUrl = await htmlToImage.toPng(captureRef.current, {
+      width: 1200,
+      height: 675,
+      pixelRatio: 2,
+    });
+    setImgDataUrl(dataUrl);
+    return dataUrl;
+  }
+
+  async function uploadOgImage(portfolioIdToUpload) {
+    if (!portfolioIdToUpload) throw new Error("Missing portfolio id.");
+    if (ogUploadedPortfolioIdRef.current === portfolioIdToUpload) return;
+
+    const png = await captureSharePng();
+    const res = await fetch(`/api/portfolios/${portfolioIdToUpload}/og-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: png }),
+    });
+    if (!res.ok) throw new Error("Could not upload share image.");
+    ogUploadedPortfolioIdRef.current = portfolioIdToUpload;
   }
 
   function openShareWindow(url) {
@@ -153,296 +219,261 @@ export default function ShareModalSignedIn({
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  function handleShareX() {
-    if (!shareUrl) return;
-    const url = `https://x.com/intent/post?text=${encodeURIComponent(
-      fullShareText
-    )}`;
-    openShareWindow(url);
-  }
-
-  function handleShareTelegram() {
-    if (!shareUrl) return;
-    const url = `https://t.me/share/url?url=${encodeURIComponent(
-      shareUrl
-    )}&text=${encodeURIComponent(fullShareText)}`;
-    openShareWindow(url);
-  }
-
-  function handleShareLinkedIn() {
-    if (!shareUrl) return;
-    const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(
-      shareUrl
-    )}`;
-    openShareWindow(url);
-  }
-
-  function handleShareReddit() {
-    if (!shareUrl) return;
-    const url = `https://www.reddit.com/submit?url=${encodeURIComponent(
-      shareUrl
-    )}&title=${encodeURIComponent(
-      "My ETF-style crypto portfolio on Sona"
-    )}`;
-    openShareWindow(url);
-  }
-
-  async function handleCopyLink() {
-    if (!shareUrl) return;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      }
-    } catch (e) {
-      console.error(e);
+  async function handleShareX() {
+    setError(null);
+    const saved = await ensureSaved();
+    if (typeof window !== "undefined" && window.requestAnimationFrame) {
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
     }
+    await uploadOgImage(saved.id);
+    const url = `https://x.com/intent/post?text=${encodeURIComponent(
+      `${shareText}\n\n${saved.url}`
+    )}`;
+    openShareWindow(url);
   }
+
+  async function handleShareFacebook() {
+    setError(null);
+    const saved = await ensureSaved();
+    if (typeof window !== "undefined" && window.requestAnimationFrame) {
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+    }
+    await uploadOgImage(saved.id);
+    const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+      saved.url
+    )}&quote=${encodeURIComponent(shareText)}`;
+    openShareWindow(url);
+  }
+
+  const handleShareNative = async () => {
+    if (
+      typeof navigator === "undefined" ||
+      typeof window === "undefined" ||
+      !navigator.share
+    ) {
+      setError("Sharing is not supported on this device/browser.");
+      return;
+    }
+
+    setSharing(true);
+    setError(null);
+
+    try {
+      let text = shareText;
+      try {
+        const saved = await ensureSaved();
+        text = `${shareText}\n\n${saved.url}`;
+      } catch {
+        // If saving fails, still try to share the image (if we have it).
+      }
+
+      if (imgDataUrl) {
+        const res = await fetch(imgDataUrl);
+        const blob = await res.blob();
+        const file = new File([blob], "portfolio-share.png", {
+          type: blob.type || "image/png",
+        });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text, title: "My portfolio" });
+          return;
+        }
+      }
+
+      await navigator.share({ text, title: "My portfolio" });
+    } catch (err) {
+      console.error("Error sharing", err);
+      setError("Could not open the share sheet.");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const renderCaptureContent = (withRef = false) => (
+    <div
+      ref={withRef ? captureRef : null}
+      className="bg-white overflow-hidden"
+      style={{ width: "1200px", height: "675px", boxSizing: "border-box" }}
+    >
+      <div
+        className="w-full h-full grid"
+        style={{
+          gridTemplateColumns: "repeat(4, 300px)",
+          gridTemplateRows: "300px 75px 300px",
+        }}
+      >
+        <div className="flex items-center justify-center" style={{ padding: 10 }}>
+          <div className="flex items-center justify-center w-full h-full bg-white">
+            <img
+              src="/logos/stilllogo.png"
+              alt="Sona logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+        </div>
+
+        <div
+          className="flex items-center justify-center"
+          style={{ gridColumn: "2 / span 3", gridRow: "1 / span 1", padding: 10 }}
+        >
+          <div className="w-full h-full bg-white flex items-center justify-center">
+            <ChartBuilder
+              assets={assets}
+              weights={weights}
+              showYield={showYield}
+              size="l"
+              fixed
+              width={880}
+              height={280}
+              animated={false}
+              yieldOnly={true}
+              onReady={() => setChartReady(true)}
+              legendOff={true}
+            />
+          </div>
+        </div>
+
+        <div
+          className="flex items-center justify-center text-center"
+          style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
+        >
+          <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
+            {shareText}
+          </p>
+        </div>
+
+        <div
+          className="flex flex-col items-center justify-center"
+          style={{ gridColumn: "1 / span 1", gridRow: "3 / span 1", padding: 10 }}
+        >
+          <img
+            src={shareQrUrl}
+            alt={`${shareHost} share QR`}
+            className="w-full h-full object-contain"
+          />
+        </div>
+
+        <div
+          className="flex"
+          style={{ gridColumn: "2 / span 3", gridRow: "3 / span 1", padding: 10 }}
+        >
+          <div className="w-full h-full text-[14px] text-black bg-white">
+            <MetricsBuilder
+              assets={assets}
+              weights={weights}
+              showYield={showYield}
+              assetMeta={assetMeta}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (!open) return null;
 
   return (
     <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 sm:px-4">
       <div
-        className="bg-black text-white shadow-xl w-full max-w-6xl flex flex-col border border-[var(--border)] px-4 py-4 sm:px-8 sm:py-6 max-h-[90vh] overflow-y-auto"
-        style={{ fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)" }}
+        className="bg-black text-white shadow-xl w-full flex flex-col border border-[var(--border)] overflow-y-auto"
+        style={{
+          fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)",
+          maxWidth: 560,
+          maxHeight: "90vh",
+        }}
       >
-        <div className="flex flex-col lg:flex-row items-stretch justify-between gap-6 lg:gap-8">
-          {/* LEFT COLUMN */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
-            <div className="flex flex-col gap-2">
-              <h2 className="text-3xl font-semibold leading-snug">
-                ETF ready, save yours to share, get votes, climb the leaderboard
-                and get future rewards.
-              </h2>
-              {userDisplay && (
-                <p className="text-base text-[var(--muted)]">
-                  Signed in as{" "}
-                  <span className="font-semibold text-white">
-                    {userDisplay}
-                  </span>
-                  .
-                </p>
-              )}
-            </div>
-
-            {!saved && (
-              <div className="mt-4 flex flex-col gap-3">
-                <p className="text-base text-[var(--muted)]">
-                  Save this ETF to get a shareable link and start climbing the
-                  leaderboard.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="cta-btn cta-btn-sm cta-white disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? "SavingGÇª" : "Save portfolio"}
-                </button>
-              </div>
-            )}
-
-            {saved && shareUrl && (
-              <div className="flex flex-col gap-3 mt-4">
-                <p className="text-sm text-[var(--muted)]">
-                  Share, get votes, climb the leaderboard and get future
-                  rewards.
-                </p>
-
-                <div className="flex flex-wrap gap-2 items-center text-sm">
-                  <code className="px-3 py-2 bg-white/5 border border-[var(--border)] rounded-sm break-all">
-                    {shareUrl}
-                  </code>
-                  <button
-                    type="button"
-                    onClick={handleCopyLink}
-                    title="Copy link to clipboard"
-                    className="cta-btn cta-btn-sm cta-white text-xs"
-                  >
-                    Copy link
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-3 text-base">
-                  <button
-                    type="button"
-                    onClick={handleShareX}
-                    className="cta-btn cta-btn-sm cta-black gap-2"
-                  >
-                    <span className="text-2xl font-bold leading-none">X</span>
-                    <span>Share on X</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleShareTelegram}
-                    className="cta-btn cta-btn-sm cta-white gap-2"
-                  >
-                    <span className="text-xl leading-none">TG</span>
-                    <span>Telegram</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleShareLinkedIn}
-                    className="cta-btn cta-btn-sm cta-white gap-2"
-                  >
-                    <span className="text-xl font-bold leading-none">in</span>
-                    <span>LinkedIn</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleShareReddit}
-                    className="cta-btn cta-btn-sm cta-white gap-2"
-                  >
-                    <span className="text-2xl font-bold leading-none">r</span>
-                    <span>Reddit</span>
-                  </button>
-                </div>
-
-                {generatingOg && (
-                  <p className="text-xs text-[var(--muted)]">
-                    Generating share image in the backgroundGÇª
-                  </p>
-                )}
-              </div>
-            )}
-
-            {error && (
-              <div className="text-base text-red-500 mt-2">{error}</div>
-            )}
-          </div>
-
-          {/* MIDDLE: chart + metrics preview (live) */}
-          <div className="flex lg:flex-[1.4] flex-col gap-4">
-            <div className="border border-[var(--border)] bg-white text-black p-4 flex flex-col gap-3">
-              <h3 className="text-lg font-semibold mt-0 mb-1">
-                Performance preview
-              </h3>
-              <div className="w-full h-[260px] flex flex-col min-h-[240px]">
-                <ChartBuilder
-                  assets={assets}
-                  weights={weights}
-                  showYield={showYield}
-                />
-              </div>
-            </div>
-            <div className="border border-[var(--border)] bg-white text-black p-4 flex flex-col gap-3">
-              <h3 className="text-lg font-semibold mt-0 mb-1">
-                Portfolio metrics
-              </h3>
-              <div className="max-h-[260px] overflow-auto">
-                <MetricsBuilder
-                  assets={assets}
-                  weights={weights}
-                  showYield={showYield}
-                  assetMeta={assetMeta}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN */}
-          <div className="flex flex-col lg:justify-between items-stretch text-base gap-3 w-full lg:w-[260px] shrink-0">
-            <div className="flex flex-row lg:flex-col items-stretch gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="cta-btn cta-white flex-1"
-                style={{ height: "40px", minHeight: "40px" }}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="flex flex-col items-stretch gap-3">
-              <p className="text-sm text-[var(--muted)]">
-                Bonus: try our pilot BTC ETF on testnet to unlock additional
-                reward opportunities.
-              </p>
-              <Link
-                href="/btcetf"
-                className="cta-btn cta-btn-sm cta-blue no-underline text-center"
-              >
-                Try pilot BTCETF on testnet
-              </Link>
-            </div>
+        <div className="px-4 pt-4">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-2xl sm:text-3xl font-semibold leading-snug m-0">
+              Share your portfolio
+            </h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="cta-btn cta-white"
+              aria-label="Close"
+              title="Close"
+              style={{ height: "40px", minHeight: "40px", width: "40px", padding: 0 }}
+            >
+              X
+            </button>
           </div>
         </div>
 
-        {/* =ƒöÆ HIDDEN LIVE CARD GÇô SAME layout as ShareModal.js, used ONLY for OG capture */}
-        {open && (
-          <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
-            <div
-              ref={captureRef}
-              className="bg-white overflow-hidden"
-              style={{
-                width: "1200px",
-                height: "675px",
-                boxSizing: "border-box",
-                padding: "40px",
-              }}
-            >
-              <div className="w-full h-full grid grid-cols-[260px_minmax(0,1fr)] gap-x-40 gap-y-16">
-                {/* LEFT: logo + QR */}
-                <div className="flex flex-col items-center justify-between">
-                  <div className="flex items-center justify-center">
-                    <img
-                      src="/logos/stilllogo.png"
-                      alt="Sona logo"
-                      className="w-[220px] h-[220px] object-contain"
-                    />
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <img
-                      src={qrSrc}
-                      alt={`${shareHost} share QR`}
-                      className="w-[220px] h-[220px]"
-                    />
-                    <span className="mt-2 text-[11px] text-slate-500">
-                      {shareHost}
-                    </span>
-                  </div>
-                </div>
-
-                {/* RIGHT: chart + tagline + metrics */}
-                <div className="flex flex-col">
-                  <div className="w-full" style={{ height: 260 }}>
-                    <ChartBuilder
-                      assets={assets}
-                      weights={weights}
-                      showYield={true}
-                      size="l"
-                      fixed
-                      width={800}
-                      height={260}
-                      animated={false}
-                      yieldOnly={true}
-                      onReady={handleCaptureChartReady}
-                      legendOff={true}
-                    />
-                  </div>
-
-                  <p className="mt-10 mb-6 text-center text-[22px] font-semibold leading-snug text-black">
-                    I created this portfolio on{" "}
-                    <span className="font-bold">Sona</span> &mdash; can you
-                    do better?
-                  </p>
-
-                  <div className="flex-1 min-h-[160px] text-[14px] text-black">
-                    <MetricsBuilder
-                      assets={assets}
-                      weights={weights}
-                      showYield={true}
-                      assetMeta={assetMeta}
-                    />
-                  </div>
-                </div>
+        <div className="px-4 pb-4 pt-5 flex flex-col items-center gap-4">
+          <div
+            className="border border-[var(--border)] bg-white overflow-hidden flex items-center justify-center w-full"
+            style={{ aspectRatio: "16 / 9" }}
+          >
+            {imgDataUrl ? (
+              <img
+                src={imgDataUrl}
+                alt="Share preview"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-base text-black px-4 text-center">
+                {error ? "Could not generate preview." : "Preparing preview..."}
               </div>
-            </div>
+            )}
           </div>
-        )}
+
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={handleShareNative}
+              disabled={sharing || saving}
+              className="cta-btn cta-black w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sharing ? "Opening share..." : saving ? "Saving..." : "Share"}
+            </button>
+          ) : (
+            <div className="w-full flex gap-3">
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={!imgDataUrl}
+                className="cta-btn cta-black flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Download
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShareX().catch((e) => setError(e?.message || String(e)))}
+                disabled={saving}
+                className="cta-btn cta-btn-sm cta-grey flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Share on X"
+                title={shareUrl ? "Share on X" : "Save and share on X"}
+              >
+                X
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleShareFacebook().catch((e) => setError(e?.message || String(e)))
+                }
+                disabled={saving}
+                className="cta-btn cta-btn-sm cta-grey flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Share on Facebook"
+                title={shareUrl ? "Share on Facebook" : "Save and share on Facebook"}
+              >
+                Facebook
+              </button>
+            </div>
+          )}
+
+          {!!error && <div className="text-sm text-red-400 w-full">{error}</div>}
+          {!imgDataUrl && !error && (
+            <div className="text-sm text-[var(--muted)] w-full">
+              {generating ? "Generating preview..." : ""}
+            </div>
+          )}
+        </div>
+
+        <div className="fixed -left-[9999px] top-0 opacity-0 pointer-events-none">
+          {renderCaptureContent(true)}
+        </div>
       </div>
     </section>
   );
 }
-
-
-
-

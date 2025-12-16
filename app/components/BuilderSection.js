@@ -14,9 +14,10 @@ import ShareModalSignedIn from "./ShareModalSignedIn";
 
 /**
  * BuilderSection
- * Takes a single prop: keepAssets (boolean).
- * - If keepAssets === false (hard reload not after auth): reset local data and start empty.
- * - Otherwise: restore from localStorage if available.
+ * Takes a single prop: keepAssets (boolean | null).
+ * - false: reset local data and start empty.
+ * - true: restore from localStorage if available.
+ * - null: defer decision (do nothing until resolved).
  */
 export default function BuilderSection({ keepAssets = true }) {
   const { data: sessionData } = useSession();
@@ -35,12 +36,12 @@ export default function BuilderSection({ keepAssets = true }) {
 
   // If we shouldn't keep assets (hard reload without auth), clear storage *once* on mount.
   useEffect(() => {
-    if (!keepAssets) {
+    if (keepAssets === false) {
       try {
         localStorage.removeItem(LS_WEIGHTS);
         localStorage.removeItem(LS_EVER_COMPLETE);
         localStorage.removeItem(LS_YIELD_ON);
-      } catch { }
+      } catch {}
     }
   }, [keepAssets]);
 
@@ -108,7 +109,7 @@ export default function BuilderSection({ keepAssets = true }) {
   // persist weights if we are keeping assets
   useEffect(() => {
     if (!assetKeys.length) return;
-    if (!keepAssets) return; // do not persist when we purposely reset
+    if (keepAssets === false) return; // skip only when explicitly resetting
     try {
       localStorage.setItem(
         LS_WEIGHTS,
@@ -165,6 +166,13 @@ export default function BuilderSection({ keepAssets = true }) {
   const [yieldOn, setYieldOn] = useState(false);
   const [yieldEverActivated, setYieldEverActivated] = useState(false);
 
+  // Close share modal when user logs out to prevent showing signed-in flows
+  useEffect(() => {
+    if (!isAuthed) {
+      setShareOpen(false);
+    }
+  }, [isAuthed]);
+
   // restore yield state
   useEffect(() => {
     try {
@@ -175,6 +183,7 @@ export default function BuilderSection({ keepAssets = true }) {
         setYieldEverActivated(true);
       } else if (storedEver) {
         // yield was turned on at least once in the past
+        setYieldOn(true);
         setYieldEverActivated(true);
       }
     } catch { }
@@ -204,18 +213,7 @@ export default function BuilderSection({ keepAssets = true }) {
   }
 
 
-  // generic toggle for subsequent visits (can toggle anytime once yieldEverActivated)
-  function handleToggleYield() {
-    // once ever activated, we never "forget" that
-    if (!yieldEverActivated) {
-      // safety: if somehow not set, treat first toggle as first activation
-      handleFirstYieldActivate();
-      return;
-    }
-    setYieldOn((prev) => !prev);
-  }
-
-  // clicking "Complete portfolio" (appears when ETF full + yield ON)
+  // clicking "Share portfolio" (appears when ETF full + yield ON)
   function handleCompletePortfolioClick() {
     openShareWithDelay();
   }
@@ -276,9 +274,8 @@ export default function BuilderSection({ keepAssets = true }) {
   const max1asset = numActiveAssets <= 1;
 
   const showFirstYield = isETFComplete && !yieldEverActivated;
-  const showYieldToggle = yieldEverActivated;
   const showCompleteBtn = isETFComplete && yieldOn;
-  const hasSecondaryAction = showFirstYield || showYieldToggle || showCompleteBtn;
+  const hasSecondaryAction = showFirstYield || showCompleteBtn;
 
   return (
     <main
@@ -287,7 +284,7 @@ export default function BuilderSection({ keepAssets = true }) {
     >
       <div className="w-full flex-1 flex flex-col gap-3 md:gap-5 min-h-0">
         <h2 className="section-hero center font-bold tracking-tight leading-tight [font-size:clamp(1.5rem,2.5vw,2rem)] m-0">
-          header2 placeholder
+          
         </h2>
 
         {errAssets && (
@@ -359,7 +356,7 @@ export default function BuilderSection({ keepAssets = true }) {
                     const sumOthers = totalPointsUsed - current;
                     const maxForThis = Math.max(
                       current,
-                      Math.min(10, 20 - sumOthers)
+                      Math.min(10, MAX_TOTAL_POINTS - sumOthers)
                     );
                     return (
 
@@ -382,10 +379,10 @@ export default function BuilderSection({ keepAssets = true }) {
             : a + (Number.isFinite(b) ? b : 0),
         0
       );
-      const allowed = Math.max(
-        copy[idx] ?? 0,
-        Math.min(10, 20 - others)
-      );
+       const allowed = Math.max(
+         copy[idx] ?? 0,
+         Math.min(10, MAX_TOTAL_POINTS - others)
+       );
       const next = Math.max(
         0,
         Math.min(
@@ -453,7 +450,8 @@ export default function BuilderSection({ keepAssets = true }) {
                   <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col p-3 gap-3 w-full">
                     <div
                       className={[
-                        "w-full h-10 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2",
+                        // Allow content to grow vertically on mobile so the progress bar doesn't overlap buttons.
+                        "w-full h-auto sm:h-10 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2",
                         "[font-size:clamp(.8rem,1vw,.9rem)] leading-[1.2]",
                       ].join(" ")}
                     >
@@ -461,14 +459,14 @@ export default function BuilderSection({ keepAssets = true }) {
                         {/* LEFT: ETF STATUS / FILL CTA */}
                         <div className="min-w-0 flex-1 w-full flex">
                           {!isETFComplete ? (
-                            <div className={`cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm flex items-center justify-center flex-1 w-full`}>
-                              <span className="whitespace-nowrap">
-                                Fill ETF with {pointsRemaining} more points to complete
+                            <div className="h-[30px] md:h-[40px] px-3 flex items-center justify-center flex-1 w-full text-[var(--text)] cursor-default select-none">
+                              <span className="whitespace-nowrap text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.08em]">
+                                Fill ETF with {pointsRemaining} more point{pointsRemaining === 1 ? "" : "s"} to complete
                               </span>
                             </div>
                           ) : (
-                            <div className={`cta-btn cta-btn-sm cta-black cta-nohover text-[11px] sm:text-xs rounded-none shadow-sm flex items-center justify-center flex-1 w-full`}>
-                              <span className="whitespace-nowrap">
+                            <div className="h-[30px] md:h-[40px] px-3 flex items-center justify-center flex-1 w-full text-[var(--text)] cursor-default select-none">
+                              <span className="whitespace-nowrap text-[11px] sm:text-xs font-extrabold uppercase tracking-[0.08em]">
                                 ETF complete
                               </span>
                             </div>
@@ -499,56 +497,22 @@ export default function BuilderSection({ keepAssets = true }) {
                               </div>
                             ) : null}
 
-                            {/* RETURNING / FLEXIBLE YIELD TOGGLE (can turn on/off anytime after first activation) */}
-                            {showYieldToggle && (
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={handleToggleYield}
-                                  className={[
-                                    "relative cta-btn cta-btn-sm text-[10px] sm:text-xs",
-                                    yieldOn
-                                      ? "cta-grey"
-                                      : "cta-blue shadow-[0_0_18px_rgba(37,99,235,0.9)]",
-                                  ].join(" ")}
-                                  aria-label={yieldOn ? "Turn yield off" : "Add STILL yield"}
-                                >
-                                  {/* Expanding border (same style as Complete portfolio) when ETF is complete and yield is OFF */}
-                                  {isETFComplete && !yieldOn && (
-                                    <span
-                                      className="pointer-events-none absolute inset-[-3px] border border-blue-300/80 rounded-none animate-ping"
-                                      aria-hidden="true"
-                                    />
-                                  )}
-
-                                  <span className="relative flex items-center gap-1">
-                                    <span className="text-[14px] leading-none">
-                                      {yieldOn ? "[ ]" : "[+]"}
-                                    </span>
-                                    <span>{yieldOn ? "Turn yield off" : "Add STILL yield"}</span>
-                                  </span>
-                                </button>
-
-                                {/* COMPLETE PORTFOLIO BUTTON:
-        appears when portfolio is full AND yield is ON.
-        Pulsates and opens Save modal after 1s. */}
-                                {showCompleteBtn && (
-                                  <button
-                                    type="button"
-                                    onClick={handleCompletePortfolioClick}
-                                  className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
-                                >
-                                  <span
-                                    className="pointer-events-none absolute inset-[-3px] border border-[var(--accent-soft)] rounded-none animate-ping"
-                                    aria-hidden="true"
-                                  />
-                                    <span className="relative flex items-center gap-1">
-                                      <span className="text-[14px] leading-none">*</span>
-                                      <span>Complete portfolio</span>
-                                    </span>
-                                  </button>
-                                )}
-                              </div>
+                            {/* YIELD stays on once enabled */}
+                            {showCompleteBtn && (
+                              <button
+                                type="button"
+                                onClick={handleCompletePortfolioClick}
+                                className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
+                              >
+                                <span
+                                  className="pointer-events-none absolute inset-[-3px] border border-[var(--accent-soft)] rounded-none animate-ping"
+                                  aria-hidden="true"
+                                />
+                                <span className="relative flex items-center gap-1">
+                                  <span className="text-[14px] leading-none">*</span>
+                                  <span>Share portfolio</span>
+                                </span>
+                              </button>
                             )}
                           </div>
                         )}
@@ -560,7 +524,7 @@ export default function BuilderSection({ keepAssets = true }) {
                     {/* Progress (12px total height) */}
                     <div
                       className="flex items-center h-3"
-                      aria-label={`ETF completeness ${pointsForBar} of 20`}
+                      aria-label={`ETF completeness ${pointsForBar} of ${MAX_TOTAL_POINTS}`}
                     >
                       <div className="relative h-[8px] w-full bg-gray-300 overflow-hidden rounded-[var(--radius-sm)]">
                         <div
@@ -574,7 +538,7 @@ export default function BuilderSection({ keepAssets = true }) {
 
                   {/* Chart + text + metrics grouped */}
                   <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col">
-                    <div className="px-3 py-3 flex h-[300px]">
+                    <div className="px-3 py-3 flex h-[200px] md:h-[300px]">
                       <div className="w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
                         <ChartBuilder
                           assets={assetKeys}
@@ -586,10 +550,10 @@ export default function BuilderSection({ keepAssets = true }) {
                     </div>
 
                     <div className="bg-white text-center w-full text-[clamp(.95rem,.9vw,1rem)] font-bold flex items-center justify-center h-[40px] px-3">
-                      If you invested $1000 5 years ago, you would have:
+                      SONA.XYZ
                     </div>
 
-                    <div className="bg-white p-3 h-[300px] overflow-auto flex flex-col">
+                    <div className="bg-white p-3 h-[200px] md:h-[300px] overflow-auto flex flex-col">
                       <PortfolioBuilder
                         assets={assetKeys}
                         weights={weights}

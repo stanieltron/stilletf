@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut, useSession } from "next-auth/react";
 
@@ -19,6 +19,8 @@ export default function SignInModal() {
   const router = useRouter();
   const params = useSearchParams();
   const wantsOpen = params.get("auth") === "1";
+  const fromShareAuth = params.get("shareAuth") === "1";
+  const fromVoteAuth = params.get("voteAuth") === "1";
 
   const { data: session, status } = useSession();
   const isAuthed = status === "authenticated";
@@ -67,6 +69,8 @@ export default function SignInModal() {
     setOpen(false);
     const url = new URL(window.location.href);
     url.searchParams.delete("auth");
+    url.searchParams.delete("shareAuth");
+    url.searchParams.delete("voteAuth");
     router.replace(url.pathname + (url.search ? url.search : "") + window.location.hash, { scroll: false });
   }
 
@@ -94,8 +98,13 @@ export default function SignInModal() {
   }
 
   function startOAuth(provider) {
-    const base = typeof window !== "undefined" ? window.location.pathname : "/";
-    const callbackUrl = `${base}?auth=1#builder`;
+    const url =
+      typeof window !== "undefined"
+        ? new URL(window.location.href)
+        : new URL("https://sonaetf.com/");
+    // keep existing params (like share=1 from Share modal) and mark auth return
+    url.searchParams.set("auth", "1");
+    const callbackUrl = `${url.pathname}${url.search ? url.search : ""}${url.hash || ""}`;
     signIn(provider, { callbackUrl });
   }
 
@@ -138,22 +147,29 @@ export default function SignInModal() {
         {!isAuthed ? (
           // Logged out → offer providers
           <div className="grid gap-2.5">
+            {fromVoteAuth && (
+              <div className="text-sm text-[var(--muted)]">Sign in to vote.</div>
+            )}
+            {fromShareAuth && (
+              <div className="text-sm text-[var(--muted)]">
+                To share directly on socials, please sign in.
+              </div>
+            )}
             <button
               onClick={() => startOAuth("google")}
               className="block w-full px-[14px] py-[10px] rounded-lg border border-[var(--border)] bg-white cursor-pointer font-medium text-left"
             >
               Continue with Google
             </button>
-            <button
-              onClick={() => startOAuth("github")}
-              className="block w-full px-[14px] py-[10px] rounded-lg border border-[var(--border)] bg-white cursor-pointer font-medium text-left"
-            >
-              Continue with GitHub
-            </button>
           </div>
         ) : needsSignup ? (
           // First-time signup
           <div className="grid gap-3">
+            {fromVoteAuth && (
+              <div className="text-sm text-[var(--muted)]">
+                Finish signing up to vote.
+              </div>
+            )}
             <div className="border border-[var(--border-soft)] rounded-lg p-2.5">
               <div className="text-xs opacity-75">Signing up as</div>
               <div className="font-semibold">{displayName}</div>

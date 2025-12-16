@@ -110,12 +110,15 @@ export default function Header() {
         </Link>
 
         {/* Center: nav */}
-        <nav className="justify-self-center flex gap-5 items-center text-sm sm:text-base">
+        <nav className="justify-self-center flex items-center text-sm sm:text-base gap-3 sm:gap-5 w-full max-w-md justify-evenly">
           <Link href="/ETFs" className="text-inherit no-underline">
             Sona-ETFs
           </Link>
           <Link href="/useretfs" className="text-inherit no-underline">
             Leaderboard
+          </Link>
+          <Link href="/btcetf" className="text-inherit no-underline">
+            BTC ETF
           </Link>
         </nav>
 
@@ -126,7 +129,7 @@ export default function Header() {
               className="cta-btn cta-white"
               onClick={openSignIn}
             >
-              Sign in
+              Launch App
             </button>
           ) : (
             <>

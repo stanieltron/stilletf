@@ -11,14 +11,16 @@ import { authOptions } from "../../../lib/auth";
  *   - ?mine=1         → portfolios for the currently logged-in user (from server session)
  *                       (ignored if ?user=... is provided)
  *
- * Default: return all portfolios, sorted by votes desc then createdAt desc.
+ * Default: return active portfolios (userId != null), sorted by votes desc then createdAt desc.
  */
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const userParam = searchParams.get("user");
   const mine = searchParams.get("mine");
 
-  let where = {};
+  // Default leaderboard view should only include "active" portfolios
+  // (portfolios currently associated to a user).
+  let where = { userId: { not: null } };
 
   if (userParam) {
     // explicit filter by user id
@@ -64,8 +66,8 @@ export async function GET(request) {
  * Behavior:
  *   - Prefer the **server session's** user.id (ID-first).
  *   - If no session, we fall back to legacy userId/userEmail resolution (to preserve old behavior).
- *   - If still no user, we allow userId = null (per your schema) – portfolio will show in "All" but not "Mine".
- */
+ *   - If still no user, we allow userId = null (per your schema) – portfolio will not appear on the leaderboard.
+  */
 export async function POST(request) {
   // parse & validate body
   const body = await request.json().catch(() => ({}));
@@ -106,17 +108,59 @@ export async function POST(request) {
   }
   // If still null, we'll save anonymously (allowed by your schema).
 
-  const created = await prisma.portfolio.create({
-    data: {
-      userId,          // <-- now correctly filled when logged in
-      nickname,
-      comment,
-      assets,
-      weights: weights.map((w) =>
-        Math.max(0, Math.min(10, Math.round(Number(w) || 0)))
-      ),
-    },
-    include: { _count: { select: { votes: true } } },
+  const normalizedWeights = weights.map((w) =>
+    Math.max(0, Math.min(10, Math.round(Number(w) || 0)))
+  );
+
+  const created = await prisma.$transaction(async (tx) => {
+    let prior = [];
+    if (userId) {
+      prior = await tx.portfolio.findMany({
+        where: { userId },
+        select: { id: true },
+        orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      });
+    }
+
+    const next = await tx.portfolio.create({
+      data: {
+        userId,
+        nickname,
+        comment,
+        assets,
+        weights: normalizedWeights,
+      },
+    });
+
+    if (userId && prior.length) {
+      const [oldActive, ...others] = prior;
+
+      // Keep votes from the prior active portfolio by moving them onto the new one.
+      await tx.vote.updateMany({
+        where: { portfolioId: oldActive.id },
+        data: { portfolioId: next.id },
+      });
+
+      // Archive previous portfolios: detach from user so they don't show in the leaderboard.
+      await tx.portfolio.update({
+        where: { id: oldActive.id },
+        data: { userId: null },
+      });
+
+      if (others.length) {
+        const otherIds = others.map((p) => p.id);
+        await tx.vote.deleteMany({ where: { portfolioId: { in: otherIds } } });
+        await tx.portfolio.updateMany({
+          where: { id: { in: otherIds } },
+          data: { userId: null },
+        });
+      }
+    }
+
+    return tx.portfolio.findUnique({
+      where: { id: next.id },
+      include: { _count: { select: { votes: true } } },
+    });
   });
 
   return new Response(JSON.stringify({ portfolio: created }), {

@@ -10,9 +10,9 @@ import HeroSection from "./components/HeroSection";
 import BuilderSection from "./components/BuilderSection";
 import MissionStatement from "./components/MissionStatement";
 import Roadmap from "./components/Roadmap";
-import Features from "./components/Features";
-import Benefits from "./components/Benefits";
+import { LiveSection, LoveSection, PaidSection } from "./components/Sections";
 import Carousel from "./components/Carousel";
+import WantMore from "./components/WantMore";
 
 /* --- helpers to detect reload/auth return (for keepAssets logic) --- */
 function isReloadNavigation() {
@@ -51,10 +51,10 @@ export default function HomeClient() {
   const sharedSectionInner =
     "w-[95%] md:w-[80%] mx-auto flex flex-col gap-8 md:gap-10 py-12";
 
-  // default to "fresh" – only later turn true if we detect a returning flow
-  const [keepAssets, setKeepAssets] = useState(false);
+  // default to keeping assets; we may explicitly turn it off on a hard reload
+  const [keepAssets, setKeepAssets] = useState(true);
 
-  // === keepAssets logic, unchanged ===
+  // === keepAssets logic ===
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!search) return;
@@ -63,18 +63,20 @@ export default function HomeClient() {
     const afterAuth = cameFromSignupOrAuth();
     const reload = isReloadNavigation();
 
-    // Hard reload should *always* be a fresh experience (no assets kept),
-    // unless we're explicitly coming back from auth or a share flow.
-    if (reload && !afterAuth) {
-      if (!shareParam) {
-        setKeepAssets(false);
-        return;
-      }
+    // If we explicitly came from auth/share, always keep assets.
+    if (shareParam || afterAuth) {
+      setKeepAssets(true);
+      return;
     }
 
-    // Returning flows (auth return or share return)
-    // keep assets and skip "first fill" behavior.
-    setKeepAssets(afterAuth || shareParam);
+    // Hard reload without an auth/share context: start fresh.
+    if (reload) {
+      setKeepAssets(false);
+      return;
+    }
+
+    // Default: keep assets so users don't lose progress.
+    setKeepAssets(true);
   }, [search]);
 
   /* ===== sticky header height for layout ===== */
@@ -119,8 +121,9 @@ export default function HomeClient() {
       { id: "hero", label: "Builder", index: 0 },
       { id: "mission", label: "Mission", index: 1 },
       { id: "roadmap", label: "Roadmap", index: 2 },
-      { id: "features", label: "Features", index: 3 },
-      { id: "benefits", label: "Benefits", index: 4 },
+      { id: "paid", label: "Benefits", index: 3 },
+      { id: "live", label: "Live", index: 4 },
+      { id: "love", label: "Love", index: 5 },
     ],
     []
   );
@@ -279,6 +282,7 @@ export default function HomeClient() {
           <div className={sharedSectionInner}>
             <HeroSection />
             <BuilderSection keepAssets={keepAssets} />
+            <WantMore />
           </div>
         </section>
 
@@ -305,25 +309,45 @@ export default function HomeClient() {
           </div>
         </section>
 
-        {/* Section 3: Features */}
+        {/* Section 3: Get paid */}
         <section
           ref={(el) => setSectionRef(el, 3)}
-          className="flex w-full justify-center bg-[var(--bg-dark)]"
-          style={sectionStyleBase}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={{
+            ...sectionStyleBase,
+            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
+          }}
         >
-          <div className={sharedSectionInner}>
-            <Features />
+          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+            <PaidSection />
           </div>
         </section>
 
-        {/* Section 4: Benefits */}
+        {/* Section 4: Live */}
         <section
           ref={(el) => setSectionRef(el, 4)}
           className="flex w-full justify-center bg-[var(--bg)]"
-          style={sectionStyleBase}
+          style={{
+            ...sectionStyleBase,
+            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
+          }}
         >
-          <div className={sharedSectionInner}>
-            <Benefits />
+          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+            <LiveSection />
+          </div>
+        </section>
+
+        {/* Section 5: Love */}
+        <section
+          ref={(el) => setSectionRef(el, 5)}
+          className="flex w-full justify-center bg-[var(--bg)]"
+          style={{
+            ...sectionStyleBase,
+            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
+          }}
+        >
+          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+            <LoveSection />
           </div>
         </section>
       </main>
