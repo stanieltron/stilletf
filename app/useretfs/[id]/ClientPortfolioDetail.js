@@ -164,19 +164,21 @@ export default function ClientPortfolioDetail({ id }) {
               Votes: <span className="font-semibold text-[var(--text)]">{p._count?.votes ?? 0}</span>
             </span>
 
-            <button
-              className={[
-                "px-4 sm:px-5 py-2 rounded-md border border-[var(--border)] text-sm sm:text-base font-semibold uppercase tracking-tight shadow-sm transition-all",
-                canVote
-                  ? "bg-[var(--accent)] text-[var(--bg)] hover:-translate-y-0.5 hover:shadow-md"
-                  : "bg-[var(--bg-soft)] text-[var(--muted)] opacity-60 cursor-not-allowed",
-              ].join(" ")}
-              onClick={onVote}
-              aria-disabled={!canVote}
-              title={canVote ? "Vote" : "Sign in to vote"}
-            >
-              Vote
-            </button>
+            {!!p.userId && (
+              <button
+                className={[
+                  "px-4 sm:px-5 py-2 rounded-md border border-[var(--border)] text-sm sm:text-base font-semibold uppercase tracking-tight shadow-sm transition-all",
+                  canVote
+                    ? "bg-[var(--accent)] text-[var(--bg)] hover:-translate-y-0.5 hover:shadow-md"
+                    : "bg-[var(--bg-soft)] text-[var(--muted)] opacity-60 cursor-not-allowed",
+                ].join(" ")}
+                onClick={onVote}
+                aria-disabled={!canVote}
+                title={canVote ? "Vote" : "Sign in to vote"}
+              >
+                Vote
+              </button>
+            )}
 
             <div className="ml-auto text-sm sm:text-base">
               <Link
