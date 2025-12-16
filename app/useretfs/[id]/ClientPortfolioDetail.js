@@ -56,7 +56,17 @@ export default function ClientPortfolioDetail({ id }) {
   const router = useRouter();
   const { data: session } = useSession();
   const userId = session?.user?.id || null;
-  const userEmail = session?.user?.email || null;
+  const canVote = !!userId;
+
+  function openVoteSignIn() {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("auth", "1");
+    url.searchParams.set("voteAuth", "1");
+    router.push(url.pathname + (url.search ? url.search : "") + url.hash, {
+      scroll: false,
+    });
+  }
 
   const [loading, setLoading] = useState(true);
   const [p, setP] = useState(null);
@@ -91,23 +101,22 @@ export default function ClientPortfolioDetail({ id }) {
   );
 
   async function onVote() {
-    if (!userId && !userEmail) {
-      router.push("?auth=1", { scroll: false });
+    if (!canVote) {
+      openVoteSignIn();
       return;
     }
     const r = await fetch(`/api/portfolios/${p.id}/vote`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: userId || null,
-        userEmail: userEmail || null,
-      }),
     });
     if (r.ok) {
       const j = await r.json();
       setP(j.portfolio);
     } else {
       const j = await r.json().catch(() => ({}));
+      if (r.status === 401) {
+        openVoteSignIn();
+        return;
+      }
       alert(
         j?.error === "already_voted"
           ? "You have already voted for this portfolio."
@@ -156,8 +165,15 @@ export default function ClientPortfolioDetail({ id }) {
             </span>
 
             <button
-              className="px-4 sm:px-5 py-2 rounded-md border border-[var(--border)] bg-[var(--accent)] text-[var(--bg)] text-sm sm:text-base font-semibold uppercase tracking-tight shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all"
+              className={[
+                "px-4 sm:px-5 py-2 rounded-md border border-[var(--border)] text-sm sm:text-base font-semibold uppercase tracking-tight shadow-sm transition-all",
+                canVote
+                  ? "bg-[var(--accent)] text-[var(--bg)] hover:-translate-y-0.5 hover:shadow-md"
+                  : "bg-[var(--bg-soft)] text-[var(--muted)] opacity-60 cursor-not-allowed",
+              ].join(" ")}
               onClick={onVote}
+              aria-disabled={!canVote}
+              title={canVote ? "Vote" : "Sign in to vote"}
             >
               Vote
             </button>

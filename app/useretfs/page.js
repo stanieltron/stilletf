@@ -118,7 +118,7 @@ function MiniMetrics({ assets = [], weights = [] }) {
 }
 
 /* --- TOP 3 CARD (for ALL tab only) --- */
-function PortfolioCard({ p, meta, rank, onVote }) {
+function PortfolioCard({ p, meta, rank, onVote, canVote, onRequireAuth }) {
   const router = useRouter();
   const comp = useMemo(
     () => compositionSpans(p.assets, p.weights, meta),
@@ -131,6 +131,10 @@ function PortfolioCard({ p, meta, rank, onVote }) {
 
   function handleVoteClick(e) {
     e.stopPropagation();
+    if (!canVote) {
+      onRequireAuth?.();
+      return;
+    }
     onVote();
   }
 
@@ -157,7 +161,14 @@ function PortfolioCard({ p, meta, rank, onVote }) {
         <button
           type="button"
           onClick={handleVoteClick}
-          className="shrink-0 border border-[var(--border)] bg-[var(--bg-dark)] text-[var(--bg-alt)] px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-lg md:text-xl font-bold leading-none hover:bg-[var(--chrome)]"
+          className={[
+            "shrink-0 border border-[var(--border)] px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-lg md:text-xl font-bold leading-none",
+            canVote
+              ? "bg-[var(--bg-dark)] text-[var(--bg-alt)] hover:bg-[var(--chrome)]"
+              : "bg-[var(--bg-soft)] text-[var(--muted)] opacity-60 cursor-not-allowed",
+          ].join(" ")}
+          aria-disabled={!canVote}
+          title={canVote ? "Vote" : "Sign in to vote"}
         >
           Vote
         </button>
@@ -200,7 +211,7 @@ function PortfolioCard({ p, meta, rank, onVote }) {
 }
 
 /* --- ROW CARD FOR THE REST (used in ALL + MINE) --- */
-function PortfolioRowCard({ p, meta, rank, onVote }) {
+function PortfolioRowCard({ p, meta, rank, onVote, canVote, onRequireAuth }) {
   const router = useRouter();
   const comp = useMemo(
     () => compositionSpans(p.assets, p.weights, meta),
@@ -213,6 +224,10 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
 
   function handleVoteClick(e) {
     e.stopPropagation();
+    if (!canVote) {
+      onRequireAuth?.();
+      return;
+    }
     onVote();
   }
 
@@ -282,7 +297,14 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
         <button
           type="button"
           onClick={handleVoteClick}
-          className="border border-[var(--border)] bg-[var(--bg-dark)] text-[var(--bg-alt)] px-2.5 py-1.5 text-sm sm:text-lg md:text-xl font-bold leading-none hover:bg-[var(--chrome)] w-full lg:w-auto"
+          className={[
+            "border border-[var(--border)] px-2.5 py-1.5 text-sm sm:text-lg md:text-xl font-bold leading-none w-full lg:w-auto",
+            canVote
+              ? "bg-[var(--bg-dark)] text-[var(--bg-alt)] hover:bg-[var(--chrome)]"
+              : "bg-[var(--bg-soft)] text-[var(--muted)] opacity-60 cursor-not-allowed",
+          ].join(" ")}
+          aria-disabled={!canVote}
+          title={canVote ? "Vote" : "Sign in to vote"}
         >
           Vote
         </button>
@@ -294,8 +316,18 @@ function PortfolioRowCard({ p, meta, rank, onVote }) {
 export default function UserETFsPage() {
   const { data: session } = useSession();
   const userId = session?.user?.id || null;
-  const userEmail = session?.user?.email || null;
   const router = useRouter();
+  const canVote = !!userId;
+
+  function openVoteSignIn() {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("auth", "1");
+    url.searchParams.set("voteAuth", "1");
+    router.push(url.pathname + (url.search ? url.search : "") + url.hash, {
+      scroll: false,
+    });
+  }
 
   const [loading, setLoading] = useState(true);
   const [all, setAll] = useState([]);
@@ -362,22 +394,22 @@ export default function UserETFsPage() {
   });
 
   async function handleVote(portfolioId) {
-    if (!userId && !userEmail) {
-      router.push("?auth=1", { scroll: false });
+    if (!canVote) {
+      openVoteSignIn();
       return;
     }
 
     try {
       const r = await fetch(`/api/portfolios/${portfolioId}/vote`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userId || null,
-          userEmail: userEmail || null,
-        }),
       });
 
       const j = await r.json().catch(() => ({}));
+
+      if (r.status === 401) {
+        openVoteSignIn();
+        return;
+      }
 
       if (r.ok && j?.portfolio) {
         const updated = j.portfolio;
@@ -481,6 +513,8 @@ export default function UserETFsPage() {
                           meta={meta}
                           rank={globalRankById.get(p.id)}
                           onVote={() => handleVote(p.id)}
+                          canVote={canVote}
+                          onRequireAuth={openVoteSignIn}
                         />
                       ))}
                     </div>
@@ -514,6 +548,8 @@ export default function UserETFsPage() {
                             meta={meta}
                             rank={globalRankById.get(p.id)}
                             onVote={() => handleVote(p.id)}
+                            canVote={canVote}
+                            onRequireAuth={openVoteSignIn}
                           />
                         ))}
                       </div>
@@ -533,6 +569,8 @@ export default function UserETFsPage() {
                         meta={meta}
                         rank={globalRankById.get(p.id)}
                         onVote={() => handleVote(p.id)}
+                        canVote={canVote}
+                        onRequireAuth={openVoteSignIn}
                       />
                     ))}
                   </div>
@@ -547,6 +585,5 @@ export default function UserETFsPage() {
     </div>
   );
 }
-
 
 

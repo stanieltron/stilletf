@@ -16,7 +16,7 @@ export default function ShareModalSignedIn({
 }) {
   const captureRef = useRef(null);
   const savePromiseRef = useRef(null);
-  const ogUploadedRef = useRef(false);
+  const ogUploadedPortfolioIdRef = useRef(null);
 
   const [chartReady, setChartReady] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -58,7 +58,7 @@ export default function ShareModalSignedIn({
     setPortfolioId(null);
     setShareUrl("");
     savePromiseRef.current = null;
-    ogUploadedRef.current = false;
+    ogUploadedPortfolioIdRef.current = null;
   }, [open]);
 
   useEffect(() => {
@@ -188,13 +188,44 @@ export default function ShareModalSignedIn({
     return savePromiseRef.current;
   }
 
+  async function captureSharePng() {
+    if (!captureRef.current) throw new Error("Share preview is not ready yet.");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const dataUrl = await htmlToImage.toPng(captureRef.current, {
+      width: 1200,
+      height: 675,
+      pixelRatio: 2,
+    });
+    setImgDataUrl(dataUrl);
+    return dataUrl;
+  }
+
+  async function uploadOgImage(portfolioIdToUpload) {
+    if (!portfolioIdToUpload) throw new Error("Missing portfolio id.");
+    if (ogUploadedPortfolioIdRef.current === portfolioIdToUpload) return;
+
+    const png = await captureSharePng();
+    const res = await fetch(`/api/portfolios/${portfolioIdToUpload}/og-image`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: png }),
+    });
+    if (!res.ok) throw new Error("Could not upload share image.");
+    ogUploadedPortfolioIdRef.current = portfolioIdToUpload;
+  }
+
   function openShareWindow(url) {
     if (typeof window === "undefined") return;
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function handleShareX() {
+    setError(null);
     const saved = await ensureSaved();
+    if (typeof window !== "undefined" && window.requestAnimationFrame) {
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+    }
+    await uploadOgImage(saved.id);
     const url = `https://x.com/intent/post?text=${encodeURIComponent(
       `${shareText}\n\n${saved.url}`
     )}`;
@@ -202,7 +233,12 @@ export default function ShareModalSignedIn({
   }
 
   async function handleShareFacebook() {
+    setError(null);
     const saved = await ensureSaved();
+    if (typeof window !== "undefined" && window.requestAnimationFrame) {
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+    }
+    await uploadOgImage(saved.id);
     const url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
       saved.url
     )}&quote=${encodeURIComponent(shareText)}`;
@@ -252,18 +288,6 @@ export default function ShareModalSignedIn({
       setSharing(false);
     }
   };
-
-  useEffect(() => {
-    if (!open || !portfolioId || !imgDataUrl || ogUploadedRef.current) return;
-    ogUploadedRef.current = true;
-    fetch(`/api/portfolios/${portfolioId}/og-image`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image: imgDataUrl }),
-    }).catch((err) => {
-      console.error("[OG] failed to upload share image", err);
-    });
-  }, [open, portfolioId, imgDataUrl]);
 
   const renderCaptureContent = (withRef = false) => (
     <div
