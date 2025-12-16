@@ -25,7 +25,7 @@ export default function ShareModal({
   const [isMobile, setIsMobile] = useState(false);
 
   const shareUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
-  const shareText = "I created this portfolio on Sona — can you do better?";
+  const shareText = "I created this portfolio on Sona - can you do better?";
 
   const shareHost = (() => {
     try {
@@ -218,7 +218,7 @@ export default function ShareModal({
           style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
         >
           <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
-            {shareText.replace(" — ", " ")}
+            {shareText}
           </p>
         </div>
 
