@@ -562,8 +562,25 @@ export default function TestnetStatusPage() {
           <p className="text-body max-w-xl">
             Live telemetry for the BTC vault, strategy, and oracle stack. Connect a wallet to pull chain data.
           </p>
+          <div className="sona-divider w-full max-w-lg" aria-hidden />
         </div>
         <div className="flex flex-wrap items-center gap-3 justify-end">
+          <div
+            className={`sona-pill ${diagnostics.chainMismatch ? "" : "sona-pill-gold"}`}
+            title={
+              diagnostics.chainMismatch
+                ? `Switch to chain ${DEFAULT_CHAIN_ID}`
+                : walletAddress
+                ? "Wallet connected on expected chain"
+                : "Wallet not connected"
+            }
+          >
+            {diagnostics.chainMismatch
+              ? `Wrong chain · need ${DEFAULT_CHAIN_ID}`
+              : walletAddress
+              ? "Connected"
+              : "Wallet missing"}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={connectWallet}
@@ -585,7 +602,7 @@ export default function TestnetStatusPage() {
             href="/btcetf"
             className="sona-btn sona-btn-outline whitespace-nowrap"
           >
-            Vault UI →
+            View BTC vault →
           </Link>
         </div>
       </div>
