@@ -112,32 +112,26 @@ export function LiveSection() {
             </div>
 
             <div className="mt-7 grid gap-5 md:grid-cols-3">
-              <div className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1">
-                <p className="m-0 font-extrabold tracking-tight text-[clamp(2rem,4vw,2.8rem)] leading-none">
-                  3
-                </p>
-                <p className="m-0 mt-2 font-semibold tracking-tight">
-                  Now live on 3 chains
-                </p>
-              </div>
-
-              <div className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1">
-                <p className="m-0 font-extrabold tracking-tight text-[clamp(2rem,4vw,2.8rem)] leading-none">
-                  12
-                </p>
-                <p className="m-0 mt-2 font-semibold tracking-tight">
-                  Powered by 12 protocols
-                </p>
-              </div>
-
-              <div className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1">
-                <p className="m-0 font-extrabold tracking-tight text-[clamp(2rem,4vw,2.8rem)] leading-none">
-                  10k+
-                </p>
-                <p className="m-0 mt-2 text-body-light break-words">
-                  Serving users with over 10 thousand automated yield transactions executed
-                </p>
-              </div>
+              {[
+                { intro: "Now live", number: "3", after: "chains" },
+                { intro: "Powered by", number: "12", after: "protocols" },
+                { intro: "Serving", number: "10k+", after: "transactions executed" },
+              ].map((item) => (
+                <div
+                  key={item.number + item.after}
+                  className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1 flex flex-col gap-2"
+                >
+                  <p className="m-0 text-[12px] uppercase tracking-[0.2em] text-white/70">
+                    {item.intro}
+                  </p>
+                  <p className="m-0 font-extrabold tracking-tight text-[clamp(2.6rem,5vw,3.4rem)] leading-none">
+                    {item.number}
+                  </p>
+                  <p className="m-0 text-lg md:text-xl font-semibold text-white/90 break-words">
+                    {item.after}
+                  </p>
+                </div>
+              ))}
             </div>
 
             <div className="mt-10 h-[1px] w-full bg-[var(--chrome)] opacity-70" aria-hidden />
