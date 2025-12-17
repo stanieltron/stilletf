@@ -1,151 +1,105 @@
 "use client";
 
 export default function Roadmap() {
+  const items = [
+    {
+      badge: "The core",
+      title: "Bitcoin-based crypto traded fund",
+      body: "Get paid for owning the best cryptocurrency in the world.",
+    },
+    {
+      badge: "The flagship",
+      title: "Best assets of a generation combined",
+      body: "Bitcoin, S&P 500, gold, and US treasuries for balanced strength.",
+    },
+    {
+      badge: "The crypto",
+      title: "Staples of the digital economy",
+      body: "BTC, ETH, USDT — the liquidity bedrock of onchain markets.",
+    },
+  ];
+
   return (
     <div className="w-full">
-      <h2 className="heading-2 m-0">
-          Roadmap
-      </h2>
+      <div className="flex flex-col gap-2 mb-6">
+        <span className="badge w-fit">Premium assets. Onchain yield.</span>
+        <h2 className="heading-2 m-0">Premium assets. Onchain yield.</h2>
+        <p className="text-body max-w-3xl">
+          A disciplined lineup of onchain ETFs — from pure Bitcoin conviction to balanced multi-asset and crypto staples —
+          each built to deliver calm, premium yield.
+        </p>
+      </div>
 
-      {/* Roadmap stage area */}
-      <div className="mt-8 md:mt-10">
-          <div className="relative w-full">
-            {/* Keep the square aspect ratio */}
-            <div className="relative w-full pb-0 md:pb-[60%] md:h-0">
-              <div className="relative md:absolute md:inset-0 md:overflow-hidden md:isolate md:h-full">
-                {/* Diagonal line (desktop) */}
-                <svg
-                  className="absolute inset-0 -z-10 pointer-events-none hidden md:block w-full h-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  aria-hidden
-                >
-                  <path
-                    d="M 0 0 L 100 100"
-                    stroke="var(--accent)"
-                    strokeWidth="8"
-                    vectorEffect="non-scaling-stroke"
-                    fill="none"
-                  />
-                </svg>
+      <div className="grid gap-6 md:grid-cols-3">
+        {items.map((item, i) => (
+          <article
+            key={item.title}
+            className={[
+              "relative overflow-hidden rounded-[18px] border",
+              "bg-[var(--bg-dark)] text-[var(--footer-text)] border-[var(--chrome)]",
+              "shadow-[0_14px_40px_rgba(17,19,24,0.18)] p-5 md:p-6 flex flex-col gap-3",
+              i === 0 ? "md:translate-y-0" : i === 1 ? "md:translate-y-10" : "md:translate-y-20",
+              "transition-transform duration-500 ease-in-out hover:-translate-y-2 hover:shadow-[0_18px_48px_rgba(17,19,24,0.25)]",
+            ].join(" ")}
+            style={{
+              animation: "roadmapFloat 7s ease-in-out infinite",
+              animationDelay: `${i * 0.5}s`,
+            }}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 opacity-70 -z-10"
+              style={{
+                background:
+                  "radial-gradient(420px circle at 15% 20%, rgba(202,163,74,0.18), transparent 55%), radial-gradient(420px circle at 90% 90%, rgba(17,19,24,0.18), transparent 55%)",
+              }}
+              aria-hidden
+            />
 
-                {/* Vertical guide (mobile) */}
-                <svg
-                  className="absolute inset-0 -z-10 pointer-events-none md:hidden w-full h-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  aria-hidden
-                >
-                  <path
-                    d="M 50 0 L 50 100"
-                    stroke="var(--accent)"
-                    strokeWidth="6"
-                    vectorEffect="non-scaling-stroke"
-                    fill="none"
-                  />
-                </svg>
-
-                {/* === Desktop cards === */}
-                <div className="hidden md:block h-full w-full">
-                  {/* 1) Top-left */}
-                  <div className="absolute left-[0%] top-[0%] w-[25%] h-[33%]">
-                    <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
-                      <div className="card-overlay" />
-                      <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
-                        The core
-                      </span>
-                      <h3 className="heading-3">
-                        Bitcoin-based crypto traded fund
-                      </h3>
-                      <p className="text-body-muted break-words">
-                        Get paid for owning the best cryptocurrency in the world.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 2) Center */}
-                  <div className="absolute left-[37.5%] top-[calc(50%-16.5%)] w-[25%] h-[33%]">
-                    <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
-                      <div className="card-overlay" />
-                      <span className="badge bg-black">
-                        The flagship
-                      </span>
-                      <h3 className="heading-3">
-                        Best assets of a generation combined
-                      </h3>
-                      <p className="text-body-muted break-words">
-                        Bitcoin, S&amp;P 500, gold, and US treasuries.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 3) Bottom-right */}
-                  <div className="absolute left-[75%] bottom-[0%] w-[25%] h-[33%]">
-                    <div className="card-strong h-full overflow-hidden transition-transform duration-300 hover:-translate-y-1">
-                      <div className="card-overlay" />
-                      <span className="badge bg-black">
-                        The crypto
-                      </span>
-                      <h3 className="heading-3">
-                        Staples of the digital economy
-                      </h3>
-                      <p className="text-body-muted break-words">
-                        BTC, ETH, USDT.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* === Mobile stacked cards === */}
-                <div className="md:hidden relative flex flex-col justify-center gap-8 px-1">
-                  <div
-                    className="absolute left-1/2 top-0 bottom-0 w-[6px] -translate-x-1/2 bg-[var(--accent)] opacity-80"
-                    aria-hidden
-                  />
-
-                  <div
-                    className="card-strong text-white relative z-10"
-                    style={{ backgroundColor: "var(--bg-dark)", borderColor: "var(--bg-dark)", color: "var(--bg-alt)" }}
-                  >
-                    <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
-                      The core
-                    </span>
-                    <h3 className="heading-3">
-                      Bitcoin-based crypto traded fund
-                    </h3>
-                    <p className="text-body-light">
-                      Get paid for owning the best cryptocurrency in the world.
-                    </p>
-                  </div>
-
-                  <div className="card-strong relative z-10">
-                    <span className="badge bg-black">
-                      The flagship
-                    </span>
-                    <h3 className="heading-3">
-                      Best assets of a generation combined
-                    </h3>
-                    <p className="text-body-muted">
-                      Bitcoin, S&amp;P 500, gold, and US treasuries.
-                    </p>
-                  </div>
-
-                  <div className="card-strong relative z-10">
-                    <span className="badge bg-black">
-                      The crypto
-                    </span>
-                    <h3 className="heading-3">
-                      Staples of the digital economy
-                    </h3>
-                    <p className="text-body-muted">
-                      BTC, ETH, USDT.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <span
+                className="badge bg-white shadow-sm"
+                style={{ color: "var(--accent)", borderColor: "rgba(202,163,74,0.45)" }}
+              >
+                {item.badge}
+              </span>
+              <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--muted)]">
+                Stage {i + 1}
+              </span>
             </div>
-          </div>
-        </div>
+
+            <h3
+              className="m-0 font-semibold tracking-tight text-[clamp(1.2rem,2vw,1.45rem)]"
+              style={{ color: "var(--footer-text)" }}
+            >
+              {item.title}
+            </h3>
+
+            <p
+              className="m-0 text-body"
+              style={{ color: "rgba(243,244,248,0.82)" }}
+            >
+              {item.body}
+            </p>
+
+            <div className="h-[3px] w-full rounded-full bg-gradient-to-r from-[rgba(202,163,74,0.08)] via-[var(--accent)] to-[rgba(202,163,74,0.08)]" />
+          </article>
+        ))}
+      </div>
     </div>
   );
+}
+
+// subtle float animation
+const style = document?.documentElement;
+if (style && !style.dataset.roadmapFloatInjected) {
+  const css = `
+  @keyframes roadmapFloat {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+  }`;
+  const el = document.createElement("style");
+  el.innerHTML = css;
+  document.head.appendChild(el);
+  style.dataset.roadmapFloatInjected = "1";
 }
