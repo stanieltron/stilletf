@@ -13,10 +13,6 @@ export default function HeroSection() {
         </p>
       </div>
 
-      <div
-        className="h-2 bg-[var(--accent)] rounded-[var(--radius-md)] w-full"
-        aria-hidden
-      />
     </div>
   );
 }

@@ -1,8 +1,7 @@
 "use client";
 
-"use client";
-
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { fetchAssets } from "../../lib/portfolio";
@@ -275,7 +274,8 @@ export default function BuilderSection({ keepAssets = true }) {
 
   const showFirstYield = isETFComplete && !yieldEverActivated;
   const showCompleteBtn = isETFComplete && yieldOn;
-  const hasSecondaryAction = showFirstYield || showCompleteBtn;
+  const hasSecondaryAction = showFirstYield; // share button relocated
+  const shareDisabled = !isETFComplete;
 
   return (
     <main
@@ -299,6 +299,7 @@ export default function BuilderSection({ keepAssets = true }) {
         )}
 
         {!loadingAssets && (
+          <>
           <div
             ref={splitRef}
             className={[
@@ -307,7 +308,7 @@ export default function BuilderSection({ keepAssets = true }) {
               "relative",
               "grid items-stretch content-stretch gap-4 md:gap-6 min-h-0 w-full max-w-full box-border overflow-visible",
               "grid-cols-1",
-              hasPortfolio ? "md:h-[720px] h-auto" : "md:h-[500px] h-auto",
+              "md:h-[560px]",
               "md:[grid-template-columns:var(--left-w)_minmax(0,1fr)]",
             ].join(" ")}
             style={{
@@ -334,15 +335,14 @@ export default function BuilderSection({ keepAssets = true }) {
               className={[
                 "bg-white rounded-[var(--radius-md)]",
                 "overflow-hidden min-h-0 w-full flex flex-col",
-                hasPortfolio
-                  ? "md:h-[720px] h-[300px] self-stretch"
-                  : "md:h-[500px] h-[300px] self-start [grid-row:auto]",
+                "self-stretch h-full",
+                "min-h-[320px]",
               ].join(" ")}
               style={{ contain: "content" }}
             >
               <div className="flex-none px-3 pt-3 pb-2 border-b border-[var(--border)]">
                 <h2 className="m-0 font-semibold tracking-[.2px] [font-size:clamp(.9rem,1.1vw,1rem)]">
-                  Asset weights
+                  Assets selection
                 </h2>
               </div>
 
@@ -438,7 +438,7 @@ export default function BuilderSection({ keepAssets = true }) {
               className={[
                 "right-pane",
                 hasPortfolio ? "" : "is-empty",
-                "min-h-0 self-stretch",
+                "min-h-0 self-stretch h-full",
                 hasPortfolio
                   ? "flex flex-col gap-4 h-auto"
                   : "md:grid gap-3 [grid-template-rows:500px]",
@@ -497,23 +497,6 @@ export default function BuilderSection({ keepAssets = true }) {
                               </div>
                             ) : null}
 
-                            {/* YIELD stays on once enabled */}
-                            {showCompleteBtn && (
-                              <button
-                                type="button"
-                                onClick={handleCompletePortfolioClick}
-                                className="relative cta-btn cta-btn-sm cta-orange text-[10px] sm:text-xs font-extrabold shadow-[0_0_14px_rgba(255,138,0,0.75)]"
-                              >
-                                <span
-                                  className="pointer-events-none absolute inset-[-3px] border border-[var(--accent-soft)] rounded-none animate-ping"
-                                  aria-hidden="true"
-                                />
-                                <span className="relative flex items-center gap-1">
-                                  <span className="text-[14px] leading-none">*</span>
-                                  <span>Share portfolio</span>
-                                </span>
-                              </button>
-                            )}
                           </div>
                         )}
 
@@ -538,7 +521,7 @@ export default function BuilderSection({ keepAssets = true }) {
 
                   {/* Chart + text + metrics grouped */}
                   <div className="bg-white rounded-[var(--radius-md)] overflow-hidden flex flex-col">
-                    <div className="px-3 py-3 flex h-[200px] md:h-[300px]">
+                    <div className="px-3 py-2 flex h-[180px] md:h-[260px]">
                       <div className="w-full h-full overflow-hidden flex-1 min-h-0 min-w-0 max-w-full">
                         <ChartBuilder
                           assets={assetKeys}
@@ -549,11 +532,7 @@ export default function BuilderSection({ keepAssets = true }) {
                       </div>
                     </div>
 
-                    <div className="bg-white text-center w-full text-[clamp(.95rem,.9vw,1rem)] font-bold flex items-center justify-center h-[40px] px-3">
-                      SONA.XYZ
-                    </div>
-
-                    <div className="bg-white p-3 h-[200px] md:h-[300px] overflow-auto flex flex-col">
+                    <div className="bg-white p-3 h-[180px] md:h-[260px] overflow-auto flex flex-col">
                       <PortfolioBuilder
                         assets={assetKeys}
                         weights={weights}
@@ -588,6 +567,24 @@ export default function BuilderSection({ keepAssets = true }) {
               )}
             </section>
           </div>
+
+          {/* Global actions below builder */}
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handleCompletePortfolioClick}
+              disabled={shareDisabled}
+              className={`cta-btn cta-orange no-underline ${shareDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+              aria-disabled={shareDisabled}
+              title={shareDisabled ? "Complete your ETF and enable yield to share" : "Share portfolio"}
+            >
+              Share portfolio
+            </button>
+            <Link href="/?auth=1" className="cta-btn cta-black no-underline">
+              Want more?
+            </Link>
+          </div>
+          </>
         )}
       </div>
 

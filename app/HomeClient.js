@@ -12,7 +12,6 @@ import MissionStatement from "./components/MissionStatement";
 import Roadmap from "./components/Roadmap";
 import { LiveSection, LoveSection, PaidSection } from "./components/Sections";
 import Carousel from "./components/Carousel";
-import WantMore from "./components/WantMore";
 
 /* --- helpers to detect reload/auth return (for keepAssets logic) --- */
 function isReloadNavigation() {
@@ -127,6 +126,16 @@ export default function HomeClient() {
     ],
     []
   );
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "https://sonaetf.com");
+  const shareText = "Want more? Check out SONA:";
+  const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(`${shareText} ${baseUrl}`)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent(
+    shareText
+  )}`;
+  const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(baseUrl)}`;
 
   const [compactNav, setCompactNav] = useState(false);
 
@@ -281,8 +290,15 @@ export default function HomeClient() {
         >
           <div className={sharedSectionInner}>
             <HeroSection />
-            <BuilderSection keepAssets={keepAssets} />
-            <WantMore />
+            <div
+              className="mx-auto"
+              style={{
+                transform: "scale(0.85)",
+                transformOrigin: "top center",
+              }}
+            >
+              <BuilderSection keepAssets={keepAssets} />
+            </div>
           </div>
         </section>
 
@@ -350,6 +366,42 @@ export default function HomeClient() {
             <LoveSection />
           </div>
         </section>
+
+        {/* Share row above footer */}
+        <div className="flex w-full justify-center bg-[var(--bg)] pb-10">
+          <div className="sona-container flex flex-col items-center gap-3">
+            <div className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Share Sona</div>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={xUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+                aria-label="Share on X"
+              >
+                Share on X
+              </a>
+              <a
+                href={telegramUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+                aria-label="Share on Telegram"
+              >
+                Telegram
+              </a>
+              <a
+                href={linkedinUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+                aria-label="Share on LinkedIn"
+              >
+                LinkedIn
+              </a>
+            </div>
+          </div>
+        </div>
       </main>
 
       <Footer />
