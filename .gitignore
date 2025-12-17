@@ -2,7 +2,7 @@ node_modules
 # Keep environment variables out of version control
 .env
 .env.local
-./package-lock.json
+package-lock.json
 
 /lib/generated/prisma
 /node_modules
