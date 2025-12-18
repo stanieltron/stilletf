@@ -288,7 +288,7 @@ export default function HomeClient() {
             paddingTop: `${headerH}px`,
           }}
         >
-          <div className={sharedSectionInner}>
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-4 md:gap-6 pt-8 pb-0">
             <HeroSection />
             <div
               className="mx-auto"
@@ -308,9 +308,11 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className={`${sharedSectionInner} gap-0 md:gap-0`}>
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-4 md:gap-6 pt-0 pb-10 -mt-6 md:-mt-8">
             <Carousel />
-            <MissionStatement />
+            <div className="mt-16 md:mt-20 mb-16 md:mb-20 px-2">
+              <MissionStatement />
+            </div>
           </div>
         </section>
 
@@ -345,7 +347,7 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className={sharedSectionInner}>
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col justify-center gap-6 md:gap-8 py-8 md:py-8">
             <LiveSection />
           </div>
         </section>
