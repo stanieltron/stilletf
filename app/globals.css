@@ -359,7 +359,7 @@ a:hover {
 }
 
 .animate-logo-scroll {
-  animation: logo-scroll 25s linear infinite;
+  animation: logo-scroll 45s linear infinite;
 }
 
 /* Shared CTA button styles */

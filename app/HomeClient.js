@@ -343,12 +343,9 @@ export default function HomeClient() {
         <section
           ref={(el) => setSectionRef(el, 4)}
           className="flex w-full justify-center bg-[var(--bg)]"
-          style={{
-            ...sectionStyleBase,
-            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
-          }}
+          style={sectionStyleBase}
         >
-          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+          <div className={sharedSectionInner}>
             <LiveSection />
           </div>
         </section>

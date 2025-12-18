@@ -60,20 +60,50 @@ function LogoItem({ name, src }) {
 
 
 export default function LogoCarousel() {
-  const logos = [...LOGOS, ...LOGOS]; // duplicate for seamless scroll
+  const logos = [...LOGOS, ...LOGOS]; // duplicate for seamless loop
 
   return (
     <section
-      className="section border-y border-[var(--border-soft)] bg-black"
+      className="section border-y border-[var(--border-soft)] bg-[var(--bg)]"
       style={{ paddingTop: 0, paddingBottom: 0 }}
     >
       <div className="container-main ">
-        <div className="w-full overflow-hidden">
-          <div className="flex items-center gap-12 animate-logo-scroll">
+        <div className="py-0">
+          <h2 className="heading-2 mt-0 mb-0 leading-tight">Made possible by</h2>
+        </div>
+        <div className="relative w-full overflow-hidden">
+          {/* fade edges */}
+          <div
+            className="flex items-center gap-12 animate-logo-scroll min-w-max"
+            style={{ willChange: "transform" }}
+          >
             {logos.map((logo, idx) => (
-              <LogoItem key={`${logo.name}-${idx}`} name={logo.name} src={logo.src} />
+              <div
+                key={`${logo.name}-${idx}`}
+                className="flex-none rounded-2xl border border-white/15 bg-white/5 px-4 py-3"
+              >
+                <LogoItem name={logo.name} src={logo.src} />
+              </div>
             ))}
           </div>
+
+          {/* fade edges on top */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10"
+            style={{
+              background:
+                "linear-gradient(90deg, #f7f3eb 0%, rgba(247,243,235,0.9) 65%, rgba(247,243,235,0) 100%)",
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10"
+            style={{
+              background:
+                "linear-gradient(270deg, #f7f3eb 0%, rgba(247,243,235,0.9) 65%, rgba(247,243,235,0) 100%)",
+            }}
+          />
         </div>
       </div>
     </section>
