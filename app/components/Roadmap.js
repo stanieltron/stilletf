@@ -1,6 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
+
 export default function Roadmap() {
+  // inject float animation once on client to avoid SSR document access
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (document.head.querySelector("[data-roadmap-float]")) return;
+
+    const el = document.createElement("style");
+    el.setAttribute("data-roadmap-float", "true");
+    el.innerHTML = `
+      @keyframes roadmapFloat {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+        100% { transform: translateY(0); }
+      }
+    `;
+    document.head.appendChild(el);
+  }, []);
+
   const items = [
     {
       badge: "The core",
@@ -87,19 +106,4 @@ export default function Roadmap() {
       </div>
     </div>
   );
-}
-
-// subtle float animation
-const style = document?.documentElement;
-if (style && !style.dataset.roadmapFloatInjected) {
-  const css = `
-  @keyframes roadmapFloat {
-    0% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-    100% { transform: translateY(0); }
-  }`;
-  const el = document.createElement("style");
-  el.innerHTML = css;
-  document.head.appendChild(el);
-  style.dataset.roadmapFloatInjected = "1";
 }

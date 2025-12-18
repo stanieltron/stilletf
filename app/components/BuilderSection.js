@@ -300,6 +300,14 @@ export default function BuilderSection({ keepAssets = true }) {
 
         {!loadingAssets && (
           <>
+          <div className="sona-card border border-[rgba(17,19,24,0.08)] shadow-[0_14px_40px_rgba(17,19,24,0.08)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 w-full">
+            <div className="flex flex-col gap-2">
+            <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Hands-on</span>
+            <div className="text-[clamp(1rem,2vw,1.35rem)] font-semibold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis w-full">
+              Choose the assets you believe in. Share your portfolio. Get rewarded for it.
+            </div>
+            </div>
+          </div>
           <div
             ref={splitRef}
             className={[
@@ -569,18 +577,23 @@ export default function BuilderSection({ keepAssets = true }) {
           </div>
 
           {/* Global actions below builder */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-7">
             <button
               type="button"
               onClick={handleCompletePortfolioClick}
               disabled={shareDisabled}
-              className={`cta-btn cta-orange no-underline ${shareDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+              className={`cta-btn cta-orange no-underline text-[20px] font-semibold tracking-[0.22em] ${shareDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+              style={{ minHeight: "4rem", paddingLeft: "2.125rem", paddingRight: "2.125rem" }}
               aria-disabled={shareDisabled}
               title={shareDisabled ? "Complete your ETF and enable yield to share" : "Share portfolio"}
             >
               Share portfolio
             </button>
-            <Link href="/?auth=1" className="cta-btn cta-black no-underline">
+            <Link
+              href="/?auth=1"
+              className="cta-btn cta-black no-underline text-[20px] font-semibold tracking-[0.22em]"
+              style={{ minHeight: "4rem", paddingLeft: "2.125rem", paddingRight: "2.125rem" }}
+            >
               Want more?
             </Link>
           </div>
