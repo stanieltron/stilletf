@@ -279,8 +279,8 @@ export default function BuilderSection({ keepAssets = true }) {
 
   return (
     <main
-      className="container-main w-full flex flex-col overflow-hidden"
-      style={{ fontSize: "200%" }} // 2x all text
+      className="container-main w-full flex flex-col overflow-hidden px-2 sm:px-0"
+      style={{ fontSize: "120%" }} // keep mobile sizing comfortable
     >
       <div className="w-full flex-1 flex flex-col gap-3 md:gap-5 min-h-0">
         <h2 className="section-hero center font-bold tracking-tight leading-tight [font-size:clamp(1.5rem,2.5vw,2rem)] m-0">
@@ -301,11 +301,11 @@ export default function BuilderSection({ keepAssets = true }) {
         {!loadingAssets && (
           <>
           <div className="sona-card border border-[rgba(17,19,24,0.08)] shadow-[0_14px_40px_rgba(17,19,24,0.12)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 w-full">
-            <div className="flex flex-col gap-2">
-            <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Hands-on</span>
-            <div className="text-[clamp(1rem,2vw,1.35rem)] font-semibold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis w-full">
-              Choose the assets you believe in. Share your portfolio. Get rewarded for it.
-            </div>
+            <div className="flex flex-col gap-2 w-full">
+              <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Hands-on</span>
+              <div className="text-[clamp(1rem,2vw,1.35rem)] font-semibold tracking-tight leading-snug break-words w-full">
+                Choose the assets you believe in. Share your portfolio. Get rewarded for it.
+              </div>
             </div>
           </div>
           <div

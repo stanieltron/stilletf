@@ -300,6 +300,7 @@ export default function HomeClient() {
               style={{
                 transform: "scale(0.85)",
                 transformOrigin: "top center",
+                width: "100%",
               }}
             >
               <BuilderSection keepAssets={keepAssets} />
