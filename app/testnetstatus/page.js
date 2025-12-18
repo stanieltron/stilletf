@@ -100,11 +100,14 @@ function baseToUa(baseAmount, price, uaDecimals, baseUnit) {
 
 function SummaryCard({ title, children }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white/60 p-4 shadow-sm backdrop-blur">
+    <div className="sona-card backdrop-blur">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+        <h3 className="text-xs font-semibold tracking-[0.18em] uppercase text-[var(--muted)]">
+          {title}
+        </h3>
+        <div className="h-1 w-12 rounded-full bg-[var(--accent)]" aria-hidden />
       </div>
-      <div className="space-y-2 text-sm text-slate-700">{children}</div>
+      <div className="space-y-2 text-sm text-[var(--text)]">{children}</div>
     </div>
   );
 }
@@ -551,19 +554,37 @@ export default function TestnetStatusPage() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            Testnet Monitor
+    <main className="sona-container max-w-6xl flex min-h-screen flex-col gap-6 py-10">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="sona-chip w-fit">Testnet Monitor</div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Sepolia Status</h1>
+          <p className="text-body max-w-xl">
+            Live telemetry for the BTC vault, strategy, and oracle stack. Connect a wallet to pull chain data.
           </p>
-          <h1 className="text-2xl font-bold text-slate-900">Sepolia Status</h1>
+          <div className="sona-divider w-full max-w-lg" aria-hidden />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 justify-end">
+          <div
+            className={`sona-pill ${diagnostics.chainMismatch ? "" : "sona-pill-gold"}`}
+            title={
+              diagnostics.chainMismatch
+                ? `Switch to chain ${DEFAULT_CHAIN_ID}`
+                : walletAddress
+                ? "Wallet connected on expected chain"
+                : "Wallet not connected"
+            }
+          >
+            {diagnostics.chainMismatch
+              ? `Wrong chain · need ${DEFAULT_CHAIN_ID}`
+              : walletAddress
+              ? "Connected"
+              : "Wallet missing"}
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={connectWallet}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-100"
+              className="sona-btn sona-btn-ghost disabled:opacity-60"
             >
               {walletAddress
                 ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
@@ -572,48 +593,48 @@ export default function TestnetStatusPage() {
             <button
               onClick={refresh}
               disabled={loading || !walletAddress}
-              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="sona-btn sona-btn-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
           </div>
           <Link
             href="/btcetf"
-            className="text-sm font-semibold text-indigo-600 hover:text-indigo-500"
+            className="sona-btn sona-btn-outline whitespace-nowrap"
           >
-            Vault UI →
+            View BTC vault →
           </Link>
         </div>
       </div>
 
       {!walletAddress && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="sona-card border border-[rgba(202,163,74,0.35)] bg-[rgba(202,163,74,0.08)] px-4 py-3 text-sm text-[var(--text)]">
           Connect a wallet on Sepolia to fetch status.
         </div>
       )}
 
       {err && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="sona-card border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
           {err}
         </div>
       )}
       {diagnostics && Object.keys(diagnostics).length > 0 && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 space-y-2">
-          <div className="font-semibold text-slate-900">Diagnostics</div>
+        <div className="sona-card px-4 py-3 text-sm text-[var(--text)] space-y-2">
+          <div className="font-semibold text-[var(--text)]">Diagnostics</div>
           <div className="flex justify-between">
-            <span>RPC</span>
-            <span className="font-mono text-slate-900">{diagnostics.rpc || "not reached"}</span>
+            <span className="text-[var(--muted)]">RPC</span>
+            <span className="font-mono text-[var(--text)]">{diagnostics.rpc || "not reached"}</span>
           </div>
           <div className="flex justify-between">
-            <span>Chain</span>
-            <span className="font-mono text-slate-900">
+            <span className="text-[var(--muted)]">Chain</span>
+            <span className="font-mono text-[var(--text)]">
               {diagnostics.chainId || "unknown"}
               {diagnostics.chainMismatch ? ` (expected ${DEFAULT_CHAIN_ID})` : ""}
             </span>
           </div>
           {diagnostics.addresses && Object.keys(diagnostics.addresses).length > 0 && (
             <div>
-              <div className="font-semibold text-slate-900">Address issues</div>
+              <div className="font-semibold text-[var(--text)]">Address issues</div>
               <ul className="list-disc pl-4">
                 {Object.entries(diagnostics.addresses).map(([k, v]) => (
                   <li key={k} className="font-mono text-rose-700">
@@ -625,7 +646,7 @@ export default function TestnetStatusPage() {
           )}
           {diagnostics.fetch && Object.keys(diagnostics.fetch).length > 0 && (
             <div>
-              <div className="font-semibold text-slate-900">Fetch errors</div>
+              <div className="font-semibold text-[var(--text)]">Fetch errors</div>
               <ul className="list-disc pl-4">
                 {Object.entries(diagnostics.fetch).map(([k, v]) => (
                   <li key={k} className="font-mono text-rose-700">
@@ -639,7 +660,7 @@ export default function TestnetStatusPage() {
       )}
 
       {txMessage && (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900">
+        <div className="sona-card px-4 py-3 text-sm text-[var(--text)]">
           {txMessage}
         </div>
       )}
@@ -648,41 +669,41 @@ export default function TestnetStatusPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <SummaryCard title="Network">
             <div className="flex justify-between">
-              <span>Wallet</span>
-              <span className="text-slate-900">
+              <span className="text-[var(--muted)]">Wallet</span>
+              <span className="text-[var(--text)] font-semibold">
                 {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "Not connected"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Chain ID</span>
-              <span className="font-semibold text-slate-900">{data.chainId}</span>
+              <span className="text-[var(--muted)]">Chain ID</span>
+              <span className="font-semibold text-[var(--text)]">{data.chainId}</span>
             </div>
             <div className="flex justify-between">
-              <span>Block</span>
-              <span className="font-mono text-slate-900">{data.blockNumber}</span>
+              <span className="text-[var(--muted)]">Block</span>
+              <span className="font-mono text-[var(--text)]">{data.blockNumber}</span>
             </div>
           </SummaryCard>
 
           <SummaryCard title="Oracle">
             <div className="flex justify-between">
-              <span>Base Unit</span>
-              <span className="font-mono text-slate-900">{data.oracle?.base?.toString()}</span>
+              <span className="text-[var(--muted)]">Base Unit</span>
+              <span className="font-mono text-[var(--text)]">{data.oracle?.base?.toString()}</span>
             </div>
             <div className="flex justify-between">
-              <span>WBTC price</span>
-              <span className="font-mono text-slate-900">{data.oracle ? data.oracle.prices.wbtc.toString() : "-"}</span>
+              <span className="text-[var(--muted)]">WBTC price</span>
+              <span className="font-mono text-[var(--text)]">{data.oracle ? data.oracle.prices.wbtc.toString() : "-"}</span>
             </div>
             <div className="flex justify-between">
-              <span>USDC price</span>
-              <span className="font-mono text-slate-900">{data.oracle ? data.oracle.prices.usdc.toString() : "-"}</span>
+              <span className="text-[var(--muted)]">USDC price</span>
+              <span className="font-mono text-[var(--text)]">{data.oracle ? data.oracle.prices.usdc.toString() : "-"}</span>
             </div>
             <div className="flex justify-between">
-              <span>WETH price</span>
-              <span className="font-mono text-slate-900">{data.oracle ? data.oracle.prices.weth.toString() : "-"}</span>
+              <span className="text-[var(--muted)]">WETH price</span>
+              <span className="font-mono text-[var(--text)]">{data.oracle ? data.oracle.prices.weth.toString() : "-"}</span>
             </div>
             <div className="flex justify-between">
-              <span>stETH price</span>
-              <span className="font-mono text-slate-900">{data.oracle ? data.oracle.prices.steth.toString() : "-"}</span>
+              <span className="text-[var(--muted)]">stETH price</span>
+              <span className="font-mono text-[var(--text)]">{data.oracle ? data.oracle.prices.steth.toString() : "-"}</span>
             </div>
           </SummaryCard>
 
@@ -696,7 +717,7 @@ export default function TestnetStatusPage() {
                 <Row label="USDC balance" value={fmt(data.vault.usdcBalance, data.tokens?.usdc?.decimals ?? 6)} />
               </>
             ) : (
-              <span className="text-slate-500">Unavailable</span>
+              <span className="text-[var(--muted)]">Unavailable</span>
             )}
           </SummaryCard>
 
@@ -731,9 +752,9 @@ export default function TestnetStatusPage() {
                 <Row label="WETH balance" value={fmt(data.strategy.wethBal, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="stETH balance" value={fmt(data.strategy.stethBal, data.tokens?.steth?.decimals ?? 18)} />
                 <Row label="USDC balance" value={fmt(data.strategy.usdcBal, data.tokens?.usdc?.decimals ?? 6)} />
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/70 p-3">
-                  <div className="text-xs text-slate-600">
-                    <div className="font-semibold text-slate-800">Harvest yield</div>
+                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3">
+                  <div className="text-xs text-[var(--muted)]">
+                    <div className="font-semibold text-[var(--text)]">Harvest yield</div>
                     <div>
                       Est. harvestable:{" "}
                       {harvestEstimate != null
@@ -744,14 +765,14 @@ export default function TestnetStatusPage() {
                   <button
                     onClick={triggerHarvest}
                     disabled={!walletAddress || harvestLoading}
-                    className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="sona-btn sona-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {harvestLoading ? "Harvesting..." : "Harvest"}
                   </button>
                 </div>
               </>
             ) : (
-              <span className="text-slate-500">Unavailable</span>
+              <span className="text-[var(--muted)]">Unavailable</span>
             )}
           </SummaryCard>
 
@@ -764,8 +785,8 @@ export default function TestnetStatusPage() {
                   label="1 share → assets"
                   value={fmt(data.fluid.shareToAsset, data.tokens?.steth?.decimals ?? 18)}
                 />
-                <div className="mt-4 space-y-2 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
-                  <p className="text-xs font-semibold text-slate-700">Donate yield with ETH</p>
+                <div className="mt-4 space-y-2 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3">
+                  <p className="text-xs font-semibold text-[var(--text)]">Donate yield with ETH</p>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <input
                       type="number"
@@ -775,23 +796,23 @@ export default function TestnetStatusPage() {
                       disabled={donating}
                       onChange={(e) => setDonationEth(e.target.value)}
                       placeholder="0.1"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-slate-400"
+                      className="w-full rounded-lg border border-[rgba(17,19,24,0.12)] bg-white px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
                     />
                     <button
                       onClick={donateYieldWithEth}
                       disabled={!walletAddress || donating}
-                      className="whitespace-nowrap rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="whitespace-nowrap sona-btn sona-btn-ghost disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {donating ? "Donating..." : "Donate"}
                     </button>
                   </div>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-[var(--muted)]">
                     Sends ETH via donateYieldWithETH; boosts vault assets without minting new shares.
                   </p>
                 </div>
               </>
             ) : (
-              <span className="text-slate-500">Unavailable</span>
+              <span className="text-[var(--muted)]">Unavailable</span>
             )}
           </SummaryCard>
 
@@ -804,7 +825,7 @@ export default function TestnetStatusPage() {
                 <Row label="health factor" value={fmt(data.pool.health, 18, 4)} />
               </>
             ) : (
-              <span className="text-slate-500">Unavailable</span>
+              <span className="text-[var(--muted)]">Unavailable</span>
             )}
           </SummaryCard>
 
@@ -817,7 +838,7 @@ export default function TestnetStatusPage() {
                 <TokenRow label="stETH" t={data.tokens.steth} />
               </>
             ) : (
-              <span className="text-slate-500">Unavailable</span>
+              <span className="text-[var(--muted)]">Unavailable</span>
             )}
           </SummaryCard>
         </div>
@@ -829,8 +850,8 @@ export default function TestnetStatusPage() {
 function Row({ label, value }) {
   return (
     <div className="flex justify-between text-sm">
-      <span className="text-slate-600">{label}</span>
-      <span className="font-mono text-slate-900">{value}</span>
+      <span className="text-[var(--muted)]">{label}</span>
+      <span className="font-mono text-[var(--text)]">{value}</span>
     </div>
   );
 }
@@ -839,16 +860,16 @@ function TokenRow({ label, t }) {
   if (!t) {
     return (
       <div className="flex justify-between">
-        <span className="text-slate-600">{label}</span>
-        <span className="text-slate-500">-</span>
+        <span className="text-[var(--muted)]">{label}</span>
+        <span className="text-[var(--muted)]">-</span>
       </div>
     );
   }
   return (
-    <div className="space-y-1 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+    <div className="space-y-1 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3">
       <div className="flex justify-between">
-        <span className="font-semibold text-slate-800">{label}</span>
-        <span className="text-xs text-slate-600">{t.symbol}</span>
+        <span className="font-semibold text-[var(--text)]">{label}</span>
+        <span className="text-xs text-[var(--muted)]">{t.symbol}</span>
       </div>
       <Row label="totalSupply" value={fmt(t.totalSupply, t.decimals)} />
       <Row label="vault balance" value={fmt(t.vaultBalance, t.decimals)} />

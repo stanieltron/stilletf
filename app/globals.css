@@ -1,8 +1,8 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 /* Global design tokens derived from the Sona cheatsheet */
 :root {
-  /* Core palette from Sona cheatsheet */
+  /* Core palette */
   --text: #111318;            /* sona-ink */
   --muted: #6a6f7c;           /* ink-muted */
   --border: #dde1eb;          /* sona-line */
@@ -29,11 +29,195 @@
 
   --radius-sm: 6px;
   --radius-md: 10px;
-  --shadow-soft: 0 14px 40px rgba(17, 19, 24, 0.08);
-  --shadow-subtle: 0 8px 20px rgba(17, 19, 24, 0.06);
+  --radius-lg: 18px;
+  --shadow-soft: 0 14px 40px rgba(17, 19, 24, 0.12);
+  --shadow-subtle: 0 8px 20px rgba(17, 19, 24, 0.08);
+
+  /* Type scale */
+  --fs-h1: 42px;
+  --fs-h2: 26px;
+  --fs-h3: 18px;
+  --fs-body: 16px;
+  --fs-small: 13px;
+
+  /* Spacing scale */
+  --space-1: 6px;
+  --space-2: 12px;
+  --space-3: 20px;
+  --space-4: 32px;
+  --space-5: 48px;
 }
 
-/* Shared design utilities */
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+               Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background: radial-gradient(circle at top left, #fdf7ea 0, var(--bg) 50%, #f2f0ec 100%);
+  color: var(--text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* Sona layout + component primitives */
+.sona-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, rgba(247, 243, 235, 0.96), rgba(247, 243, 235, 0.8));
+  color: var(--text);
+}
+
+.sona-container {
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+.sona-panel {
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 20px;
+  border: 1px solid rgba(17, 19, 24, 0.06);
+  box-shadow: var(--shadow-soft);
+}
+
+.sona-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 18px;
+  border: 1px solid rgba(17, 19, 24, 0.06);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--space-3);
+}
+
+.sona-card-dark {
+  background: rgba(17, 19, 24, 0.94);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--shadow-soft);
+  color: #f3f4f8;
+}
+
+.sona-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: rgba(202, 163, 74, 0.09);
+  color: #6d5a2e;
+  border: 1px solid rgba(202, 163, 74, 0.35);
+}
+
+.sona-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 4px 10px;
+  background: rgba(17, 19, 24, 0.04);
+  color: #727887;
+}
+
+.sona-pill-gold {
+  background: rgba(202, 163, 74, 0.16);
+  color: #755c21;
+}
+
+.sona-heading {
+  font-size: var(--fs-h2);
+  font-weight: 560;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.sona-subheading {
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8a90a0;
+}
+
+.sona-body {
+  font-size: var(--fs-body);
+  line-height: 1.7;
+  color: #494d59;
+}
+
+.sona-divider {
+  height: 3px;
+  background: linear-gradient(90deg, rgba(202, 163, 74, 0.2), rgba(202, 163, 74, 1), rgba(202, 163, 74, 0.2));
+  border-radius: 999px;
+}
+
+.sona-btn {
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
+}
+
+.sona-btn-primary {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.sona-btn-primary:hover {
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
+}
+
+.sona-btn-ghost {
+  background: rgba(255, 255, 255, 0.9);
+  color: #3b4150;
+  border: 1px solid rgba(17, 19, 24, 0.15);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.sona-btn-ghost:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+
+.sona-btn-outline {
+  background: transparent;
+  color: #3b4150;
+  border: 1px solid rgba(17, 19, 24, 0.25);
+  box-shadow: none;
+}
+
+.sona-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.09);
+}
+
+/* Shared design utilities (tailwind helpers) */
 @layer utilities {
   /* Sections */
   .section {
@@ -63,16 +247,19 @@
   .heading-2 {
     @apply font-semibold mb-12 tracking-tight;
     font-size: clamp(1.75rem, 3vw, 2.25rem);
+    letter-spacing: 0.08em;
   }
 
   .heading-3 {
     @apply font-semibold mb-2 leading-tight;
     font-size: clamp(1.125rem, 1.8vw, 1.5rem);
+    letter-spacing: 0.06em;
   }
 
   .heading-4 {
     @apply font-semibold mb-2.5;
     font-size: clamp(1.05rem, 1.2vw, 1.25rem);
+    letter-spacing: 0.04em;
   }
 
   .eyebrow {
@@ -107,18 +294,18 @@
 
   /* Cards */
   .card {
-    @apply p-6 md:p-8 border min-w-0;
-    background-color: var(--bg-alt);
-    border-color: var(--border);
-    border-radius: var(--radius-md);
+    @apply p-6 md:p-8 min-w-0;
+    background-color: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(17, 19, 24, 0.06);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-subtle);
   }
 
   .card-strong {
-    @apply p-6 border-4 relative shadow-sm;
+    @apply p-6 relative shadow-sm;
     background-color: var(--bg);
-    border-color: var(--text);
-    border-radius: var(--radius-md);
+    border: 1px solid rgba(17, 19, 24, 0.1);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-soft);
   }
 
@@ -129,11 +316,12 @@
 
   /* Badge */
   .badge {
-    @apply inline-block font-semibold uppercase px-3.5 py-1.5 tracking-[0.1em];
-    font-size: 0.7rem;
+    @apply inline-flex font-semibold uppercase px-3.5 py-1.5 tracking-[0.12em];
+    font-size: 11px;
     color: var(--accent-text);
-    background-color: var(--accent);
-    border-radius: var(--radius-sm);
+    background-color: rgba(202, 163, 74, 0.16);
+    border-radius: 999px;
+    border: 1px solid rgba(202, 163, 74, 0.35);
   }
 
   /* Primary button */
@@ -141,15 +329,16 @@
     @apply text-sm font-semibold py-3 px-6 transition-transform duration-300;
     color: var(--accent-text);
     background-color: var(--accent);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
   }
 
   .btn-primary:hover {
     background-color: var(--accent-soft);
     transform: translateY(-1px);
   }
+}
 
-  /* hide scrollbars but keep scroll behavior */
+/* hide scrollbars but keep scroll behavior */
 .no-scrollbar {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;     /* Firefox */
@@ -170,10 +359,7 @@
 }
 
 .animate-logo-scroll {
-    animation: logo-scroll 25s linear infinite;
-  }
-
-
+  animation: logo-scroll 45s linear infinite;
 }
 
 /* Shared CTA button styles */
@@ -181,94 +367,116 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 40px;
-  padding: 0 12px;
-  font-weight: 800;
-  font-size: 15px;
+  height: 42px;
+  padding: 0 16px;
+  font-weight: 750;
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-radius: var(--radius-sm);
+  letter-spacing: 0.16em;
+  border-radius: 999px;
   border-width: 1px;
   border-style: solid;
-  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease, border-color 120ms ease, transform 120ms ease;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.12);
 }
+
 .cta-btn-sm {
-  height: 30px;
-  padding: 0 10px;
-  font-size: 13px;
-  letter-spacing: 0.03em;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
 }
+
 @media (min-width: 768px) {
   .cta-btn-sm {
     height: 40px;
-    padding: 0 12px;
-    font-size: 15px;
-    letter-spacing: 0.04em;
+    padding: 0 14px;
+    font-size: 13px;
+    letter-spacing: 0.14em;
   }
 }
+
 .cta-black {
   background: var(--bg-dark);
-  color: var(--bg-alt);
+  color: var(--footer-text);
   border-color: var(--bg-dark);
 }
+
 .cta-white {
   background: var(--bg-alt);
   color: var(--text);
-  border-color: var(--text);
+  border-color: rgba(17, 19, 24, 0.2);
 }
+
 .cta-grey {
   background: var(--border-soft);
   color: var(--text);
   border-color: var(--border);
 }
+
 .cta-green {
   background: var(--pos);
   color: var(--bg-alt);
   border-color: var(--pos);
 }
+
 .cta-blue {
   background: var(--accent);
   color: var(--accent-text);
   border-color: var(--accent-strong);
 }
+
 .cta-orange {
   background: var(--accent-soft);
   color: var(--accent-text);
   border-color: var(--accent-strong);
 }
+
 .cta-nohover:hover {
   background: inherit;
   color: inherit;
   border-color: inherit;
   box-shadow: none;
 }
+
 .cta-black:hover:not(.cta-nohover) {
-  background: var(--bg-alt);
-  color: var(--bg-dark);
-  border-color: var(--bg-dark);
+  background: #1b1d24;
+  color: var(--footer-text);
+  border-color: #1b1d24;
+  transform: translateY(-1px);
 }
+
 .cta-white:hover:not(.cta-nohover) {
   background: var(--bg-dark);
   color: var(--bg-alt);
   border-color: var(--bg-dark);
+  transform: translateY(-1px);
 }
+
 .cta-grey:hover:not(.cta-nohover) {
   background: var(--border);
   color: var(--text);
   border-color: var(--border);
+  transform: translateY(-1px);
 }
+
 .cta-green:hover:not(.cta-nohover) {
-  background: var(--pos);
+  background: #18875d;
   color: var(--bg-alt);
-  border-color: var(--pos);
+  border-color: #18875d;
+  transform: translateY(-1px);
 }
+
 .cta-blue:hover:not(.cta-nohover) {
   background: var(--accent-strong);
   color: var(--accent-text);
   border-color: var(--accent-strong);
+  transform: translateY(-1px);
 }
+
 .cta-orange:hover:not(.cta-nohover) {
   background: var(--accent);
   color: var(--accent-text);
   border-color: var(--accent-strong);
+  transform: translateY(-1px);
 }

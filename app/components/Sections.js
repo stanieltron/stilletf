@@ -73,7 +73,7 @@ export function PaidSection() {
 export function LiveSection() {
   return (
     <div className="w-full relative">
-      <div className="max-w-6xl mx-auto w-full">
+      <div className="max-w-[840px] mx-auto w-full">
         <div
           className="card-strong overflow-hidden relative w-full"
           style={{
@@ -91,56 +91,58 @@ export function LiveSection() {
             aria-hidden
           />
 
-          <div className="relative">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <span className="badge bg-[var(--accent)] text-[var(--accent-text)]">
+          <div className="relative space-y-8">
+            <div className="flex items-center gap-3">
+              <span
+                className="badge bg-white shadow-sm"
+                style={{ color: "var(--accent)", borderColor: "rgba(202,163,74,0.45)" }}
+              >
                 Live
               </span>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/?auth=1" className="cta-btn cta-orange no-underline">
-                  Try
-                </Link>
-                <a
-                  href="https://x.com/sonaetf"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="cta-btn cta-white no-underline"
+            </div>
+
+            <div className="flex flex-col gap-4 max-w-[560px] mx-auto w-full">
+              {[
+                { intro: "Live on", number: "3    ", tail: "chains" },
+                { intro: "Powered by", number: "12    ", tail: "protocols" },
+                { intro: "Serving", number: "10k+    ", tail: "transactions executed" },
+              ].map((item) => (
+                <div
+                  key={`${item.intro}-${item.number}`}
+                  className="px-2 py-1 md:px-3 md:py-2"
                 >
-                  Follow on X
-                </a>
-              </div>
+                  <div className="grid grid-cols-[150px_1fr] items-baseline gap-3">
+                    <span className="text-[13px] md:text-[14px] uppercase tracking-[0.2em] text-white/75 whitespace-nowrap">
+                      {item.intro}
+                    </span>
+                    <div className="flex items-baseline gap-2 whitespace-nowrap">
+                      <span className="text-[clamp(2.6rem,5vw,3.4rem)] font-extrabold tracking-tight text-white leading-none text-left">
+                        {item.number}
+                      </span>
+                      <span className="text-xl md:text-2xl font-semibold text-white/90 tracking-tight leading-tight">
+                        {item.tail}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="mt-7 grid gap-5 md:grid-cols-3">
-              <div className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1">
-                <p className="m-0 font-extrabold tracking-tight text-[clamp(2rem,4vw,2.8rem)] leading-none">
-                  3
-                </p>
-                <p className="m-0 mt-2 font-semibold tracking-tight">
-                  Now live on 3 chains
-                </p>
-              </div>
-
-              <div className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1">
-                <p className="m-0 font-extrabold tracking-tight text-[clamp(2rem,4vw,2.8rem)] leading-none">
-                  12
-                </p>
-                <p className="m-0 mt-2 font-semibold tracking-tight">
-                  Powered by 12 protocols
-                </p>
-              </div>
-
-              <div className="border border-[var(--chrome)] rounded-[var(--radius-md)] bg-black/20 p-5 md:p-6 transition-transform duration-300 hover:-translate-y-1">
-                <p className="m-0 font-extrabold tracking-tight text-[clamp(2rem,4vw,2.8rem)] leading-none">
-                  10k+
-                </p>
-                <p className="m-0 mt-2 text-body-light break-words">
-                  Serving users with over 10 thousand automated yield transactions executed
-                </p>
-              </div>
+            <div className="flex justify-center flex-wrap gap-3 pt-2">
+              <Link href="/?auth=1" className="cta-btn cta-orange no-underline">
+                Try
+              </Link>
+              <a
+                href="https://x.com/sonaetf"
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+              >
+                Follow on X
+              </a>
             </div>
 
-            <div className="mt-10 h-[1px] w-full bg-[var(--chrome)] opacity-70" aria-hidden />
+            <div className="mt-6 h-[1px] w-full bg-[var(--chrome)] opacity-70" aria-hidden />
           </div>
         </div>
       </div>

@@ -12,7 +12,6 @@ import MissionStatement from "./components/MissionStatement";
 import Roadmap from "./components/Roadmap";
 import { LiveSection, LoveSection, PaidSection } from "./components/Sections";
 import Carousel from "./components/Carousel";
-import WantMore from "./components/WantMore";
 
 /* --- helpers to detect reload/auth return (for keepAssets logic) --- */
 function isReloadNavigation() {
@@ -127,6 +126,16 @@ export default function HomeClient() {
     ],
     []
   );
+
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "https://sonaetf.com");
+  const shareText = "Want more? Check out SONA:";
+  const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(`${shareText} ${baseUrl}`)}`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(baseUrl)}&text=${encodeURIComponent(
+    shareText
+  )}`;
+  const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(baseUrl)}`;
 
   const [compactNav, setCompactNav] = useState(false);
 
@@ -279,10 +288,17 @@ export default function HomeClient() {
             paddingTop: `${headerH}px`,
           }}
         >
-          <div className={sharedSectionInner}>
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-4 md:gap-6 pt-8 pb-0">
             <HeroSection />
-            <BuilderSection keepAssets={keepAssets} />
-            <WantMore />
+            <div
+              className="mx-auto"
+              style={{
+                transform: "scale(0.85)",
+                transformOrigin: "top center",
+              }}
+            >
+              <BuilderSection keepAssets={keepAssets} />
+            </div>
           </div>
         </section>
 
@@ -292,9 +308,11 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className={`${sharedSectionInner} gap-0 md:gap-0`}>
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-4 md:gap-6 pt-0 pb-10 -mt-6 md:-mt-8">
             <Carousel />
-            <MissionStatement />
+            <div className="mt-16 md:mt-20 mb-16 md:mb-20 px-2">
+              <MissionStatement />
+            </div>
           </div>
         </section>
 
@@ -327,12 +345,9 @@ export default function HomeClient() {
         <section
           ref={(el) => setSectionRef(el, 4)}
           className="flex w-full justify-center bg-[var(--bg)]"
-          style={{
-            ...sectionStyleBase,
-            minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
-          }}
+          style={sectionStyleBase}
         >
-          <div className={`${sharedSectionInner} justify-center gap-6 md:gap-10 py-8 md:py-12`}>
+          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col justify-center gap-6 md:gap-8 py-8 md:py-8">
             <LiveSection />
           </div>
         </section>
@@ -350,6 +365,42 @@ export default function HomeClient() {
             <LoveSection />
           </div>
         </section>
+
+        {/* Share row above footer */}
+        <div className="flex w-full justify-center bg-[var(--bg)] pb-10">
+          <div className="sona-container flex flex-col items-center gap-3">
+            <div className="text-sm uppercase tracking-[0.18em] text-[var(--muted)]">Share Sona</div>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={xUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+                aria-label="Share on X"
+              >
+                Share on X
+              </a>
+              <a
+                href={telegramUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+                aria-label="Share on Telegram"
+              >
+                Telegram
+              </a>
+              <a
+                href={linkedinUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="cta-btn cta-white no-underline"
+                aria-label="Share on LinkedIn"
+              >
+                LinkedIn
+              </a>
+            </div>
+          </div>
+        </div>
       </main>
 
       <Footer />
