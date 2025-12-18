@@ -286,9 +286,14 @@ export default function HomeClient() {
           style={{
             ...sectionStyleBase,
             paddingTop: `${headerH}px`,
+            background:
+              "radial-gradient(900px circle at 12% 0%, rgba(202,163,74,0.18), transparent 50%), linear-gradient(180deg, #f2ead8 0%, #f7f3eb 65%, #f7f3eb 100%)",
           }}
         >
-          <div className="w-[95%] md:w-[80%] mx-auto flex flex-col gap-4 md:gap-6 pt-8 pb-0">
+          <div
+            className="w-[95%] md:w-[80%] mx-auto flex flex-col pt-8 pb-0"
+            style={{ gap: "6rem" }}
+          >
             <HeroSection />
             <div
               className="mx-auto"
@@ -322,7 +327,7 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className={sharedSectionInner}>
+          <div className="w-[95%] md:w-[75%] mx-auto flex flex-col gap-6 md:gap-8">
             <Roadmap />
           </div>
         </section>

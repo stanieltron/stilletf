@@ -40,10 +40,10 @@ export default function Roadmap() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-col gap-2 mb-6">
+      <div className="flex flex-col gap-1 mb-4">
         <span className="badge w-fit">Premium assets. Onchain yield.</span>
-        <h2 className="heading-2 m-0">Premium assets. Onchain yield.</h2>
-        <p className="text-body max-w-3xl">
+        <h2 className="heading-2 m-0">Institutional-grade portfolios for everyone</h2>
+        <p className="max-w-3xl font-medium text-[clamp(1.05rem,1.25vw,1.18rem)] leading-[1.75] tracking-[0.01em] text-[rgba(17,19,24,0.78)] mb-8 md:mb-12">
           A disciplined lineup of onchain ETFs — from pure Bitcoin conviction to balanced multi-asset and crypto staples —
           each built to deliver calm, premium yield.
         </p>
@@ -56,9 +56,9 @@ export default function Roadmap() {
             className={[
               "relative overflow-hidden rounded-[18px] border",
               "bg-[var(--bg-dark)] text-[var(--footer-text)] border-[var(--chrome)]",
-              "shadow-[0_14px_40px_rgba(17,19,24,0.18)] p-5 md:p-6 flex flex-col gap-3",
+              "shadow-[0_18px_54px_rgba(17,19,24,0.18)] p-5 md:p-6 flex flex-col gap-3",
               i === 0 ? "md:translate-y-0" : i === 1 ? "md:translate-y-10" : "md:translate-y-20",
-              "transition-transform duration-500 ease-in-out hover:-translate-y-2 hover:shadow-[0_18px_48px_rgba(17,19,24,0.25)]",
+              "transition-transform duration-500 ease-in-out hover:-translate-y-2 hover:shadow-[0_22px_60px_rgba(17,19,24,0.25)]",
             ].join(" ")}
             style={{
               animation: "roadmapFloat 7s ease-in-out infinite",
@@ -94,8 +94,8 @@ export default function Roadmap() {
             </h3>
 
             <p
-              className="m-0 text-body"
-              style={{ color: "rgba(243,244,248,0.82)" }}
+              className="m-0 font-medium text-[clamp(1.02rem,1.15vw,1.1rem)] leading-[1.65]"
+              style={{ color: "rgba(243,244,248,0.9)" }}
             >
               {item.body}
             </p>

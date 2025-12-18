@@ -69,7 +69,8 @@ export default function LogoCarousel() {
     >
       <div className="container-main ">
         <div className="py-0">
-          <h2 className="heading-2 mt-0 mb-0 leading-tight">Made possible by</h2>
+          <span className="badge w-fit">Protocols and tools</span>
+          <h2 className="heading-2 m-0">Made possible by</h2>
         </div>
         <div className="relative w-full overflow-hidden">
           {/* fade edges */}

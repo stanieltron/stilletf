@@ -43,7 +43,7 @@ export function PaidSection() {
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="min-w-[260px]">
-            <span className="badge">Unique benefits</span>
+            <span className="badge">Unique</span>
             <h2 className="heading-2 mt-4 mb-0">Get paid for owning your investments</h2>
           </div>
 
@@ -80,6 +80,7 @@ export function LiveSection() {
             backgroundColor: "var(--bg-dark)",
             borderColor: "var(--accent)",
             color: "var(--footer-text)",
+            boxShadow: "0 18px 54px rgba(17,19,24,0.2)",
           }}
         >
           <div
@@ -165,7 +166,7 @@ export function LoveSection() {
       <div className="max-w-6xl mx-auto w-full">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div className="min-w-[260px]">
-            <span className="badge">Competitive advantages</span>
+            <span className="badge">join us</span>
             <h2 className="heading-2 mt-4 mb-0">why people love SONA</h2>
           </div>
 
