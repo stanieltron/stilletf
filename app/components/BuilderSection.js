@@ -300,7 +300,7 @@ export default function BuilderSection({ keepAssets = true }) {
 
         {!loadingAssets && (
           <>
-          <div className="sona-card border border-[rgba(17,19,24,0.08)] shadow-[0_14px_40px_rgba(17,19,24,0.08)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 w-full">
+          <div className="sona-card border border-[rgba(17,19,24,0.08)] shadow-[0_14px_40px_rgba(17,19,24,0.12)] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 w-full">
             <div className="flex flex-col gap-2">
             <span className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Hands-on</span>
             <div className="text-[clamp(1rem,2vw,1.35rem)] font-semibold tracking-tight whitespace-nowrap overflow-hidden text-ellipsis w-full">
@@ -341,7 +341,7 @@ export default function BuilderSection({ keepAssets = true }) {
             <aside
               ref={leftRef}
               className={[
-                "bg-white rounded-[var(--radius-md)]",
+                "bg-white rounded-[var(--radius-md)] shadow-[0_12px_32px_rgba(17,19,24,0.12)]",
                 "overflow-hidden min-h-0 w-full flex flex-col",
                 "self-stretch h-full",
                 "min-h-[320px]",
@@ -444,7 +444,7 @@ export default function BuilderSection({ keepAssets = true }) {
             <section
               ref={rightRef}
               className={[
-                "right-pane",
+                "right-pane shadow-[0_12px_32px_rgba(17,19,24,0.12)]",
                 hasPortfolio ? "" : "is-empty",
                 "min-h-0 self-stretch h-full",
                 hasPortfolio
@@ -582,7 +582,7 @@ export default function BuilderSection({ keepAssets = true }) {
               type="button"
               onClick={handleCompletePortfolioClick}
               disabled={shareDisabled}
-              className={`cta-btn cta-orange no-underline text-[20px] font-semibold tracking-[0.22em] ${shareDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
+              className={`cta-btn cta-orange no-underline text-[20px] font-semibold tracking-[0.22em] shadow-[0_10px_26px_rgba(17,19,24,0.12)] ${shareDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
               style={{ minHeight: "4rem", paddingLeft: "2.125rem", paddingRight: "2.125rem" }}
               aria-disabled={shareDisabled}
               title={shareDisabled ? "Complete your ETF and enable yield to share" : "Share portfolio"}
@@ -591,7 +591,7 @@ export default function BuilderSection({ keepAssets = true }) {
             </button>
             <Link
               href="/?auth=1"
-              className="cta-btn cta-black no-underline text-[20px] font-semibold tracking-[0.22em]"
+              className="cta-btn cta-black no-underline text-[20px] font-semibold tracking-[0.22em] shadow-[0_10px_26px_rgba(17,19,24,0.12)]"
               style={{ minHeight: "4rem", paddingLeft: "2.125rem", paddingRight: "2.125rem" }}
             >
               Want more?
