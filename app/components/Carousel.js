@@ -28,7 +28,7 @@ function LogoItem({ name, src }) {
   const [failed, setFailed] = useState(!src);
 
   return (
-    <div className="flex items-center justify-center shrink-0 min-w-[200px]">
+    <div className="flex items-center justify-center shrink-0 min-w-[180px] scale-90 sm:scale-100">
       {!failed && src && (
         <img
           src={src}
@@ -75,7 +75,7 @@ export default function LogoCarousel() {
         <div className="relative w-full overflow-hidden">
           {/* fade edges */}
           <div
-            className="flex items-center gap-12 animate-logo-scroll min-w-max"
+            className="flex items-center gap-8 sm:gap-12 animate-logo-scroll min-w-max"
             style={{ willChange: "transform" }}
           >
             {logos.map((logo, idx) => (
