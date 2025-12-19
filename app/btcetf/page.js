@@ -382,8 +382,8 @@ export default function BTCETFPage() {
   return (
     <div className="min-h-screen flex flex-col text-[var(--text)]">
       <Header />
-      <main className="flex-1 flex flex-col">
-        <div className="sona-container py-8 flex flex-col gap-6 flex-1">
+      <main className="flex-1 flex flex-col pt-6 md:pt-8">
+        <div className="sona-container pb-8 flex flex-col gap-6 flex-1">
           <header className="flex flex-col md:flex-row items-start justify-between gap-6 pb-2">
             <div className="space-y-3">
               <div className="flex items-center gap-3 flex-wrap">

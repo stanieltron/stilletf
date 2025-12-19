@@ -55,10 +55,8 @@ export default function Header() {
   }, [open]);
 
   function openSignIn() {
-    const base = typeof window !== "undefined" ? window.location.pathname : "/";
-    const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
-    params.set("auth", "1");
-    router.push(`${base}?${params.toString()}#builder`, { scroll: false });
+    // Always send users to the main builder flow for sign-in
+    router.push("/?auth=1#builder", { scroll: false });
   }
 
   async function connectMetamask() {
@@ -110,27 +108,25 @@ export default function Header() {
         </Link>
 
         {/* Center: nav */}
-        <nav className="justify-self-center flex items-center text-sm sm:text-base gap-3 sm:gap-5 w-full max-w-md justify-evenly">
-          <Link href="/ETFs" className="text-inherit no-underline">
-            Sona-ETFs
-          </Link>
+        <nav className="justify-self-end flex items-center text-sm sm:text-base gap-6 sm:gap-8">
           <Link href="/useretfs" className="text-inherit no-underline">
             Leaderboard
           </Link>
-          <Link href="/btcetf" className="text-inherit no-underline">
-            BTC ETF
-          </Link>
+          <button
+            type="button"
+            onClick={openSignIn}
+            className="text-inherit no-underline bg-transparent border-none p-0 cursor-pointer"
+          >
+            Sign in
+          </button>
         </nav>
 
         {/* Right: auth / account */}
-        <div className="justify-self-end relative" ref={menuRef}>
+        <div className="justify-self-end relative ml-4 sm:ml-6" ref={menuRef}>
           {!isAuthed ? (
-            <button
-              className="cta-btn cta-white"
-              onClick={openSignIn}
-            >
+            <Link href="/btcetf" className="cta-btn cta-white no-underline">
               Launch App
-            </button>
+            </Link>
           ) : (
             <>
               <button
