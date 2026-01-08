@@ -342,7 +342,7 @@ export default function HomeClient() {
             minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
           }}
         >
-          <div className="w-[85%] md:w-[100%] max-w-6xl mx-auto flex flex-col justify-center gap-6 md:gap-10 py-8 md:py-12">
+          <div className="w-[85%] md:w-[80%] max-w-6xl mx-auto flex flex-col justify-center gap-6 md:gap-10 py-8 md:py-12">
             <PaidSection />
           </div>
         </section>
@@ -367,7 +367,7 @@ export default function HomeClient() {
             minHeight: headerH ? `calc(100vh - ${headerH}px)` : "100vh",
           }}
         >
-          <div className="w-[85%] md:w-[100%] max-w-6xl mx-auto flex flex-col justify-center gap-6 md:gap-10 py-8 md:py-12">
+          <div className="w-[85%] md:w-[80%] max-w-6xl mx-auto flex flex-col justify-center gap-6 md:gap-10 py-8 md:py-12">
             <LoveSection />
           </div>
         </section>
