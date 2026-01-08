@@ -48,7 +48,7 @@ export default function HomeClient() {
   const search = useSearchParams();
 
   const sharedSectionInner =
-    "w-[95%] md:w-[80%] mx-auto flex flex-col gap-1 md:gap-1 py-12";
+    "w-[95%] md:w-[80%] max-w-6xl mx-auto flex flex-col gap-1 md:gap-1 py-12";
 
   // default to keeping assets; we may explicitly turn it off on a hard reload
   const [keepAssets, setKeepAssets] = useState(true);
@@ -291,7 +291,7 @@ export default function HomeClient() {
           }}
         >
           <div
-            className="w-[95%] md:w-[80%] mx-auto flex flex-col pt-8 pb-0"
+            className="w-[95%] md:w-[80%] max-w-6xl mx-auto flex flex-col pt-8 pb-0"
             style={{ gap: "6rem" }}
           >
             <HeroSection />
@@ -314,7 +314,7 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className="w-[85%] md:w-[80%] mx-auto flex flex-col gap-4 md:gap-6 pt-0 pb-10 -mt-50 md:mt-0">
+          <div className="w-[85%] md:w-[80%] max-w-6xl mx-auto flex flex-col gap-4 md:gap-6 pt-0 pb-10 -mt-15 -md:mt-10">
             <Carousel />
             <div className="mt-16 md:mt-20 mb-16 md:mb-20 px-2">
               <MissionStatement />
@@ -328,7 +328,7 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className="w-[85%] md:w-[75%] mx-auto flex flex-col gap-6 md:gap-8">
+          <div className="w-[85%] md:w-[75%] max-w-6xl mx-auto flex flex-col gap-6 md:gap-8">
             <Roadmap />
           </div>
         </section>
@@ -353,7 +353,7 @@ export default function HomeClient() {
           className="flex w-full justify-center bg-[var(--bg)]"
           style={sectionStyleBase}
         >
-          <div className="w-[80%] md:w-[80%] mx-auto flex flex-col justify-center gap-6 md:gap-8 py-8 md:py-8">
+          <div className="w-[80%] md:w-[80%] max-w-6xl mx-auto flex flex-col justify-center gap-6 md:gap-8 py-8 md:py-8">
             <LiveSection />
           </div>
         </section>

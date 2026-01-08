@@ -341,8 +341,9 @@ export default function BuilderSection({ keepAssets = true }) {
             <aside
               ref={leftRef}
               className={[
+                "hidden md:flex",
                 "bg-white rounded-[var(--radius-md)] shadow-[0_12px_32px_rgba(17,19,24,0.12)]",
-                "overflow-hidden min-h-0 w-full flex flex-col",
+                "overflow-hidden min-h-0 w-full flex-col",
                 "self-stretch h-full",
                 "min-h-[320px]",
               ].join(" ")}
@@ -450,6 +451,7 @@ export default function BuilderSection({ keepAssets = true }) {
                 hasPortfolio
                   ? "flex flex-col gap-4 h-auto"
                   : "md:grid gap-3 [grid-template-rows:500px]",
+                "order-1 md:order-none",
               ].join(" ")}
             >
               {hasPortfolio ? (
@@ -574,6 +576,67 @@ export default function BuilderSection({ keepAssets = true }) {
                 </div>
               )}
             </section>
+
+            {/* Mobile assets after chart */}
+            <div className="md:hidden order-2">
+              <div className="bg-white rounded-[var(--radius-md)] shadow-[0_12px_32px_rgba(17,19,24,0.12)] overflow-hidden border border-[var(--border)]">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
+                  <h3 className="m-0 font-semibold text-base">Assets selection</h3>
+                </div>
+                <div className="max-h-[360px] overflow-y-auto px-3 py-3 space-y-3">
+                  {assetKeys.map((key, idx) => {
+                    const current = weights[idx] ?? 0;
+                    const sumOthers = totalPointsUsed - current;
+                    const maxForThis = Math.max(
+                      current,
+                      Math.min(10, MAX_TOTAL_POINTS - sumOthers)
+                    );
+                    return (
+                      <WeightInput
+                        key={`m-${key}`}
+                        label={`${assetMeta[key]?.name ?? key} weight`}
+                        nameOnly={assetMeta[key]?.name ?? key}
+                        accentColor={assetMeta[key]?.color || undefined}
+                        value={current}
+                        maxForThis={maxForThis}
+                        pointsRemaining={pointsRemaining}
+                        onChange={(desiredVal) =>
+                          setWeights((w) => {
+                            const copy = [...w];
+                            const others = copy.reduce(
+                              (a, b, j) =>
+                                j === idx
+                                  ? a
+                                  : a + (Number.isFinite(b) ? b : 0),
+                              0
+                            );
+                            const allowed = Math.max(
+                              copy[idx] ?? 0,
+                              Math.min(10, MAX_TOTAL_POINTS - others)
+                            );
+                            const next = Math.max(
+                              0,
+                              Math.min(
+                                allowed,
+                                Number.isFinite(desiredVal) ? desiredVal : 0
+                              )
+                            );
+                            copy[idx] = next;
+                            return copy;
+                          })
+                        }
+                        highlightPlus={max1asset}
+                        highlightMinus={
+                          numActiveAssets === 1 &&
+                          idx === 0 &&
+                          Number(current) > 0
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Global actions below builder */}
