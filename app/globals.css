@@ -350,16 +350,40 @@ a:hover {
 
 @keyframes logo-scroll {
   0% {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   100% {
-    /* move left by half the width since we duplicated the list */
-    transform: translateX(-50%);
+    /* slide a full track width to hand off to the next track */
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes logo-scroll-next {
+  0% {
+    transform: translate3d(100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-logo-scroll {
-  animation: logo-scroll 45s linear infinite;
+  display: inline-flex;       /* shrink to content width for accurate translate distances */
+  width: max-content;         /* ensure translate percentages use full track width */
+  flex-wrap: nowrap;
+  will-change: transform;
+  /* loop duration for first track */
+  animation: logo-scroll 20s linear infinite;
+}
+
+.animate-logo-scroll-next {
+  position: absolute;
+  inset: 0 auto auto 0;       /* start immediately to the right of the first track */
+  display: inline-flex;
+  width: max-content;
+  flex-wrap: nowrap;
+  will-change: transform;
+  animation: logo-scroll-next 20s linear infinite;
 }
 
 /* Shared CTA button styles */

@@ -68,7 +68,7 @@ function LogoItem({ name, src }) {
 
 
 export default function LogoCarousel() {
-  const logos = [...LOGOS, ...LOGOS]; // duplicate for seamless scroll
+  const logos = LOGOS;
 
   return (
     <section
@@ -76,10 +76,22 @@ export default function LogoCarousel() {
       style={{ paddingTop: 0, paddingBottom: 0 }}
     >
       <div className="container-main ">
-        <div className="w-full overflow-hidden">
+                <div className="py-0">
+          <span className="badge w-fit">Made possible by</span>
+          <h2 className="heading-2 m-0"></h2>
+        </div>
+        <div className="w-full overflow-hidden relative">
           <div className="flex items-center gap-12 animate-logo-scroll">
             {logos.map((logo, idx) => (
               <LogoItem key={`${logo.name}-${idx}`} name={logo.name} src={logo.src} />
+            ))}
+          </div>
+          <div
+            className="flex items-center gap-12 animate-logo-scroll-next"
+            aria-hidden="true"
+          >
+            {logos.map((logo, idx) => (
+              <LogoItem key={`${logo.name}-clone-${idx}`} name={logo.name} src={logo.src} />
             ))}
           </div>
         </div>
@@ -87,5 +99,4 @@ export default function LogoCarousel() {
     </section>
   );
 }
-
 
