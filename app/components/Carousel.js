@@ -4,50 +4,58 @@ import { useState } from "react";
 
 /**
  * LogoCarousel
- * Black & white, auto-scrolling carousel for protocol / partner logos,
+ * Auto-scrolling carousel for protocol / partner logos,
  * with graceful fallback to text when an image is missing/broken.
  */
 const LOGOS = [
-    //  { name: "Ethereum", src: "/logos/ethereum.svg" },
-  { name: "Ethereum", src: "/logos/ethereum.svg" },
-  { name: "BOB", src: "../logos/bob.svg" },
-  { name: "Mantle", src: "../../../logos/mantle.svg" },
-  { name: "MetaMask", src: "../../logos/metamask.svg" },
-  { name: "Aave", src: "../../logos/aave.svg" },
-  { name: "Lido", src: "../../logos/lido.svg" },
-  { name: "Fluid", src: "../../logos/fluid.svg"}, // no logo yet → text
-  { name: "WETH", src: "../../logos/weth.svg" },
-  { name: "WBTC", src: "../../logos/wbtc.svg" },
-  { name: "BTC", src: "../../logos/btc.svg" },
-  { name: "Trezor", src: "../../logos/trezor.svg" },
+  { name: "Ethereum", src: "/logos/eth-logo.png" },
+  { name: "BOB", src: "/logos/bob-logo.png" },
+  { name: "Mantle", src: "/logos/mantle-logo.png" },
+  { name: "MetaMask", src: "/logos/metamask-logo.png" },
+  { name: "Aave", src: "/logos/aave-logo.png" },
+  { name: "Lido", src: "/logos/lido-logo.png" },
+  { name: "Fluid", src: "/logos/fluid-logo.png" },
+  { name: "WETH", src: "/logos/weth-logo.png" },
+  { name: "WBTC", src: "/logos/wbtc-logo.png" },
+  { name: "BTC", src: "/logos/btc-logo.png" },
+  { name: "Trezor", src: "/logos/trezor-logo.png" },
   { name: "Daonysus" }, // text for now
-  { name: "Solidity", src: "../../logos/solidity.svg" },
+  { name: "Solidity", src: "/logos/solidity-logo.png" },
 ];
 
 function LogoItem({ name, src }) {
   const [failed, setFailed] = useState(!src);
 
   return (
-    <div className="flex items-center justify-center shrink-0 min-w-[180px] scale-90 sm:scale-100">
+    <div className="flex items-center justify-center gap-4 shrink-0 min-w-[220px]">
       {!failed && src && (
         <img
           src={src}
           alt={name}
           onError={() => setFailed(true)}
           className={[
-            "h-24 max-w-[280px] object-contain",            // ⬅️ 2× larger
-            "filter grayscale invert contrast-110 opacity-80",
+            "h-16 max-w-[160px] object-contain",
             "transition-transform transition-opacity duration-300 ease-in-out",
             "hover:opacity-100 hover:scale-105",
           ].join(" ")}
         />
       )}
 
-      {(failed || !src) && (
+      {(failed || !src) ? (
         <span
           className={[
-            "text-white text-base uppercase tracking-[0.16em] opacity-80", 
-            "transition-opacity duration-300 ease-in-out hover:opacity-100",
+            "text-black text-xl uppercase tracking-[0.18em]",
+            "transition-opacity duration-300 ease-in-out hover:opacity-80",
+            "whitespace-nowrap",
+          ].join(" ")}
+        >
+          {name}
+        </span>
+      ) : (
+        <span
+          className={[
+            "text-black text-lg uppercase tracking-[0.16em]",
+            "transition-opacity duration-300 ease-in-out hover:opacity-80",
             "whitespace-nowrap",
           ].join(" ")}
         >
@@ -60,54 +68,24 @@ function LogoItem({ name, src }) {
 
 
 export default function LogoCarousel() {
-  const logos = [...LOGOS, ...LOGOS]; // duplicate for seamless loop
+  const logos = [...LOGOS, ...LOGOS]; // duplicate for seamless scroll
 
   return (
     <section
-      className="section border-y border-[var(--border-soft)] bg-[var(--bg)]"
+      className="section border-y border-[var(--border-soft)] bg-black"
       style={{ paddingTop: 0, paddingBottom: 0 }}
     >
       <div className="container-main ">
-        <div className="py-0">
-          <span className="badge w-fit">Protocols and tools</span>
-          <h2 className="heading-2 m-0">Made possible by</h2>
-        </div>
-        <div className="relative w-full overflow-hidden">
-          {/* fade edges */}
-          <div
-            className="flex items-center gap-8 sm:gap-12 animate-logo-scroll min-w-max"
-            style={{ willChange: "transform" }}
-          >
+        <div className="w-full overflow-hidden">
+          <div className="flex items-center gap-12 animate-logo-scroll">
             {logos.map((logo, idx) => (
-              <div
-                key={`${logo.name}-${idx}`}
-                className="flex-none rounded-2xl border border-white/15 bg-white/5 px-4 py-3"
-              >
-                <LogoItem name={logo.name} src={logo.src} />
-              </div>
+              <LogoItem key={`${logo.name}-${idx}`} name={logo.name} src={logo.src} />
             ))}
           </div>
-
-          {/* fade edges on top */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10"
-            style={{
-              background:
-                "linear-gradient(90deg, #f7f3eb 0%, rgba(247,243,235,0.9) 65%, rgba(247,243,235,0) 100%)",
-            }}
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10"
-            style={{
-              background:
-                "linear-gradient(270deg, #f7f3eb 0%, rgba(247,243,235,0.9) 65%, rgba(247,243,235,0) 100%)",
-            }}
-          />
         </div>
       </div>
     </section>
   );
 }
+
 

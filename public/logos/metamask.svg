@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
-  <rect width="120" height="40" fill="black"/>
-  <polygon points="12,10 28,10 32,18 20,30 8,18" fill="none" stroke="white" stroke-width="2"/>
-  <circle cx="16" cy="18" r="1.5" fill="white"/>
-  <circle cx="24" cy="18" r="1.5" fill="white"/>
-  <text x="46" y="24" fill="white" font-size="12" font-family="system-ui">MetaMask</text>
-</svg>

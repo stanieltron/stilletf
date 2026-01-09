@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">
-  <rect width="120" height="40" fill="black"/>
-  <rect x="8" y="8" width="24" height="24" rx="4" ry="4" fill="none" stroke="white" stroke-width="2"/>
-  <text x="20" y="25" text-anchor="middle" fill="white" font-size="13" font-family="system-ui">BOB</text>
-  <text x="46" y="24" fill="white" font-size="12" font-family="system-ui">BOB</text>
-</svg>
