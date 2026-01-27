@@ -62,7 +62,8 @@ contract StakingVaultTest is Test {
             address(pool),
             address(fluid),
             address(router),
-            address(oracle)
+            address(oracle),
+            address(steth)
         );
 
         vault = new StakingVault(

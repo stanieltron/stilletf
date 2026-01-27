@@ -52,7 +52,8 @@ contract YieldStrategyTest is Test {
             address(pool),
             address(fluid),
             address(router),
-            address(oracle)
+            address(oracle),
+            address(steth)
         );
 
         ua.mint(vault, 1e8); // 1 WBTC

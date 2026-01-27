@@ -77,7 +77,8 @@ contract DeployStakingVault is Script {
             address(pool),
             address(fluid),
             address(router),
-            address(oracle)
+            address(oracle),
+            address(stEth)
         );
 
         vault = new StakingVault(

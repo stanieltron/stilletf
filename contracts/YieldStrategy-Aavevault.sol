@@ -21,6 +21,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     IERC20 public immutable UA; // Underlying asset (e.g., WBTC) used as collateral
     IERC20 public immutable borrowedAsset; // Asset to borrow (WETH)
     IERC20 public immutable stETH; // Asset deposited into Fluid vault
+    address public immutable wstETH; // stETH wrapper used for oracle pricing
     IERC20 public immutable USDC; // Yield token for rewards
     uint8 public immutable uaDecimals;
     uint8 public immutable borrowedDecimals;
@@ -74,12 +75,14 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         address _aavePool,
         address _fluidLending,
         address _swapRouter,
-        address _aaveOracle
+        address _aaveOracle,
+        address _wstETH
     ) Ownable(msg.sender) {
         require(_vault != address(0), "Invalid vault address");
         require(_UA != address(0), "Invalid UA address");
         require(_borrowedAsset != address(0), "Invalid borrowed asset");
         require(_stETH != address(0), "Invalid stETH address");
+        require(_wstETH != address(0), "Invalid wstETH address");
         // borrowed asset must be WETH-compatible to unwrap
         require(_borrowedAsset.code.length > 0, "Borrowed asset not a contract");
         require(_USDC != address(0), "Invalid USDC address");
@@ -92,6 +95,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         UA = IERC20(_UA);
         borrowedAsset = IERC20(_borrowedAsset); // fixed borrowed asset (e.g., WETH) set at deploy time
         stETH = IERC20(_stETH);
+        wstETH = _wstETH;
         USDC = IERC20(_USDC);
         uaDecimals = IERC20Metadata(_UA).decimals();
         borrowedDecimals = IERC20Metadata(_borrowedAsset).decimals();
@@ -234,8 +238,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         if (shares == 0) return 0;
 
         uint256 assetsInVault = fluidLending.convertToAssets(shares); // stETH units
-        uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
-        uint256 debtPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+        uint256 stEthPrice = _stEthPrice();
+        uint256 debtPrice = _safePrice(address(borrowedAsset));
         if (stEthPrice == 0 || debtPrice == 0) return 0;
 
         // Compute profit in base terms
@@ -301,11 +305,11 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
      */
     function totalAssets() external view returns (uint256) {
         // Net value = Collateral - Debt (in UA terms)
-        uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
+        uint256 uaPrice = _safePrice(address(UA));
         if (uaPrice == 0) return 0;
 
         (uint256 collateralBase, uint256 debtBase) = _getAccountData();
-        uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
+        uint256 stEthPrice = _stEthPrice();
         uint256 stakedBase = 0;
         if (stEthPrice > 0) {
             uint256 stakedAssets = fluidLending.convertToAssets(fluidLending.balanceOf(address(this)));
@@ -348,10 +352,9 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         if (totalDebt > targetDebtBase) {
             uint256 excessDebtBase = totalDebt - targetDebtBase;
             
-            uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-            uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
-            require(borrowedAssetPrice > 0, "Borrow price zero");
-            require(stEthPrice > 0, "stETH price zero");
+            uint256 borrowedAssetPrice = _safePrice(address(borrowedAsset));
+            uint256 stEthPrice = _stEthPrice();
+            if (borrowedAssetPrice == 0 || stEthPrice == 0) return;
             uint256 amountToRepay = (excessDebtBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
             
             // Unstake from Fluid
@@ -384,8 +387,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         if (targetDebtBase > totalDebt) {
             uint256 additionalDebtBase = targetDebtBase - totalDebt;
             
-            uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-            require(borrowedAssetPrice > 0, "Borrow price zero");
+            uint256 borrowedAssetPrice = _safePrice(address(borrowedAsset));
+            if (borrowedAssetPrice == 0) return;
             uint256 amountToBorrow = (additionalDebtBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
             
             // Borrow from Aave
@@ -430,8 +433,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         require(IERC20(tokenIn).approve(address(swapRouter), 0), "Swap approve reset failed");
         require(IERC20(tokenIn).approve(address(swapRouter), amountIn), "Swap approve failed");
 
-        uint256 priceIn = aaveOracle.getAssetPrice(tokenIn);
-        uint256 priceOut = aaveOracle.getAssetPrice(tokenOut);
+        uint256 priceIn = tokenIn == address(stETH) ? _stEthPrice() : _safePrice(tokenIn);
+        uint256 priceOut = tokenOut == address(stETH) ? _stEthPrice() : _safePrice(tokenOut);
         if (priceIn == 0 || priceOut == 0) return 0;
 
         uint8 outDecimals = IERC20Metadata(tokenOut).decimals();
@@ -494,8 +497,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
 
     function _syncAccounting() internal {
         (uint256 collateralBase, uint256 debtBase) = _getAccountData();
-        uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
-        uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+        uint256 uaPrice = _safePrice(address(UA));
+        uint256 borrowedPrice = _safePrice(address(borrowedAsset));
 
         // Only overwrite tracked debt/collateral when we have non-zero signals from the pool + oracle.
         if (debtBase > 0) {
@@ -510,6 +513,22 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         }
 
         totalStakedInFluid = fluidLending.balanceOf(address(this));
+    }
+
+    function _safePrice(address asset) internal view returns (uint256) {
+        try aaveOracle.getAssetPrice(asset) returns (uint256 price) {
+            return price;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _stEthPrice() internal view returns (uint256) {
+        uint256 price = _safePrice(address(stETH));
+        if (price == 0) {
+            price = _safePrice(wstETH);
+        }
+        return price;
     }
 
     /**

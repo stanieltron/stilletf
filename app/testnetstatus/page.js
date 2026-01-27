@@ -198,7 +198,14 @@ export default function TestnetStatusPage() {
   async function refresh() {
     setLoading(true);
     setErr("");
-    const diag = { rpc: null, chainId: null, chainMismatch: false, addresses: {}, fetch: {} };
+    const diag = {
+      rpc: null,
+      chainId: null,
+      chainMismatch: false,
+      addresses: {},
+      fetch: {},
+      code: {},
+    };
     try {
       if (!provider) throw new Error("No provider");
       const [blockNumber, network] = await Promise.all([
@@ -221,6 +228,32 @@ export default function TestnetStatusPage() {
           diag.addresses[key] = "missing";
         }
       });
+
+      // code presence for key addresses
+      const codeTargets = [
+        "vault",
+        "strategy",
+        "fluid",
+        "pool",
+        "oracle",
+        "router",
+        "wbtc",
+        "usdc",
+        "weth",
+        "steth",
+      ];
+      await Promise.all(
+        codeTargets.map(async (key) => {
+          const addr = addresses[key];
+          if (!addr) return;
+          try {
+            const code = await provider.getCode(addr);
+            diag.code[key] = code && code !== "0x" ? "ok" : "missing";
+          } catch (e) {
+            diag.code[key] = e?.message || "code check failed";
+          }
+        })
+      );
 
       const [
         oracleRes,
@@ -255,6 +288,15 @@ export default function TestnetStatusPage() {
       if (strategyRes.status === "rejected") diag.fetch.strategy = strategyRes.reason?.message || "strategy fetch failed";
       if (poolRes.status === "rejected") diag.fetch.pool = poolRes.reason?.message || "pool fetch failed";
       if (harvestRes.status === "rejected") diag.fetch.harvest = harvestRes.reason?.message || "harvest est failed";
+
+      if (strategyRes.status === "rejected") {
+        diag.probes = diag.probes || {};
+        diag.probes.strategy = await debugStrategyDeps(provider);
+      }
+      if (vaultRes.status === "rejected") {
+        diag.probes = diag.probes || {};
+        diag.probes.vault = await debugVaultDeps(provider);
+      }
 
       setData({
         blockNumber,
@@ -449,6 +491,58 @@ export default function TestnetStatusPage() {
       console.warn("strategy fetch failed", e);
       throw e;
     }
+  }
+
+  async function debugStrategyDeps(provider) {
+    const out = {};
+    try {
+      const pool = new Contract(addresses.pool, POOL_ABI, provider);
+      await pool.getUserAccountData(addresses.strategy);
+      out.pool_getUserAccountData = "ok";
+    } catch (e) {
+      out.pool_getUserAccountData = e?.message || "revert";
+    }
+    try {
+      const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
+      await oracle.getAssetPrice(addresses.wbtc);
+      out.oracle_wbtc = "ok";
+    } catch (e) {
+      out.oracle_wbtc = e?.message || "revert";
+    }
+    try {
+      const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
+      await oracle.getAssetPrice(addresses.steth);
+      out.oracle_steth = "ok";
+    } catch (e) {
+      out.oracle_steth = e?.message || "revert";
+    }
+    try {
+      const fluid = new Contract(addresses.fluid, FLUID_ABI, provider);
+      await fluid.convertToAssets(10n ** 18n);
+      out.fluid_convertToAssets = "ok";
+    } catch (e) {
+      out.fluid_convertToAssets = e?.message || "revert";
+    }
+    return out;
+  }
+
+  async function debugVaultDeps(provider) {
+    const out = {};
+    try {
+      const vault = new Contract(addresses.vault, VAULT_ABI, provider);
+      await vault.totalSupply();
+      out.vault_totalSupply = "ok";
+    } catch (e) {
+      out.vault_totalSupply = e?.message || "revert";
+    }
+    try {
+      const vault = new Contract(addresses.vault, VAULT_ABI, provider);
+      await vault.totalAssets();
+      out.vault_totalAssets = "ok";
+    } catch (e) {
+      out.vault_totalAssets = e?.message || "revert";
+    }
+    return out;
   }
 
   async function estimateHarvest(provider) {
@@ -654,6 +748,35 @@ export default function TestnetStatusPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+          {diagnostics.code && Object.keys(diagnostics.code).length > 0 && (
+            <div>
+              <div className="font-semibold text-[var(--text)]">Contract code</div>
+              <ul className="list-disc pl-4">
+                {Object.entries(diagnostics.code).map(([k, v]) => (
+                  <li key={k} className="font-mono">
+                    {k}: {v}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {diagnostics.probes && Object.keys(diagnostics.probes).length > 0 && (
+            <div>
+              <div className="font-semibold text-[var(--text)]">Probe calls</div>
+              {Object.entries(diagnostics.probes).map(([section, results]) => (
+                <div key={section} className="mt-2">
+                  <div className="font-semibold text-[var(--text)]">{section}</div>
+                  <ul className="list-disc pl-4">
+                    {Object.entries(results || {}).map(([k, v]) => (
+                      <li key={k} className="font-mono">
+                        {k}: {v}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
         </div>

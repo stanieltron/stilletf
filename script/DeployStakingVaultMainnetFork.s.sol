@@ -16,6 +16,7 @@ struct ExternalAddresses {
     address usdc;
     address weth;
     address steth;
+    address wsteth;
     address aavePool;
     address aaveOracle;
     address uniRouter;
@@ -65,7 +66,8 @@ contract DeployStakingVaultMainnetFork is Script {
             cfg.aavePool,
             address(fluid),
             cfg.uniRouter,
-            cfg.aaveOracle
+            cfg.aaveOracle,
+            cfg.wsteth
         );
 
         vault = new StakingVault(
@@ -104,6 +106,7 @@ contract DeployStakingVaultMainnetFork is Script {
         json = vm.serializeAddress(label, "usdc", cfg.usdc);
         json = vm.serializeAddress(label, "weth", cfg.weth);
         json = vm.serializeAddress(label, "stEth", cfg.steth);
+        json = vm.serializeAddress(label, "wstEth", cfg.wsteth);
         json = vm.serializeAddress(label, "pool", cfg.aavePool);
         json = vm.serializeAddress(label, "oracle", cfg.aaveOracle);
         json = vm.serializeAddress(label, "router", cfg.uniRouter);
@@ -120,6 +123,10 @@ contract DeployStakingVaultMainnetFork is Script {
 
     // Sanity checks to avoid accidentally running against a fresh chain without the real dependencies
     function _verifyExternalContracts(ExternalAddresses memory cfg, bool skipCodeChecks) internal view {
+        require(cfg.aavePool != address(0), "Aave pool missing");
+        require(cfg.aaveOracle != address(0), "Aave oracle missing");
+        require(cfg.uniRouter != address(0), "Uniswap router missing");
+        require(cfg.wsteth != address(0), "wstETH missing");
         require(cfg.wbtc.code.length > 0, "WBTC missing code");
         require(cfg.usdc.code.length > 0, "USDC missing code");
         require(cfg.weth.code.length > 0, "WETH missing code");
@@ -138,6 +145,7 @@ contract DeployStakingVaultMainnetFork is Script {
         cfg.usdc = raw.readAddress(".usdc");
         cfg.weth = raw.readAddress(".weth");
         cfg.steth = raw.readAddress(".steth");
+        cfg.wsteth = raw.readAddress(".wsteth");
         cfg.aavePool = raw.readAddress(".aavePool");
         cfg.aaveOracle = raw.readAddress(".aaveOracle");
         cfg.uniRouter = raw.readAddress(".uniRouter");
