@@ -12,6 +12,7 @@ const ENV_ADDR = {
   usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS || "",
   weth: process.env.NEXT_PUBLIC_WETH_ADDRESS || "",
   steth: process.env.NEXT_PUBLIC_STETH_ADDRESS || "",
+  wsteth: process.env.NEXT_PUBLIC_WSTETH_ADDRESS || "",
   pool: process.env.NEXT_PUBLIC_AAVE_POOL_ADDRESS || "",
   oracle: process.env.NEXT_PUBLIC_AAVE_ORACLE_ADDRESS || "",
   router: process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS || "",
@@ -27,6 +28,7 @@ function normalizeAddresses(src = {}) {
     usdc: src.usdc,
     weth: src.weth,
     steth: src.steth || src.stEth,
+    wsteth: src.wsteth || src.wstEth,
     pool: src.pool,
     oracle: src.oracle,
     router: src.router,
@@ -45,6 +47,8 @@ const ORACLE_ABI = [
   "function getAssetPrice(address) view returns (uint256)",
   "function BASE_CURRENCY_UNIT() view returns (uint256)",
 ];
+
+const WSTETH_ABI = ["function stEthPerToken() view returns (uint256)"];
 
 const POOL_ABI = [
   "function getUserAccountData(address) view returns (uint256,uint256,uint256,uint256,uint256,uint256)",
@@ -77,6 +81,11 @@ const STRATEGY_ABI = [
   "function totalDebt() view returns (uint256)",
   "function getFluidStakedAmount() view returns (uint256)",
   "function harvestYield() returns (uint256)",
+  "function harvestableUSDC() view returns (uint256)",
+  "function manualSwapStethToUsdc() returns (uint256)",
+  "function withdrawStEth(address to, uint256 amount)",
+  "function failedSwapCount() view returns (uint256)",
+  "function owner() view returns (address)",
   "function vault() view returns (address)",
 ];
 
@@ -121,6 +130,8 @@ export default function TestnetStatusPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
+  const [manualSwapLoading, setManualSwapLoading] = useState(false);
+  const [withdrawStethLoading, setWithdrawStethLoading] = useState(false);
   const [donationEth, setDonationEth] = useState("");
   const [txMessage, setTxMessage] = useState("");
   const [donating, setDonating] = useState(false);
@@ -241,6 +252,7 @@ export default function TestnetStatusPage() {
         "usdc",
         "weth",
         "steth",
+        "wsteth",
       ];
       await Promise.all(
         codeTargets.map(async (key) => {
@@ -363,17 +375,30 @@ export default function TestnetStatusPage() {
     const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
     const base = await oracle.BASE_CURRENCY_UNIT();
     const prices = await Promise.all(
-      [addresses.wbtc, addresses.usdc, addresses.weth, addresses.steth].map((a) =>
+      [addresses.wbtc, addresses.usdc, addresses.weth].map((a) =>
         oracle.getAssetPrice(a).catch(() => 0n)
       )
     );
+    let steth = await oracle.getAssetPrice(addresses.steth).catch(() => 0n);
+    if (steth === 0n && addresses.wsteth) {
+      const wstethPrice = await oracle.getAssetPrice(addresses.wsteth).catch(() => 0n);
+      if (wstethPrice > 0n) {
+        try {
+          const wst = new Contract(addresses.wsteth, WSTETH_ABI, provider);
+          const rate = await wst.stEthPerToken();
+          if (rate > 0n) {
+            steth = (wstethPrice * 10n ** 18n) / rate;
+          }
+        } catch {}
+      }
+    }
     return {
       base,
       prices: {
         wbtc: prices[0],
         usdc: prices[1],
         weth: prices[2],
-        steth: prices[3],
+        steth,
       },
     };
   }
@@ -465,6 +490,8 @@ export default function TestnetStatusPage() {
         wethBal,
         stethBal,
         usdcBal,
+        failedSwapCount,
+        owner,
       ] = await Promise.all([
         strat.totalAssets(),
         strat.totalCollateral(),
@@ -475,6 +502,8 @@ export default function TestnetStatusPage() {
         new Contract(addresses.weth, ERC20_ABI, provider).balanceOf(addresses.strategy),
         new Contract(addresses.steth, ERC20_ABI, provider).balanceOf(addresses.strategy),
         new Contract(addresses.usdc, ERC20_ABI, provider).balanceOf(addresses.strategy),
+        strat.failedSwapCount().catch(() => 0n),
+        strat.owner().catch(() => ""),
       ]);
       return {
         totalAssets,
@@ -486,6 +515,8 @@ export default function TestnetStatusPage() {
         wethBal,
         stethBal,
         usdcBal,
+        failedSwapCount,
+        owner,
       };
     } catch (e) {
       console.warn("strategy fetch failed", e);
@@ -549,11 +580,49 @@ export default function TestnetStatusPage() {
     if (!provider) return null;
     const strat = new Contract(addresses.strategy, STRATEGY_ABI, provider);
     try {
-      // Static call to harvestYield to get the return value without state changes
-      const estimate = await strat.harvestYield.staticCall();
+      const estimate = await strat.harvestableUSDC();
       return estimate;
     } catch {
       return null;
+    }
+  }
+
+  async function manualSwap() {
+    if (!signer || !addresses.strategy) return;
+    try {
+      setManualSwapLoading(true);
+      setErr("");
+      const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      const tx = await strat.manualSwapStethToUsdc();
+      await tx.wait();
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Manual swap failed.");
+    } finally {
+      setManualSwapLoading(false);
+    }
+  }
+
+  async function withdrawSteth() {
+    if (!signer || !addresses.strategy) return;
+    try {
+      setWithdrawStethLoading(true);
+      setErr("");
+      const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      const amount = data?.strategy?.stethBal ?? 0n;
+      if (amount === 0n) {
+        setErr("No stETH balance to withdraw.");
+        return;
+      }
+      const tx = await strat.withdrawStEth(walletAddress, amount);
+      await tx.wait();
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Withdraw stETH failed.");
+    } finally {
+      setWithdrawStethLoading(false);
     }
   }
 
@@ -875,7 +944,7 @@ export default function TestnetStatusPage() {
                 <Row label="WETH balance" value={fmt(data.strategy.wethBal, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="stETH balance" value={fmt(data.strategy.stethBal, data.tokens?.steth?.decimals ?? 18)} />
                 <Row label="USDC balance" value={fmt(data.strategy.usdcBal, data.tokens?.usdc?.decimals ?? 6)} />
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3">
+                <div className="mt-3 flex flex-col gap-3 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3 md:flex-row md:items-center md:justify-between">
                   <div className="text-xs text-[var(--muted)]">
                     <div className="font-semibold text-[var(--text)]">Harvest yield</div>
                     <div>
@@ -884,14 +953,39 @@ export default function TestnetStatusPage() {
                         ? `${fmt(harvestEstimate, data.tokens?.usdc?.decimals ?? 6, 6)} USDC`
                         : "–"}
                     </div>
+                    {data.strategy?.failedSwapCount != null && (
+                      <div>Failed swaps: {data.strategy.failedSwapCount.toString()}</div>
+                    )}
                   </div>
-                  <button
-                    onClick={triggerHarvest}
-                    disabled={!walletAddress || harvestLoading}
-                    className="sona-btn sona-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {harvestLoading ? "Harvesting..." : "Harvest"}
-                  </button>
+                  <div className="flex flex-col gap-2 md:flex-row">
+                    <button
+                      onClick={triggerHarvest}
+                      disabled={!walletAddress || harvestLoading}
+                      className="sona-btn sona-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {harvestLoading ? "Harvesting..." : "Harvest"}
+                    </button>
+                    <button
+                      onClick={manualSwap}
+                      disabled={!walletAddress || manualSwapLoading}
+                      className="sona-btn sona-btn-ghost disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {manualSwapLoading ? "Swapping..." : "Manual swap"}
+                    </button>
+                    <button
+                      onClick={withdrawSteth}
+                      disabled={
+                        !walletAddress ||
+                        withdrawStethLoading ||
+                        !data.strategy?.owner ||
+                        data.strategy.owner.toLowerCase() !== walletAddress.toLowerCase() ||
+                        (data.strategy?.failedSwapCount ?? 0n) < 3n
+                      }
+                      className="sona-btn sona-btn-outline disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {withdrawStethLoading ? "Withdrawing..." : "Withdraw stETH (owner)"}
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (

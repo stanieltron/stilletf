@@ -55,6 +55,9 @@ function extractAddressesFromBroadcast(txs = []) {
       case "MockWETH":
         out.weth = tx.contractAddress;
         break;
+      case "MockWstETH":
+        out.wstEth = tx.contractAddress;
+        break;
       case "MockStETH":
         out.stEth = tx.contractAddress;
         break;

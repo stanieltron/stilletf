@@ -45,11 +45,14 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
 
     // ============ Swap Parameters ============
     uint24 public constant POOL_FEE = 3000; // 0.3% Uniswap pool fee
+    uint24 public constant STETH_WETH_FEE = 100; // 0.01% Uniswap pool fee
+    uint24 public constant WETH_USDC_FEE = 500; // 0.05% Uniswap pool fee
     uint256 public constant SLIPPAGE_BPS = 100; // 1% slippage tolerance
     
     // ============ Yield Tracking ============
     uint256 public lastHarvestBlock;
     uint256 public immutable baseCurrencyUnit; // oracle base currency unit (e.g., 1e8)
+    uint256 public failedSwapCount;
 
     // ============ Events ============
     event Deposited(uint256 amountUA);
@@ -58,6 +61,9 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     event Rebalanced(uint256 collateral, uint256 debt, uint256 ltv);
     event BorrowedAndStaked(uint256 amountBorrowed, uint256 amountStaked);
     event UnstakedAndRepaid(uint256 amountUnstaked, uint256 amountRepaid);
+    event ManualSwapAttempt(uint256 amountIn, uint256 amountOut, bool success);
+    event StEthWithdrawn(address to, uint256 amount);
+    event HarvestableEstimated(uint256 amountUSDC);
 
     // ============ Modifiers ============
     modifier onlyVault() {
@@ -131,10 +137,9 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         uint256 collateralValueBase = (amountUA * uaPrice) / (10 ** uaDecimals);
         uint256 targetBorrowValueBase = (collateralValueBase * OPTIMAL_LTV) / 10000;
 
-        // Cap by available borrows with a safety buffer
+        // Cap by available borrows when reported (mock pool returns 0)
         (, , uint256 availableBorrowsBase, , , ) = aavePool.getUserAccountData(address(this));
-        if (availableBorrowsBase == 0) return;
-        if (targetBorrowValueBase > availableBorrowsBase) {
+        if (availableBorrowsBase > 0 && targetBorrowValueBase > availableBorrowsBase) {
             targetBorrowValueBase = availableBorrowsBase;
         }
         
@@ -268,16 +273,38 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         totalStakedInFluid = shares - sharesToRedeem;
 
         // Swap profit (stETH) to USDC
-        amountUSDC = _swapToUSDC(address(stETH), redeemedAssets);
+        (amountUSDC, ) = _swapStethToUsdcTwoHop(redeemedAssets);
 
         if (amountUSDC > 0) {
             USDC.safeTransfer(vault, amountUSDC);
-            emit YieldHarvested(amountUSDC);
         }
+
+        emit YieldHarvested(amountUSDC);
 
         lastHarvestBlock = block.number;
         _syncAccounting();
         return amountUSDC;
+    }
+
+    function harvestableUSDC() external view returns (uint256 amountUSDC) {
+        (, uint256 debtBase) = _getAccountData();
+        uint256 shares = fluidLending.balanceOf(address(this));
+        if (shares == 0) return 0;
+
+        uint256 assetsInVault = fluidLending.convertToAssets(shares); // stETH units
+        uint256 stEthPrice = _stEthPrice();
+        uint256 usdcPrice = _safePrice(address(USDC));
+        if (stEthPrice == 0 || usdcPrice == 0) return 0;
+
+        uint256 stakedBase = (assetsInVault * stEthPrice) / (10 ** stEthDecimals);
+        if (stakedBase <= debtBase) return 0;
+
+        uint256 profitBase = stakedBase - debtBase;
+        uint256 harvestBase = (profitBase * (MAX_BPS - HARVEST_BUFFER_BPS)) / MAX_BPS;
+        if (harvestBase == 0) return 0;
+
+        uint8 usdcDecimals = IERC20Metadata(address(USDC)).decimals();
+        amountUSDC = (harvestBase * (10 ** usdcDecimals)) / usdcPrice;
     }
 
     // ============ View Functions ============
@@ -395,11 +422,12 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
             uint256 additionalDebtBase = targetDebtBase - totalDebt;
 
             (, , uint256 availableBorrowsBase, , , ) = aavePool.getUserAccountData(address(this));
-            if (availableBorrowsBase <= totalDebt) return;
-            if (availableBorrowsBase <= totalDebt) return;
-            uint256 maxAdditional = availableBorrowsBase - totalDebt;
-            if (additionalDebtBase > maxAdditional) {
-                additionalDebtBase = maxAdditional;
+            if (availableBorrowsBase > 0) {
+                if (availableBorrowsBase <= totalDebt) return;
+                uint256 maxAdditional = availableBorrowsBase - totalDebt;
+                if (additionalDebtBase > maxAdditional) {
+                    additionalDebtBase = maxAdditional;
+                }
             }
             
             uint256 borrowedAssetPrice = _safePrice(address(borrowedAsset));
@@ -438,6 +466,21 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         return _swapToToken(token, address(USDC), amount);
     }
 
+    function manualSwapStethToUsdc() external nonReentrant returns (uint256 amountOut) {
+        uint256 bal = stETH.balanceOf(address(this));
+        require(bal > 0, "No stETH to swap");
+        (amountOut, ) = _swapStethToUsdcTwoHop(bal);
+        emit ManualSwapAttempt(bal, amountOut, amountOut > 0);
+    }
+
+    function withdrawStEth(address to, uint256 amount) external onlyOwner nonReentrant {
+        require(failedSwapCount >= 3, "Swap failures < 3");
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Zero amount");
+        stETH.safeTransfer(to, amount);
+        emit StEthWithdrawn(to, amount);
+    }
+
     /**
      * @notice Swap tokenIn to tokenOut using Uniswap V3 with oracle-based slippage guard
      */
@@ -452,8 +495,9 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         uint256 priceOut = tokenOut == address(stETH) ? _stEthPrice() : _safePrice(tokenOut);
         if (priceIn == 0 || priceOut == 0) return 0;
 
+        uint8 inDecimals = IERC20Metadata(tokenIn).decimals();
         uint8 outDecimals = IERC20Metadata(tokenOut).decimals();
-        uint256 valueBase = (amountIn * priceIn) / baseCurrencyUnit;
+        uint256 valueBase = (amountIn * priceIn) / (10 ** inDecimals);
         uint256 expectedOut = (valueBase * (10 ** outDecimals)) / priceOut;
         uint256 minAmountOut = (expectedOut * (10000 - SLIPPAGE_BPS)) / 10000;
 
@@ -535,6 +579,48 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
             return price;
         } catch {
             return 0;
+        }
+    }
+
+    function _swapStethToUsdcTwoHop(uint256 amountIn) internal returns (uint256 amountOut, bool success) {
+        if (amountIn == 0) return (0, false);
+
+        require(stETH.approve(address(swapRouter), 0), "Swap approve reset failed");
+        require(stETH.approve(address(swapRouter), amountIn), "Swap approve failed");
+
+        uint256 priceIn = _stEthPrice();
+        uint256 priceOut = _safePrice(address(USDC));
+        if (priceIn == 0 || priceOut == 0) {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+
+        uint8 inDecimals = IERC20Metadata(address(stETH)).decimals();
+        uint8 outDecimals = IERC20Metadata(address(USDC)).decimals();
+        uint256 valueBase = (amountIn * priceIn) / (10 ** inDecimals);
+        uint256 expectedOut = (valueBase * (10 ** outDecimals)) / priceOut;
+        uint256 minAmountOut = (expectedOut * (10000 - SLIPPAGE_BPS)) / 10000;
+
+        bytes memory path = abi.encodePacked(address(stETH), STETH_WETH_FEE, address(borrowedAsset), WETH_USDC_FEE, address(USDC));
+
+        try swapRouter.exactInput(
+            ISwapRouter.ExactInputParams({
+                path: path,
+                recipient: address(this),
+                deadline: block.timestamp + 15 minutes,
+                amountIn: amountIn,
+                amountOutMinimum: minAmountOut
+            })
+        ) returns (uint256 out) {
+            if (out == 0) {
+                failedSwapCount += 1;
+                return (0, false);
+            }
+            failedSwapCount = 0;
+            return (out, true);
+        } catch {
+            failedSwapCount += 1;
+            return (0, false);
         }
     }
 

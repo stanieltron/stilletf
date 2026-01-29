@@ -75,6 +75,14 @@ interface ISwapRouter {
         uint160 sqrtPriceLimitX96;
     }
 
+    struct ExactInputParams {
+        bytes path;
+        address recipient;
+        uint256 deadline;
+        uint256 amountIn;
+        uint256 amountOutMinimum;
+    }
+
     function exactInputSingle(ExactInputSingleParams calldata params)
         external
         payable
@@ -84,6 +92,11 @@ interface ISwapRouter {
         external
         payable
         returns (uint256 amountIn);
+
+    function exactInput(ExactInputParams calldata params)
+        external
+        payable
+        returns (uint256 amountOut);
 }
 
 // Strategy interface expected by the vault

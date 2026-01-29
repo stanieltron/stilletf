@@ -64,6 +64,49 @@ contract MockRouter is ISwapRouter {
         return amountOut;
     }
 
+    function exactInput(ExactInputParams calldata params)
+        external
+        payable
+        override
+        returns (uint256 amountOut)
+    {
+        // Path format: tokenIn (20) + fee (3) + tokenMid (20) + fee (3) + tokenOut (20)
+        require(params.path.length >= 20 + 3 + 20 + 3 + 20, "path too short");
+        address tokenIn = _readAddress(params.path, 0);
+        address tokenOut = _readAddress(params.path, params.path.length - 20);
+
+        lastAmountIn = params.amountIn;
+        lastTokenIn = tokenIn;
+        lastTokenOut = tokenOut;
+
+        uint8 inDec = _decimals(tokenIn, 18);
+        uint8 outDec = _decimals(tokenOut, 18);
+
+        if (tokenIn == tokenOut) {
+            amountOut = params.amountIn;
+        } else {
+            uint256 priceIn = oracle.getAssetPrice(tokenIn);
+            uint256 priceOut = oracle.getAssetPrice(tokenOut);
+            uint256 base = oracle.BASE_CURRENCY_UNIT();
+            require(priceIn > 0 && priceOut > 0 && base > 0, "oracle price missing");
+
+            uint256 valueBase = (params.amountIn * priceIn) / (10 ** inDec);
+            amountOut = (valueBase * (10 ** outDec)) / priceOut;
+        }
+
+        require(amountOut >= params.amountOutMinimum, "amountOut too low");
+
+        try MockERC20(tokenIn).transferFrom(msg.sender, address(this), params.amountIn) {
+            // burned/kept in router; not remitted back
+        } catch {
+            // For non-mock tokens, ignore failures in test context
+        }
+
+        try MockERC20(tokenOut).mint(params.recipient, amountOut) {} catch {}
+
+        return amountOut;
+    }
+
     function exactOutputSingle(ExactOutputSingleParams calldata params)
         external
         payable
@@ -102,5 +145,12 @@ contract MockRouter is ISwapRouter {
         try MockERC20(params.tokenOut).mint(params.recipient, params.amountOut) {} catch {}
 
         return amountIn;
+    }
+
+    function _readAddress(bytes memory data, uint256 offset) internal pure returns (address addr) {
+        require(data.length >= offset + 20, "address out of bounds");
+        assembly {
+            addr := shr(96, mload(add(add(data, 0x20), offset)))
+        }
     }
 }
