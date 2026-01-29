@@ -703,17 +703,38 @@ export default function TestnetStatusPage() {
         throw new Error(`Switch to chain ${DEFAULT_CHAIN_ID} to harvest.`);
       }
       const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      // Preflight to catch reverts early
+      try {
+        await strat.harvestYield.staticCall();
+      } catch (e) {
+        throw new Error(e?.message || "Harvest preflight failed");
+      }
+
       const tx = await strat.harvestYield();
-      await tx.wait();
-      setTxMessage("Harvest complete.");
-      await refresh();
+      setTxMessage(`Harvest tx sent: ${tx.hash.slice(0, 10)}…`);
+      setHarvestLoading(false);
+
+      // Wait in background so UI doesn't hang if the tx is slow
+      tx.wait()
+        .then(async () => {
+          setTxMessage("Harvest complete.");
+          await refresh();
+        })
+        .catch((e) => {
+          console.error(e);
+          setErr(e?.message || "Harvest failed.");
+        })
+        .finally(() => {
+          setHarvestLoading(false);
+          setTimeout(() => setTxMessage(""), 1500);
+        });
+      return;
     } catch (e) {
       console.error(e);
       setErr(e?.message || "Harvest failed.");
-    } finally {
-      setHarvestLoading(false);
-      setTxMessage("");
     }
+    setHarvestLoading(false);
+    setTxMessage("");
   }
 
   return (

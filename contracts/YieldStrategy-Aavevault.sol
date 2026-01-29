@@ -467,10 +467,16 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     }
 
     function manualSwapStethToUsdc() external nonReentrant returns (uint256 amountOut) {
-        uint256 bal = stETH.balanceOf(address(this));
-        require(bal > 0, "No stETH to swap");
-        (amountOut, ) = _swapStethToUsdcTwoHop(bal);
-        emit ManualSwapAttempt(bal, amountOut, amountOut > 0);
+        uint256 stBal = stETH.balanceOf(address(this));
+        uint256 wstBal = IERC20(wstETH).balanceOf(address(this));
+        require(stBal > 0 || wstBal > 0, "No stETH to swap");
+        if (stBal > 0) {
+            (amountOut, ) = _swapStethToUsdcTwoHop(stBal);
+            emit ManualSwapAttempt(stBal, amountOut, amountOut > 0);
+            return amountOut;
+        }
+        (amountOut, ) = _swapWstEthToUsdcTwoHop(wstBal);
+        emit ManualSwapAttempt(wstBal, amountOut, amountOut > 0);
     }
 
     function withdrawStEth(address to, uint256 amount) external onlyOwner nonReentrant {
@@ -585,30 +591,80 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     function _swapStethToUsdcTwoHop(uint256 amountIn) internal returns (uint256 amountOut, bool success) {
         if (amountIn == 0) return (0, false);
 
-        require(stETH.approve(address(swapRouter), 0), "Swap approve reset failed");
-        require(stETH.approve(address(swapRouter), amountIn), "Swap approve failed");
-
-        uint256 priceIn = _stEthPrice();
-        uint256 priceOut = _safePrice(address(USDC));
-        if (priceIn == 0 || priceOut == 0) {
+        uint256 rate;
+        try IWstETH(wstETH).stEthPerToken() returns (uint256 r) {
+            rate = r;
+        } catch {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+        if (rate == 0) {
             failedSwapCount += 1;
             return (0, false);
         }
 
-        uint8 inDecimals = IERC20Metadata(address(stETH)).decimals();
+        require(stETH.approve(wstETH, 0), "Wrap approve reset failed");
+        require(stETH.approve(wstETH, amountIn), "Wrap approve failed");
+
+        uint256 wstAmount;
+        try IWstETH(wstETH).wrap(amountIn) returns (uint256 wrapped) {
+            wstAmount = wrapped;
+        } catch {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+        if (wstAmount == 0) {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+
+        return _swapWstEthToUsdcTwoHop(wstAmount);
+    }
+
+    function _swapWstEthToUsdcTwoHop(uint256 wstAmount) internal returns (uint256 amountOut, bool success) {
+        if (wstAmount == 0) return (0, false);
+
+        require(IERC20(wstETH).approve(address(swapRouter), 0), "Swap approve reset failed");
+        require(IERC20(wstETH).approve(address(swapRouter), wstAmount), "Swap approve failed");
+
+        uint256 priceOut = _safePrice(address(USDC));
+        uint256 wstPrice = _safePrice(wstETH);
+        if (wstPrice == 0) {
+            uint256 stEthPrice = _stEthPrice();
+            if (stEthPrice == 0) {
+                failedSwapCount += 1;
+                return (0, false);
+            }
+            try IWstETH(wstETH).stEthPerToken() returns (uint256 r) {
+                if (r == 0) {
+                    failedSwapCount += 1;
+                    return (0, false);
+                }
+                wstPrice = (stEthPrice * r) / 1e18;
+            } catch {
+                failedSwapCount += 1;
+                return (0, false);
+            }
+        }
+        if (priceOut == 0) {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+
+        uint8 inDecimals = IERC20Metadata(wstETH).decimals();
         uint8 outDecimals = IERC20Metadata(address(USDC)).decimals();
-        uint256 valueBase = (amountIn * priceIn) / (10 ** inDecimals);
+        uint256 valueBase = (wstAmount * wstPrice) / (10 ** inDecimals);
         uint256 expectedOut = (valueBase * (10 ** outDecimals)) / priceOut;
         uint256 minAmountOut = (expectedOut * (10000 - SLIPPAGE_BPS)) / 10000;
 
-        bytes memory path = abi.encodePacked(address(stETH), STETH_WETH_FEE, address(borrowedAsset), WETH_USDC_FEE, address(USDC));
+        bytes memory path = abi.encodePacked(wstETH, STETH_WETH_FEE, address(borrowedAsset), WETH_USDC_FEE, address(USDC));
 
         try swapRouter.exactInput(
             ISwapRouter.ExactInputParams({
                 path: path,
                 recipient: address(this),
                 deadline: block.timestamp + 15 minutes,
-                amountIn: amountIn,
+                amountIn: wstAmount,
                 amountOutMinimum: minAmountOut
             })
         ) returns (uint256 out) {

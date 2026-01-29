@@ -20,6 +20,7 @@ contract StakingVaultTest is Test {
     MockERC20 usdc;
     MockWETH weth;
     MockStETH steth;
+    MockWstETH wsteth;
     MockOracle oracle;
     MockPool pool;
     MockFluidVault fluid;
@@ -34,6 +35,7 @@ contract StakingVaultTest is Test {
         usdc = new MockERC20("Mock USDC", "USDC", 6);
         weth = new MockWETH();
         steth = new MockStETH();
+        wsteth = new MockWstETH(address(steth));
         oracle = new MockOracle();
         pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)), IAaveOracle(address(oracle)));
         fluid = new MockFluidVault(address(steth));
@@ -46,6 +48,7 @@ contract StakingVaultTest is Test {
         oracle.setPrice(address(ua), oracle.UNIT()); // simplify pricing for tests
         oracle.setPrice(address(weth), oracle.UNIT());
         oracle.setPrice(address(steth), oracle.UNIT());
+        oracle.setPrice(address(wsteth), oracle.UNIT());
         oracle.setPrice(address(usdc), oracle.UNIT()); // assume 1 USDC = $1
 
         router = new MockRouter(address(oracle));
@@ -63,7 +66,7 @@ contract StakingVaultTest is Test {
             address(fluid),
             address(router),
             address(oracle),
-            address(steth)
+            address(wsteth)
         );
 
         vault = new StakingVault(

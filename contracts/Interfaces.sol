@@ -16,6 +16,7 @@ interface IStETH {
 // Minimal wstETH interface for conversion rate
 interface IWstETH {
     function stEthPerToken() external view returns (uint256);
+    function wrap(uint256 _stETHAmount) external returns (uint256);
 }
 
 // Aave V3 Pool interface (subset)
