@@ -63,4 +63,44 @@ contract MockRouter is ISwapRouter {
 
         return amountOut;
     }
+
+    function exactOutputSingle(ExactOutputSingleParams calldata params)
+        external
+        payable
+        override
+        returns (uint256 amountIn)
+    {
+        lastAmountIn = params.amountInMaximum;
+        lastTokenIn = params.tokenIn;
+        lastTokenOut = params.tokenOut;
+
+        uint8 inDec = _decimals(params.tokenIn, 18);
+        uint8 outDec = _decimals(params.tokenOut, 18);
+
+        if (params.tokenIn == params.tokenOut) {
+            amountIn = params.amountOut;
+        } else {
+            uint256 priceIn = oracle.getAssetPrice(params.tokenIn);
+            uint256 priceOut = oracle.getAssetPrice(params.tokenOut);
+            uint256 base = oracle.BASE_CURRENCY_UNIT();
+            require(priceIn > 0 && priceOut > 0 && base > 0, "oracle price missing");
+
+            uint256 valueBase = (params.amountOut * priceOut) / (10 ** outDec);
+            amountIn = (valueBase * (10 ** inDec)) / priceIn;
+        }
+
+        require(amountIn <= params.amountInMaximum, "amountIn too high");
+
+        // Pull tokenIn from caller to simulate spend
+        try MockERC20(params.tokenIn).transferFrom(msg.sender, address(this), amountIn) {
+            // burned/kept in router; not remitted back
+        } catch {
+            // For non-mock tokens, ignore failures in test context
+        }
+
+        // Mint tokenOut to recipient if it's our mock ERC20
+        try MockERC20(params.tokenOut).mint(params.recipient, params.amountOut) {} catch {}
+
+        return amountIn;
+    }
 }

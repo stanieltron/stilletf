@@ -905,6 +905,15 @@ export default function TestnetStatusPage() {
                 <Row label="totalAssets (stETH)" value={fmt(data.fluid.totalAssets, data.tokens?.steth?.decimals ?? 18)} />
                 <Row label="strategy shares (mFLUID)" value={fmt(data.fluid.strategyShares, data.fluid.decimals)} />
                 <Row
+                  label="strategy assets (stETH)"
+                  value={fmt(
+                    data.fluid?.strategyShares
+                      ? (data.fluid.shareToAsset * data.fluid.strategyShares) / (10n ** BigInt(data.fluid.decimals))
+                      : 0n,
+                    data.tokens?.steth?.decimals ?? 18
+                  )}
+                />
+                <Row
                   label="1 share → assets"
                   value={fmt(data.fluid.shareToAsset, data.tokens?.steth?.decimals ?? 18)}
                 />

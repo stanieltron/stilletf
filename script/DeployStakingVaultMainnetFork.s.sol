@@ -36,6 +36,9 @@ struct ExternalAddresses {
  *   - PRIVATE_KEY: deployer key prefunded on the local fork
  */
 contract DeployStakingVaultMainnetFork is Script {
+    uint24 public constant UNI_POOL_FEE = 3000;
+    uint256 public constant MAX_SLIPPAGE_BPS = 500; // 5%
+
     // ===== Deploy artifacts =====
     YieldStrategy public strategy;
     StakingVault public vault;
@@ -49,13 +52,13 @@ contract DeployStakingVaultMainnetFork is Script {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
 
-        // Deploy strategy first, passing the predicted vault address
-        uint256 nextNonce = vm.getNonce(deployer);
-        address predictedVault = vm.computeCreateAddress(deployer, nextNonce + 1);
-
         vm.startBroadcast(deployerKey);
 
         fluid = new MockFluidVault(cfg.steth);
+
+        // Deploy strategy first, passing the predicted vault address
+        uint256 nextNonce = vm.getNonce(deployer);
+        address predictedVault = vm.computeCreateAddress(deployer, nextNonce + 1);
 
         strategy = new YieldStrategy(
             predictedVault,
@@ -77,6 +80,8 @@ contract DeployStakingVaultMainnetFork is Script {
             "STILL WBTC Staking Vault (Mainnet Fork)",
             "stWBTC"
         );
+
+        _buyWbtc(cfg, deployer);
 
         vm.stopBroadcast();
 
@@ -150,6 +155,52 @@ contract DeployStakingVaultMainnetFork is Script {
         cfg.aaveOracle = raw.readAddress(".aaveOracle");
         cfg.uniRouter = raw.readAddress(".uniRouter");
         return cfg;
+    }
+
+    function _buyWbtc(ExternalAddresses memory cfg, address deployer) internal {
+        address beneficiary = _beneficiaryOrDeployer(deployer);
+        uint8 wbtcDecimals = IERC20Metadata(cfg.wbtc).decimals();
+        uint8 wethDecimals = IERC20Metadata(cfg.weth).decimals();
+        uint256 amountOut = 1 * (10 ** wbtcDecimals);
+
+        uint256 wbtcPrice = IAaveOracle(cfg.aaveOracle).getAssetPrice(cfg.wbtc);
+        uint256 wethPrice = IAaveOracle(cfg.aaveOracle).getAssetPrice(cfg.weth);
+        require(wbtcPrice > 0 && wethPrice > 0, "Oracle price missing");
+
+        uint256 valueBase = (amountOut * wbtcPrice) / (10 ** wbtcDecimals);
+        uint256 expectedWeth = (valueBase * (10 ** wethDecimals)) / wethPrice;
+        uint256 maxIn = (expectedWeth * (10000 + MAX_SLIPPAGE_BPS)) / 10000;
+
+        IWETH(cfg.weth).deposit{value: maxIn}();
+        require(IERC20(cfg.weth).approve(cfg.uniRouter, 0), "WETH approve reset failed");
+        require(IERC20(cfg.weth).approve(cfg.uniRouter, maxIn), "WETH approve failed");
+
+        uint256 amountIn = ISwapRouter(cfg.uniRouter).exactOutputSingle(
+            ISwapRouter.ExactOutputSingleParams({
+                tokenIn: cfg.weth,
+                tokenOut: cfg.wbtc,
+                fee: UNI_POOL_FEE,
+                recipient: beneficiary,
+                deadline: block.timestamp + 15 minutes,
+                amountOut: amountOut,
+                amountInMaximum: maxIn,
+                sqrtPriceLimitX96: 0
+            })
+        );
+
+        if (amountIn < maxIn) {
+            // Refund unused WETH to deployer as ETH
+            require(IERC20(cfg.weth).approve(cfg.uniRouter, 0), "WETH approve reset failed");
+            IWETH(cfg.weth).withdraw(maxIn - amountIn);
+        }
+    }
+
+    function _beneficiaryOrDeployer(address deployer) internal view returns (address) {
+        try vm.envAddress("PRIVATE_KEY_ADDRESS") returns (address addr) {
+            return addr;
+        } catch {
+            return deployer;
+        }
     }
 
     // Allow bypassing external code checks via ALLOW_MISSING_POOL_CODE=true for RPCs missing historical state

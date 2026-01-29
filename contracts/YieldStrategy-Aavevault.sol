@@ -38,7 +38,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     uint256 public totalDebt; // Total debt in base currency
 
     // ============ Leverage Parameters ============
-    uint256 public constant OPTIMAL_LTV = 7500; // 75% optimal borrowing ratio
+    uint256 public constant OPTIMAL_LTV = 5000; // 50% optimal borrowing ratio
     uint256 public constant REBALANCE_THRESHOLD = 500; // 5% deviation triggers rebalance (500 basis points)
     uint256 public constant HARVEST_BUFFER_BPS = 500; // 5% of profit retained to cover interest
     uint256 public constant MAX_BPS = 10000;
@@ -130,6 +130,13 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         require(uaPrice > 0, "UA price zero");
         uint256 collateralValueBase = (amountUA * uaPrice) / (10 ** uaDecimals);
         uint256 targetBorrowValueBase = (collateralValueBase * OPTIMAL_LTV) / 10000;
+
+        // Cap by available borrows with a safety buffer
+        (, , uint256 availableBorrowsBase, , , ) = aavePool.getUserAccountData(address(this));
+        if (availableBorrowsBase == 0) return;
+        if (targetBorrowValueBase > availableBorrowsBase) {
+            targetBorrowValueBase = availableBorrowsBase;
+        }
         
         // 3. Calculate amount of borrowedAsset (e.g., wstETH) to borrow
         uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
@@ -386,6 +393,14 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         
         if (targetDebtBase > totalDebt) {
             uint256 additionalDebtBase = targetDebtBase - totalDebt;
+
+            (, , uint256 availableBorrowsBase, , , ) = aavePool.getUserAccountData(address(this));
+            if (availableBorrowsBase <= totalDebt) return;
+            if (availableBorrowsBase <= totalDebt) return;
+            uint256 maxAdditional = availableBorrowsBase - totalDebt;
+            if (additionalDebtBase > maxAdditional) {
+                additionalDebtBase = maxAdditional;
+            }
             
             uint256 borrowedAssetPrice = _safePrice(address(borrowedAsset));
             if (borrowedAssetPrice == 0) return;
@@ -525,10 +540,18 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
 
     function _stEthPrice() internal view returns (uint256) {
         uint256 price = _safePrice(address(stETH));
-        if (price == 0) {
-            price = _safePrice(wstETH);
+        if (price != 0) return price;
+
+        uint256 wstPrice = _safePrice(wstETH);
+        if (wstPrice == 0) return 0;
+
+        // Convert wstETH price to stETH price using stEthPerToken rate
+        try IWstETH(wstETH).stEthPerToken() returns (uint256 rate) {
+            if (rate == 0) return 0;
+            return (wstPrice * 1e18) / rate;
+        } catch {
+            return wstPrice;
         }
-        return price;
     }
 
     /**
