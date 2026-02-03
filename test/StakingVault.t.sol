@@ -183,7 +183,7 @@ contract StakingVaultTest is Test {
 
     function testMultiAccountDepositHarvestAndWithdrawAll() public {
         address[3] memory users = [alice, bob, carol];
-        uint256 depositAmount = 2e7; // 0.2 WBTC each
+        uint256[3] memory deposits = [uint256(1e7), uint256(2e7), uint256(4e7)]; // 0.1, 0.2, 0.4 WBTC
 
         // Fund and approve users (alice already funded/approved in setUp)
         for (uint256 i = 1; i < users.length; i++) {
@@ -195,17 +195,32 @@ contract StakingVaultTest is Test {
         // Stake from all users
         for (uint256 i = 0; i < users.length; i++) {
             vm.prank(users[i]);
-            uint256 shares = vault.stake(depositAmount);
-            assertEq(shares, depositAmount, "share mismatch");
+            uint256 shares = vault.stake(deposits[i]);
+            assertEq(shares, deposits[i], "share mismatch");
         }
 
-        // Donate yield and harvest
-        vm.deal(address(this), 1 ether);
-        fluid.donateYieldWithETH{value: 1 ether}();
-        uint256 harvested = vault.harvestYield();
-        assertGt(harvested, 0, "no yield harvested");
+        // Donate yield and harvest multiple times with different amounts
+        uint256[3] memory donations = [uint256(0.3 ether), uint256(0.6 ether), uint256(0.9 ether)];
+        vm.deal(address(this), 2 ether);
+        uint256 totalHarvested;
+        for (uint256 i = 0; i < donations.length; i++) {
+            fluid.donateYieldWithETH{value: donations[i]}();
+            uint256 harvested = vault.harvestYield();
+            assertGt(harvested, 0, "no yield harvested");
+            totalHarvested += harvested;
 
-        // Each user should see roughly equal pending rewards
+            // Each user should see pending rewards proportional to stake
+            uint256 pendingAlice = vault.getPendingRewards(alice);
+            uint256 pendingBob = vault.getPendingRewards(bob);
+            uint256 pendingCarol = vault.getPendingRewards(carol);
+            assertGt(pendingBob, pendingAlice, "pending not proportional (bob)");
+            assertGt(pendingCarol, pendingBob, "pending not proportional (carol)");
+
+            uint256 pendingSum = pendingAlice + pendingBob + pendingCarol;
+            assertApproxEqAbs(pendingSum, totalHarvested, 9, "pending sum mismatch harvested");
+        }
+
+        // Each user should see pending rewards in proportion to stake
         uint256[] memory pending = new uint256[](users.length);
         uint256 pendingSum;
         for (uint256 i = 0; i < users.length; i++) {
@@ -213,9 +228,9 @@ contract StakingVaultTest is Test {
             pendingSum += pending[i];
             assertGt(pending[i], 0, "pending zero");
         }
-        assertApproxEqAbs(pending[0], pending[1], 3, "pending mismatch user1/user2");
-        assertApproxEqAbs(pending[1], pending[2], 3, "pending mismatch user2/user3");
-        assertApproxEqAbs(pendingSum, harvested, 6, "pending sum mismatch harvested");
+        assertLt(pending[0], pending[1], "pending order user1/user2");
+        assertLt(pending[1], pending[2], "pending order user2/user3");
+        assertApproxEqAbs(pendingSum, totalHarvested, 9, "pending sum mismatch harvested");
 
         // Claim and verify balances increase
         uint256[] memory beforeUsdc = new uint256[](users.length);
@@ -233,8 +248,8 @@ contract StakingVaultTest is Test {
             uint256 shares = vault.balanceOf(users[i]);
             vm.prank(users[i]);
             uint256 withdrawn = vault.unstake(shares);
-            assertEq(withdrawn, depositAmount, "UA withdraw mismatch");
-            assertEq(ua.balanceOf(users[i]), beforeUa + depositAmount, "UA not received");
+            assertEq(withdrawn, deposits[i], "UA withdraw mismatch");
+            assertEq(ua.balanceOf(users[i]), beforeUa + deposits[i], "UA not received");
             assertEq(vault.balanceOf(users[i]), 0, "shares not burned for user");
         }
     }

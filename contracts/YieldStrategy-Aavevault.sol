@@ -194,6 +194,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
             
             // 3. Convert stETH to WETH for repayment
             uint256 wethAmount = _swapToToken(address(stETH), address(borrowedAsset), unstakedAmount);
+            require(wethAmount > 0, "Swap failed");
             
             // 4. Repay debt to Aave
             require(borrowedAsset.approve(address(aavePool), 0), "Repay approve reset failed");
