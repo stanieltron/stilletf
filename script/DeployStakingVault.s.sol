@@ -54,9 +54,9 @@ contract DeployStakingVault is Script {
         pool = new MockPool(IERC20(address(wbtc)), IERC20(address(weth)), IAaveOracle(address(oracle)));
 
         // Seed liquidity with a small ETH footprint (keeps Sepolia spend low)
-        weth.deposit{value: 0.02 ether}(); // funds unwrapping capacity
+        weth.deposit{value: 1.00 ether}(); // funds unwrapping capacity
         weth.mint(address(pool), 1 ether); // lendable WETH liquidity
-        wbtc.mint(deployer, 10e8); // 10 WBTC to the deployer for testing
+        wbtc.mint(deployer, 100e8); // 10 WBTC to the deployer for testing
 
         uint256 unit = oracle.UNIT(); // 1e8
         oracle.setPrice(address(wbtc), 60_000 * unit); // $60k per WBTC
@@ -117,6 +117,7 @@ contract DeployStakingVault is Script {
         json = vm.serializeAddress(label, "usdc", address(usdc));
         json = vm.serializeAddress(label, "weth", address(weth));
         json = vm.serializeAddress(label, "stEth", address(stEth));
+        json = vm.serializeAddress(label, "wstEth", address(wstEth));
         json = vm.serializeAddress(label, "oracle", address(oracle));
         json = vm.serializeAddress(label, "pool", address(pool));
         json = vm.serializeAddress(label, "router", address(router));
