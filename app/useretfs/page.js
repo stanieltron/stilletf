@@ -150,7 +150,7 @@ function PortfolioCard({ p, meta, rank, onVote, canVote, onRequireAuth }) {
           </div>
           <div className="flex flex-col min-w-0 leading-tight">
             <div className="font-extrabold truncate text-base sm:text-xl md:text-3xl">
-              {p.nickname || "Untitled portfolio"}
+              {p.nickname || "Untitled entry"}
             </div>
             <div className="text-[var(--muted)] text-[11px] sm:text-sm md:text-xl font-semibold">
               {p._count?.votes ?? 0} votes
@@ -249,7 +249,7 @@ function PortfolioRowCard({ p, meta, rank, onVote, canVote, onRequireAuth }) {
       <div className="flex-1 min-w-0 flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <div className="font-bold truncate text-base sm:text-xl md:text-2xl">
-            {p.nickname || "Untitled portfolio"}
+            {p.nickname || "Untitled entry"}
           </div>
           <span className="text-xs sm:text-base md:text-lg text-[var(--muted)] font-semibold">
             {p._count?.votes ?? 0} votes
@@ -426,7 +426,7 @@ export default function UserETFsPage() {
       } else {
         alert(
           j?.error === "already_voted"
-            ? "You have already voted for this portfolio."
+            ? "You have already voted for this entry."
             : "Could not vote."
         );
       }
@@ -467,7 +467,7 @@ export default function UserETFsPage() {
               ].join(" ")}
               onClick={() => setTab("mine")}
               disabled={!userId}
-              title={userId ? "Show my portfolios" : "Login to see yours"}
+              title={userId ? "Show my entries" : "Login to see yours"}
             >
               Mine
             </button>
@@ -480,7 +480,7 @@ export default function UserETFsPage() {
           )}
           {loading && (
             <div className="text-xl md:text-2xl text-[var(--muted)] mt-10">
-              Loading…
+              Loading...
             </div>
           )}
 
@@ -489,14 +489,14 @@ export default function UserETFsPage() {
               {/* MINE: empty state */}
               {tab === "mine" && userId && mine.length === 0 && (
                 <div className="text-xl md:text-2xl text-[var(--muted)] mt-10">
-                  You haven’t saved any portfolios yet.
+                  You haven't submitted any entries yet.
                 </div>
               )}
 
               {/* ALL: empty state */}
               {tab === "all" && sortedAll.length === 0 && (
                 <div className="text-xl md:text-2xl text-[var(--muted)] mt-10">
-                  No user portfolios yet.
+                  No leaderboard entries yet.
                 </div>
               )}
 
@@ -585,5 +585,4 @@ export default function UserETFsPage() {
     </div>
   );
 }
-
 

@@ -21,6 +21,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     IERC20 public immutable UA; // Underlying asset (e.g., WBTC) used as collateral
     IERC20 public immutable borrowedAsset; // Asset to borrow (WETH)
     IERC20 public immutable stETH; // Asset deposited into Fluid vault
+    address public immutable wstETH; // stETH wrapper used for oracle pricing
     IERC20 public immutable USDC; // Yield token for rewards
     uint8 public immutable uaDecimals;
     uint8 public immutable borrowedDecimals;
@@ -37,18 +38,21 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     uint256 public totalDebt; // Total debt in base currency
 
     // ============ Leverage Parameters ============
-    uint256 public constant OPTIMAL_LTV = 7500; // 75% optimal borrowing ratio
+    uint256 public constant OPTIMAL_LTV = 5000; // 50% optimal borrowing ratio
     uint256 public constant REBALANCE_THRESHOLD = 500; // 5% deviation triggers rebalance (500 basis points)
     uint256 public constant HARVEST_BUFFER_BPS = 500; // 5% of profit retained to cover interest
     uint256 public constant MAX_BPS = 10000;
 
     // ============ Swap Parameters ============
     uint24 public constant POOL_FEE = 3000; // 0.3% Uniswap pool fee
+    uint24 public constant STETH_WETH_FEE = 100; // 0.01% Uniswap pool fee
+    uint24 public constant WETH_USDC_FEE = 500; // 0.05% Uniswap pool fee
     uint256 public constant SLIPPAGE_BPS = 100; // 1% slippage tolerance
     
     // ============ Yield Tracking ============
     uint256 public lastHarvestBlock;
     uint256 public immutable baseCurrencyUnit; // oracle base currency unit (e.g., 1e8)
+    uint256 public failedSwapCount;
 
     // ============ Events ============
     event Deposited(uint256 amountUA);
@@ -57,6 +61,9 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
     event Rebalanced(uint256 collateral, uint256 debt, uint256 ltv);
     event BorrowedAndStaked(uint256 amountBorrowed, uint256 amountStaked);
     event UnstakedAndRepaid(uint256 amountUnstaked, uint256 amountRepaid);
+    event ManualSwapAttempt(uint256 amountIn, uint256 amountOut, bool success);
+    event StEthWithdrawn(address to, uint256 amount);
+    event HarvestableEstimated(uint256 amountUSDC);
 
     // ============ Modifiers ============
     modifier onlyVault() {
@@ -74,12 +81,14 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         address _aavePool,
         address _fluidLending,
         address _swapRouter,
-        address _aaveOracle
+        address _aaveOracle,
+        address _wstETH
     ) Ownable(msg.sender) {
         require(_vault != address(0), "Invalid vault address");
         require(_UA != address(0), "Invalid UA address");
         require(_borrowedAsset != address(0), "Invalid borrowed asset");
         require(_stETH != address(0), "Invalid stETH address");
+        require(_wstETH != address(0), "Invalid wstETH address");
         // borrowed asset must be WETH-compatible to unwrap
         require(_borrowedAsset.code.length > 0, "Borrowed asset not a contract");
         require(_USDC != address(0), "Invalid USDC address");
@@ -92,6 +101,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         UA = IERC20(_UA);
         borrowedAsset = IERC20(_borrowedAsset); // fixed borrowed asset (e.g., WETH) set at deploy time
         stETH = IERC20(_stETH);
+        wstETH = _wstETH;
         USDC = IERC20(_USDC);
         uaDecimals = IERC20Metadata(_UA).decimals();
         borrowedDecimals = IERC20Metadata(_borrowedAsset).decimals();
@@ -126,6 +136,12 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         require(uaPrice > 0, "UA price zero");
         uint256 collateralValueBase = (amountUA * uaPrice) / (10 ** uaDecimals);
         uint256 targetBorrowValueBase = (collateralValueBase * OPTIMAL_LTV) / 10000;
+
+        // Cap by available borrows when reported (mock pool returns 0)
+        (, , uint256 availableBorrowsBase, , , ) = aavePool.getUserAccountData(address(this));
+        if (availableBorrowsBase > 0 && targetBorrowValueBase > availableBorrowsBase) {
+            targetBorrowValueBase = availableBorrowsBase;
+        }
         
         // 3. Calculate amount of borrowedAsset (e.g., wstETH) to borrow
         uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
@@ -178,6 +194,7 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
             
             // 3. Convert stETH to WETH for repayment
             uint256 wethAmount = _swapToToken(address(stETH), address(borrowedAsset), unstakedAmount);
+            require(wethAmount > 0, "Swap failed");
             
             // 4. Repay debt to Aave
             require(borrowedAsset.approve(address(aavePool), 0), "Repay approve reset failed");
@@ -234,8 +251,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         if (shares == 0) return 0;
 
         uint256 assetsInVault = fluidLending.convertToAssets(shares); // stETH units
-        uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
-        uint256 debtPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+        uint256 stEthPrice = _stEthPrice();
+        uint256 debtPrice = _safePrice(address(borrowedAsset));
         if (stEthPrice == 0 || debtPrice == 0) return 0;
 
         // Compute profit in base terms
@@ -257,16 +274,38 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         totalStakedInFluid = shares - sharesToRedeem;
 
         // Swap profit (stETH) to USDC
-        amountUSDC = _swapToUSDC(address(stETH), redeemedAssets);
+        (amountUSDC, ) = _swapStethToUsdcTwoHop(redeemedAssets);
 
         if (amountUSDC > 0) {
             USDC.safeTransfer(vault, amountUSDC);
-            emit YieldHarvested(amountUSDC);
         }
+
+        emit YieldHarvested(amountUSDC);
 
         lastHarvestBlock = block.number;
         _syncAccounting();
         return amountUSDC;
+    }
+
+    function harvestableUSDC() external view returns (uint256 amountUSDC) {
+        (, uint256 debtBase) = _getAccountData();
+        uint256 shares = fluidLending.balanceOf(address(this));
+        if (shares == 0) return 0;
+
+        uint256 assetsInVault = fluidLending.convertToAssets(shares); // stETH units
+        uint256 stEthPrice = _stEthPrice();
+        uint256 usdcPrice = _safePrice(address(USDC));
+        if (stEthPrice == 0 || usdcPrice == 0) return 0;
+
+        uint256 stakedBase = (assetsInVault * stEthPrice) / (10 ** stEthDecimals);
+        if (stakedBase <= debtBase) return 0;
+
+        uint256 profitBase = stakedBase - debtBase;
+        uint256 harvestBase = (profitBase * (MAX_BPS - HARVEST_BUFFER_BPS)) / MAX_BPS;
+        if (harvestBase == 0) return 0;
+
+        uint8 usdcDecimals = IERC20Metadata(address(USDC)).decimals();
+        amountUSDC = (harvestBase * (10 ** usdcDecimals)) / usdcPrice;
     }
 
     // ============ View Functions ============
@@ -301,11 +340,11 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
      */
     function totalAssets() external view returns (uint256) {
         // Net value = Collateral - Debt (in UA terms)
-        uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
+        uint256 uaPrice = _safePrice(address(UA));
         if (uaPrice == 0) return 0;
 
         (uint256 collateralBase, uint256 debtBase) = _getAccountData();
-        uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
+        uint256 stEthPrice = _stEthPrice();
         uint256 stakedBase = 0;
         if (stEthPrice > 0) {
             uint256 stakedAssets = fluidLending.convertToAssets(fluidLending.balanceOf(address(this)));
@@ -348,10 +387,9 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         if (totalDebt > targetDebtBase) {
             uint256 excessDebtBase = totalDebt - targetDebtBase;
             
-            uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-            uint256 stEthPrice = aaveOracle.getAssetPrice(address(stETH));
-            require(borrowedAssetPrice > 0, "Borrow price zero");
-            require(stEthPrice > 0, "stETH price zero");
+            uint256 borrowedAssetPrice = _safePrice(address(borrowedAsset));
+            uint256 stEthPrice = _stEthPrice();
+            if (borrowedAssetPrice == 0 || stEthPrice == 0) return;
             uint256 amountToRepay = (excessDebtBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
             
             // Unstake from Fluid
@@ -383,9 +421,18 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         
         if (targetDebtBase > totalDebt) {
             uint256 additionalDebtBase = targetDebtBase - totalDebt;
+
+            (, , uint256 availableBorrowsBase, , , ) = aavePool.getUserAccountData(address(this));
+            if (availableBorrowsBase > 0) {
+                if (availableBorrowsBase <= totalDebt) return;
+                uint256 maxAdditional = availableBorrowsBase - totalDebt;
+                if (additionalDebtBase > maxAdditional) {
+                    additionalDebtBase = maxAdditional;
+                }
+            }
             
-            uint256 borrowedAssetPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
-            require(borrowedAssetPrice > 0, "Borrow price zero");
+            uint256 borrowedAssetPrice = _safePrice(address(borrowedAsset));
+            if (borrowedAssetPrice == 0) return;
             uint256 amountToBorrow = (additionalDebtBase * (10 ** borrowedDecimals)) / borrowedAssetPrice;
             
             // Borrow from Aave
@@ -420,6 +467,27 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         return _swapToToken(token, address(USDC), amount);
     }
 
+    function manualSwapStethToUsdc() external nonReentrant returns (uint256 amountOut) {
+        uint256 stBal = stETH.balanceOf(address(this));
+        uint256 wstBal = IERC20(wstETH).balanceOf(address(this));
+        require(stBal > 0 || wstBal > 0, "No stETH to swap");
+        if (stBal > 0) {
+            (amountOut, ) = _swapStethToUsdcTwoHop(stBal);
+            emit ManualSwapAttempt(stBal, amountOut, amountOut > 0);
+            return amountOut;
+        }
+        (amountOut, ) = _swapWstEthToUsdcTwoHop(wstBal);
+        emit ManualSwapAttempt(wstBal, amountOut, amountOut > 0);
+    }
+
+    function withdrawStEth(address to, uint256 amount) external onlyOwner nonReentrant {
+        require(failedSwapCount >= 3, "Swap failures < 3");
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Zero amount");
+        stETH.safeTransfer(to, amount);
+        emit StEthWithdrawn(to, amount);
+    }
+
     /**
      * @notice Swap tokenIn to tokenOut using Uniswap V3 with oracle-based slippage guard
      */
@@ -430,12 +498,13 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         require(IERC20(tokenIn).approve(address(swapRouter), 0), "Swap approve reset failed");
         require(IERC20(tokenIn).approve(address(swapRouter), amountIn), "Swap approve failed");
 
-        uint256 priceIn = aaveOracle.getAssetPrice(tokenIn);
-        uint256 priceOut = aaveOracle.getAssetPrice(tokenOut);
+        uint256 priceIn = tokenIn == address(stETH) ? _stEthPrice() : _safePrice(tokenIn);
+        uint256 priceOut = tokenOut == address(stETH) ? _stEthPrice() : _safePrice(tokenOut);
         if (priceIn == 0 || priceOut == 0) return 0;
 
+        uint8 inDecimals = IERC20Metadata(tokenIn).decimals();
         uint8 outDecimals = IERC20Metadata(tokenOut).decimals();
-        uint256 valueBase = (amountIn * priceIn) / baseCurrencyUnit;
+        uint256 valueBase = (amountIn * priceIn) / (10 ** inDecimals);
         uint256 expectedOut = (valueBase * (10 ** outDecimals)) / priceOut;
         uint256 minAmountOut = (expectedOut * (10000 - SLIPPAGE_BPS)) / 10000;
 
@@ -494,8 +563,8 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
 
     function _syncAccounting() internal {
         (uint256 collateralBase, uint256 debtBase) = _getAccountData();
-        uint256 uaPrice = aaveOracle.getAssetPrice(address(UA));
-        uint256 borrowedPrice = aaveOracle.getAssetPrice(address(borrowedAsset));
+        uint256 uaPrice = _safePrice(address(UA));
+        uint256 borrowedPrice = _safePrice(address(borrowedAsset));
 
         // Only overwrite tracked debt/collateral when we have non-zero signals from the pool + oracle.
         if (debtBase > 0) {
@@ -510,6 +579,122 @@ contract YieldStrategy is ReentrancyGuard, Ownable, IYieldStrategy {
         }
 
         totalStakedInFluid = fluidLending.balanceOf(address(this));
+    }
+
+    function _safePrice(address asset) internal view returns (uint256) {
+        try aaveOracle.getAssetPrice(asset) returns (uint256 price) {
+            return price;
+        } catch {
+            return 0;
+        }
+    }
+
+    function _swapStethToUsdcTwoHop(uint256 amountIn) internal returns (uint256 amountOut, bool success) {
+        if (amountIn == 0) return (0, false);
+
+        uint256 rate;
+        try IWstETH(wstETH).stEthPerToken() returns (uint256 r) {
+            rate = r;
+        } catch {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+        if (rate == 0) {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+
+        require(stETH.approve(wstETH, 0), "Wrap approve reset failed");
+        require(stETH.approve(wstETH, amountIn), "Wrap approve failed");
+
+        uint256 wstAmount;
+        try IWstETH(wstETH).wrap(amountIn) returns (uint256 wrapped) {
+            wstAmount = wrapped;
+        } catch {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+        if (wstAmount == 0) {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+
+        return _swapWstEthToUsdcTwoHop(wstAmount);
+    }
+
+    function _swapWstEthToUsdcTwoHop(uint256 wstAmount) internal returns (uint256 amountOut, bool success) {
+        if (wstAmount == 0) return (0, false);
+
+        require(IERC20(wstETH).approve(address(swapRouter), 0), "Swap approve reset failed");
+        require(IERC20(wstETH).approve(address(swapRouter), wstAmount), "Swap approve failed");
+
+        uint256 priceOut = _safePrice(address(USDC));
+        uint256 wstPrice = _safePrice(wstETH);
+        if (wstPrice == 0) {
+            uint256 stEthPrice = _stEthPrice();
+            if (stEthPrice == 0) {
+                failedSwapCount += 1;
+                return (0, false);
+            }
+            try IWstETH(wstETH).stEthPerToken() returns (uint256 r) {
+                if (r == 0) {
+                    failedSwapCount += 1;
+                    return (0, false);
+                }
+                wstPrice = (stEthPrice * r) / 1e18;
+            } catch {
+                failedSwapCount += 1;
+                return (0, false);
+            }
+        }
+        if (priceOut == 0) {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+
+        uint8 inDecimals = IERC20Metadata(wstETH).decimals();
+        uint8 outDecimals = IERC20Metadata(address(USDC)).decimals();
+        uint256 valueBase = (wstAmount * wstPrice) / (10 ** inDecimals);
+        uint256 expectedOut = (valueBase * (10 ** outDecimals)) / priceOut;
+        uint256 minAmountOut = (expectedOut * (10000 - SLIPPAGE_BPS)) / 10000;
+
+        bytes memory path = abi.encodePacked(wstETH, STETH_WETH_FEE, address(borrowedAsset), WETH_USDC_FEE, address(USDC));
+
+        try swapRouter.exactInput(
+            ISwapRouter.ExactInputParams({
+                path: path,
+                recipient: address(this),
+                deadline: block.timestamp + 15 minutes,
+                amountIn: wstAmount,
+                amountOutMinimum: minAmountOut
+            })
+        ) returns (uint256 out) {
+            if (out == 0) {
+                failedSwapCount += 1;
+                return (0, false);
+            }
+            failedSwapCount = 0;
+            return (out, true);
+        } catch {
+            failedSwapCount += 1;
+            return (0, false);
+        }
+    }
+
+    function _stEthPrice() internal view returns (uint256) {
+        uint256 price = _safePrice(address(stETH));
+        if (price != 0) return price;
+
+        uint256 wstPrice = _safePrice(wstETH);
+        if (wstPrice == 0) return 0;
+
+        // Convert wstETH price to stETH price using stEthPerToken rate
+        try IWstETH(wstETH).stEthPerToken() returns (uint256 rate) {
+            if (rate == 0) return 0;
+            return (wstPrice * 1e18) / rate;
+        } catch {
+            return wstPrice;
+        }
     }
 
     /**

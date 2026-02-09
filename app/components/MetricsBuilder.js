@@ -75,12 +75,12 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
     ) : null;
 
   const tips = {
-    growth:   `CAGR: ${fmtPctStr(m.cagrPct)} — higher is better.`,
-    stab:     `Volatility: ${fmtPctStr(m.annualizedVolatilityPct)} — lower is smoother.`,
-    resil:    `Max drawdown: ${fmtPctStr(m.maxDrawdownPct)} — less negative is better.`,
-    sharpe:   `Sharpe: ${fmtNum(m.sharpe)} — higher is better.`,
-    sortino:  `Sortino: ${fmtNum(m.sortino)} — higher is better.`,
-    balance:  `Diversification: ${fmtNum(m.diversificationScore)} — higher is better.`
+    growth: `CAGR: ${fmtPctStr(m.cagrPct)}. This is the average yearly growth rate as if growth were steady each year. It tells you how fast the portfolio grew over time. Higher is better.`,
+    stab: `Volatility: ${fmtPctStr(m.annualizedVolatilityPct)}. This measures how much the value swings up and down from month to month. Big swings feel bumpy and risky. Lower is smoother.`,
+    resil: `Max drawdown: ${fmtPctStr(m.maxDrawdownPct)}. This is the biggest peak-to-valley drop in the past. It shows the worst loss you would have seen at any point. Less negative (closer to zero) is better.`,
+    sharpe: `Sharpe: ${fmtNum(m.sharpe)}. This compares the return to the overall ups and downs (risk). It tells you how much return you got for the risk you took. Higher is better.`,
+    sortino: `Sortino: ${fmtNum(m.sortino)}. This is like Sharpe (Efficiency), but it only counts the bad volatility (downside moves) instead of all volatility. It tells you how much return you got for the downside risk you took. Higher is better.`,
+    balance: `Diversification: ${fmtNum(m.diversificationScore)}. This shows how spread out the portfolio is instead of being concentrated in just one asset. More spread usually means fewer surprises. Higher is better.`,
   };
 
   return (

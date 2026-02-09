@@ -15,19 +15,39 @@ import {
 /**
  * Legend that only shows ETF + ETF (with yield).
  */
-function ETFLegend({ payload }) {
+function ETFLegend({ payload, showEtf, showYield }) {
   if (!payload) return null;
 
   const items = payload.filter(
     (item) =>
       item.dataKey === "portfolio" || item.dataKey === "portfolioYield"
   );
-  if (!items.length) return null;
+  const legendItems = [];
+
+  if (showEtf) {
+    const base = items.find((item) => item.dataKey === "portfolio");
+      legendItems.push({
+        key: "portfolio",
+        label: base?.value || "ETF",
+        color: base?.color || "var(--text, #201909)",
+      });
+    }
+
+  if (showYield) {
+    const yieldItem = items.find((item) => item.dataKey === "portfolioYield");
+      legendItems.push({
+        key: "portfolioYield",
+        label: yieldItem?.value || "ETF (with yield)",
+        color: yieldItem?.color || "var(--yield-gold, #f2c55f)",
+      });
+    }
+
+  if (!legendItems.length) return null;
 
   return (
     <div className="mt-2 flex gap-4 text-xs text-[var(--muted)]">
-      {items.map((item) => (
-        <div key={item.dataKey} className="flex items-center gap-1.5">
+      {legendItems.map((item) => (
+        <div key={item.key} className="flex items-center gap-1.5">
           <span
             className="inline-block"
             style={{
@@ -37,7 +57,7 @@ function ETFLegend({ payload }) {
               background: item.color,
             }}
           />
-          <span>{item.value}</span>
+          <span>{item.label}</span>
         </div>
       ))}
     </div>
@@ -276,7 +296,12 @@ export default function ChartBuilder({
           verticalAlign="bottom"
           align="left"
           layout="horizontal"
-          content={<ETFLegend />}
+          content={
+            <ETFLegend
+              showEtf={!yieldOnly}
+              showYield={showYield || yieldOnly}
+            />
+          }
         />
       )}
 
@@ -288,7 +313,7 @@ export default function ChartBuilder({
           name="ETF"
           dot={false}
           activeDot={{ r: 3 }}
-          stroke="var(--text)"
+          stroke="var(--text, #201909)"
           strokeWidth={5}
           strokeLinecap="round"
           isAnimationActive={animated}
@@ -303,7 +328,7 @@ export default function ChartBuilder({
           name="ETF (with yield)"
           dot={false}
           activeDot={{ r: 3 }}
-          stroke="var(--accent)"
+          stroke="var(--yield-gold, #f2c55f)"
           strokeWidth={5}
           strokeLinecap="round"
           strokeOpacity={0.98}

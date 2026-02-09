@@ -17,6 +17,7 @@ contract YieldStrategyTest is Test {
     MockERC20 usdc;
     MockWETH weth;
     MockStETH steth;
+    MockWstETH wsteth;
     MockOracle oracle;
     MockPool pool;
     MockFluidVault fluid;
@@ -29,6 +30,7 @@ contract YieldStrategyTest is Test {
         usdc = new MockERC20("Mock USDC", "USDC", 6);
         weth = new MockWETH();
         steth = new MockStETH();
+        wsteth = new MockWstETH(address(steth));
         oracle = new MockOracle();
         pool = new MockPool(IERC20(address(ua)), IERC20(address(weth)), IAaveOracle(address(oracle)));
         fluid = new MockFluidVault(address(steth));
@@ -41,6 +43,7 @@ contract YieldStrategyTest is Test {
         oracle.setPrice(address(ua), oracle.UNIT());
         oracle.setPrice(address(weth), oracle.UNIT());
         oracle.setPrice(address(steth), oracle.UNIT());
+        oracle.setPrice(address(wsteth), oracle.UNIT());
         oracle.setPrice(address(usdc), oracle.UNIT());
 
         strategy = new YieldStrategy(
@@ -52,7 +55,8 @@ contract YieldStrategyTest is Test {
             address(pool),
             address(fluid),
             address(router),
-            address(oracle)
+            address(oracle),
+            address(wsteth)
         );
 
         ua.mint(vault, 1e8); // 1 WBTC

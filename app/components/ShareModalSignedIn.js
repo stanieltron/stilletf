@@ -30,7 +30,7 @@ export default function ShareModalSignedIn({
   const [shareUrl, setShareUrl] = useState("");
 
   const baseSiteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
-  const shareText = "I created this portfolio on Sona - can you do better?";
+  const shareText = "I created this portfolio on Stillwater - can you do better?";
 
   const qrLink =
     shareUrl ||
@@ -304,11 +304,9 @@ export default function ShareModalSignedIn({
       >
         <div className="flex items-center justify-center" style={{ padding: 10 }}>
           <div className="flex items-center justify-center w-full h-full bg-white">
-            <img
-              src="/logos/stilllogo.png"
-              alt="Sona logo"
-              className="w-full h-full object-contain"
-            />
+            <div className="text-[44px] font-semibold tracking-[-0.04em] text-[#201909]">
+              stillwater
+            </div>
           </div>
         </div>
 

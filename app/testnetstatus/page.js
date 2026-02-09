@@ -12,6 +12,7 @@ const ENV_ADDR = {
   usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS || "",
   weth: process.env.NEXT_PUBLIC_WETH_ADDRESS || "",
   steth: process.env.NEXT_PUBLIC_STETH_ADDRESS || "",
+  wsteth: process.env.NEXT_PUBLIC_WSTETH_ADDRESS || "",
   pool: process.env.NEXT_PUBLIC_AAVE_POOL_ADDRESS || "",
   oracle: process.env.NEXT_PUBLIC_AAVE_ORACLE_ADDRESS || "",
   router: process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS || "",
@@ -27,6 +28,7 @@ function normalizeAddresses(src = {}) {
     usdc: src.usdc,
     weth: src.weth,
     steth: src.steth || src.stEth,
+    wsteth: src.wsteth || src.wstEth,
     pool: src.pool,
     oracle: src.oracle,
     router: src.router,
@@ -45,6 +47,8 @@ const ORACLE_ABI = [
   "function getAssetPrice(address) view returns (uint256)",
   "function BASE_CURRENCY_UNIT() view returns (uint256)",
 ];
+
+const WSTETH_ABI = ["function stEthPerToken() view returns (uint256)"];
 
 const POOL_ABI = [
   "function getUserAccountData(address) view returns (uint256,uint256,uint256,uint256,uint256,uint256)",
@@ -77,6 +81,11 @@ const STRATEGY_ABI = [
   "function totalDebt() view returns (uint256)",
   "function getFluidStakedAmount() view returns (uint256)",
   "function harvestYield() returns (uint256)",
+  "function harvestableUSDC() view returns (uint256)",
+  "function manualSwapStethToUsdc() returns (uint256)",
+  "function withdrawStEth(address to, uint256 amount)",
+  "function failedSwapCount() view returns (uint256)",
+  "function owner() view returns (address)",
   "function vault() view returns (address)",
 ];
 
@@ -121,6 +130,8 @@ export default function TestnetStatusPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
+  const [manualSwapLoading, setManualSwapLoading] = useState(false);
+  const [withdrawStethLoading, setWithdrawStethLoading] = useState(false);
   const [donationEth, setDonationEth] = useState("");
   const [txMessage, setTxMessage] = useState("");
   const [donating, setDonating] = useState(false);
@@ -198,7 +209,14 @@ export default function TestnetStatusPage() {
   async function refresh() {
     setLoading(true);
     setErr("");
-    const diag = { rpc: null, chainId: null, chainMismatch: false, addresses: {}, fetch: {} };
+    const diag = {
+      rpc: null,
+      chainId: null,
+      chainMismatch: false,
+      addresses: {},
+      fetch: {},
+      code: {},
+    };
     try {
       if (!provider) throw new Error("No provider");
       const [blockNumber, network] = await Promise.all([
@@ -221,6 +239,33 @@ export default function TestnetStatusPage() {
           diag.addresses[key] = "missing";
         }
       });
+
+      // code presence for key addresses
+      const codeTargets = [
+        "vault",
+        "strategy",
+        "fluid",
+        "pool",
+        "oracle",
+        "router",
+        "wbtc",
+        "usdc",
+        "weth",
+        "steth",
+        "wsteth",
+      ];
+      await Promise.all(
+        codeTargets.map(async (key) => {
+          const addr = addresses[key];
+          if (!addr) return;
+          try {
+            const code = await provider.getCode(addr);
+            diag.code[key] = code && code !== "0x" ? "ok" : "missing";
+          } catch (e) {
+            diag.code[key] = e?.message || "code check failed";
+          }
+        })
+      );
 
       const [
         oracleRes,
@@ -255,6 +300,15 @@ export default function TestnetStatusPage() {
       if (strategyRes.status === "rejected") diag.fetch.strategy = strategyRes.reason?.message || "strategy fetch failed";
       if (poolRes.status === "rejected") diag.fetch.pool = poolRes.reason?.message || "pool fetch failed";
       if (harvestRes.status === "rejected") diag.fetch.harvest = harvestRes.reason?.message || "harvest est failed";
+
+      if (strategyRes.status === "rejected") {
+        diag.probes = diag.probes || {};
+        diag.probes.strategy = await debugStrategyDeps(provider);
+      }
+      if (vaultRes.status === "rejected") {
+        diag.probes = diag.probes || {};
+        diag.probes.vault = await debugVaultDeps(provider);
+      }
 
       setData({
         blockNumber,
@@ -321,17 +375,30 @@ export default function TestnetStatusPage() {
     const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
     const base = await oracle.BASE_CURRENCY_UNIT();
     const prices = await Promise.all(
-      [addresses.wbtc, addresses.usdc, addresses.weth, addresses.steth].map((a) =>
+      [addresses.wbtc, addresses.usdc, addresses.weth].map((a) =>
         oracle.getAssetPrice(a).catch(() => 0n)
       )
     );
+    let steth = await oracle.getAssetPrice(addresses.steth).catch(() => 0n);
+    if (steth === 0n && addresses.wsteth) {
+      const wstethPrice = await oracle.getAssetPrice(addresses.wsteth).catch(() => 0n);
+      if (wstethPrice > 0n) {
+        try {
+          const wst = new Contract(addresses.wsteth, WSTETH_ABI, provider);
+          const rate = await wst.stEthPerToken();
+          if (rate > 0n) {
+            steth = (wstethPrice * 10n ** 18n) / rate;
+          }
+        } catch {}
+      }
+    }
     return {
       base,
       prices: {
         wbtc: prices[0],
         usdc: prices[1],
         weth: prices[2],
-        steth: prices[3],
+        steth,
       },
     };
   }
@@ -423,6 +490,8 @@ export default function TestnetStatusPage() {
         wethBal,
         stethBal,
         usdcBal,
+        failedSwapCount,
+        owner,
       ] = await Promise.all([
         strat.totalAssets(),
         strat.totalCollateral(),
@@ -433,6 +502,8 @@ export default function TestnetStatusPage() {
         new Contract(addresses.weth, ERC20_ABI, provider).balanceOf(addresses.strategy),
         new Contract(addresses.steth, ERC20_ABI, provider).balanceOf(addresses.strategy),
         new Contract(addresses.usdc, ERC20_ABI, provider).balanceOf(addresses.strategy),
+        strat.failedSwapCount().catch(() => 0n),
+        strat.owner().catch(() => ""),
       ]);
       return {
         totalAssets,
@@ -444,6 +515,8 @@ export default function TestnetStatusPage() {
         wethBal,
         stethBal,
         usdcBal,
+        failedSwapCount,
+        owner,
       };
     } catch (e) {
       console.warn("strategy fetch failed", e);
@@ -451,15 +524,105 @@ export default function TestnetStatusPage() {
     }
   }
 
+  async function debugStrategyDeps(provider) {
+    const out = {};
+    try {
+      const pool = new Contract(addresses.pool, POOL_ABI, provider);
+      await pool.getUserAccountData(addresses.strategy);
+      out.pool_getUserAccountData = "ok";
+    } catch (e) {
+      out.pool_getUserAccountData = e?.message || "revert";
+    }
+    try {
+      const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
+      await oracle.getAssetPrice(addresses.wbtc);
+      out.oracle_wbtc = "ok";
+    } catch (e) {
+      out.oracle_wbtc = e?.message || "revert";
+    }
+    try {
+      const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
+      await oracle.getAssetPrice(addresses.steth);
+      out.oracle_steth = "ok";
+    } catch (e) {
+      out.oracle_steth = e?.message || "revert";
+    }
+    try {
+      const fluid = new Contract(addresses.fluid, FLUID_ABI, provider);
+      await fluid.convertToAssets(10n ** 18n);
+      out.fluid_convertToAssets = "ok";
+    } catch (e) {
+      out.fluid_convertToAssets = e?.message || "revert";
+    }
+    return out;
+  }
+
+  async function debugVaultDeps(provider) {
+    const out = {};
+    try {
+      const vault = new Contract(addresses.vault, VAULT_ABI, provider);
+      await vault.totalSupply();
+      out.vault_totalSupply = "ok";
+    } catch (e) {
+      out.vault_totalSupply = e?.message || "revert";
+    }
+    try {
+      const vault = new Contract(addresses.vault, VAULT_ABI, provider);
+      await vault.totalAssets();
+      out.vault_totalAssets = "ok";
+    } catch (e) {
+      out.vault_totalAssets = e?.message || "revert";
+    }
+    return out;
+  }
+
   async function estimateHarvest(provider) {
     if (!provider) return null;
     const strat = new Contract(addresses.strategy, STRATEGY_ABI, provider);
     try {
-      // Static call to harvestYield to get the return value without state changes
-      const estimate = await strat.harvestYield.staticCall();
+      const estimate = await strat.harvestableUSDC();
       return estimate;
     } catch {
       return null;
+    }
+  }
+
+  async function manualSwap() {
+    if (!signer || !addresses.strategy) return;
+    try {
+      setManualSwapLoading(true);
+      setErr("");
+      const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      const tx = await strat.manualSwapStethToUsdc();
+      await tx.wait();
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Manual swap failed.");
+    } finally {
+      setManualSwapLoading(false);
+    }
+  }
+
+  async function withdrawSteth() {
+    if (!signer || !addresses.strategy) return;
+    try {
+      setWithdrawStethLoading(true);
+      setErr("");
+      const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      const amount = data?.strategy?.stethBal ?? 0n;
+      if (amount === 0n) {
+        setErr("No stETH balance to withdraw.");
+        return;
+      }
+      const tx = await strat.withdrawStEth(walletAddress, amount);
+      await tx.wait();
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Withdraw stETH failed.");
+    } finally {
+      setWithdrawStethLoading(false);
     }
   }
 
@@ -540,17 +703,38 @@ export default function TestnetStatusPage() {
         throw new Error(`Switch to chain ${DEFAULT_CHAIN_ID} to harvest.`);
       }
       const strat = new Contract(addresses.strategy, STRATEGY_ABI, signer);
+      // Preflight to catch reverts early
+      try {
+        await strat.harvestYield.staticCall();
+      } catch (e) {
+        throw new Error(e?.message || "Harvest preflight failed");
+      }
+
       const tx = await strat.harvestYield();
-      await tx.wait();
-      setTxMessage("Harvest complete.");
-      await refresh();
+      setTxMessage(`Harvest tx sent: ${tx.hash.slice(0, 10)}…`);
+      setHarvestLoading(false);
+
+      // Wait in background so UI doesn't hang if the tx is slow
+      tx.wait()
+        .then(async () => {
+          setTxMessage("Harvest complete.");
+          await refresh();
+        })
+        .catch((e) => {
+          console.error(e);
+          setErr(e?.message || "Harvest failed.");
+        })
+        .finally(() => {
+          setHarvestLoading(false);
+          setTimeout(() => setTxMessage(""), 1500);
+        });
+      return;
     } catch (e) {
       console.error(e);
       setErr(e?.message || "Harvest failed.");
-    } finally {
-      setHarvestLoading(false);
-      setTxMessage("");
     }
+    setHarvestLoading(false);
+    setTxMessage("");
   }
 
   return (
@@ -656,6 +840,35 @@ export default function TestnetStatusPage() {
               </ul>
             </div>
           )}
+          {diagnostics.code && Object.keys(diagnostics.code).length > 0 && (
+            <div>
+              <div className="font-semibold text-[var(--text)]">Contract code</div>
+              <ul className="list-disc pl-4">
+                {Object.entries(diagnostics.code).map(([k, v]) => (
+                  <li key={k} className="font-mono">
+                    {k}: {v}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {diagnostics.probes && Object.keys(diagnostics.probes).length > 0 && (
+            <div>
+              <div className="font-semibold text-[var(--text)]">Probe calls</div>
+              {Object.entries(diagnostics.probes).map(([section, results]) => (
+                <div key={section} className="mt-2">
+                  <div className="font-semibold text-[var(--text)]">{section}</div>
+                  <ul className="list-disc pl-4">
+                    {Object.entries(results || {}).map(([k, v]) => (
+                      <li key={k} className="font-mono">
+                        {k}: {v}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -752,7 +965,7 @@ export default function TestnetStatusPage() {
                 <Row label="WETH balance" value={fmt(data.strategy.wethBal, data.tokens?.weth?.decimals ?? 18)} />
                 <Row label="stETH balance" value={fmt(data.strategy.stethBal, data.tokens?.steth?.decimals ?? 18)} />
                 <Row label="USDC balance" value={fmt(data.strategy.usdcBal, data.tokens?.usdc?.decimals ?? 6)} />
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3">
+                <div className="mt-3 flex flex-col gap-3 rounded-lg border border-[rgba(17,19,24,0.08)] bg-[rgba(255,255,255,0.9)] p-3 md:flex-row md:items-center md:justify-between">
                   <div className="text-xs text-[var(--muted)]">
                     <div className="font-semibold text-[var(--text)]">Harvest yield</div>
                     <div>
@@ -761,14 +974,39 @@ export default function TestnetStatusPage() {
                         ? `${fmt(harvestEstimate, data.tokens?.usdc?.decimals ?? 6, 6)} USDC`
                         : "–"}
                     </div>
+                    {data.strategy?.failedSwapCount != null && (
+                      <div>Failed swaps: {data.strategy.failedSwapCount.toString()}</div>
+                    )}
                   </div>
-                  <button
-                    onClick={triggerHarvest}
-                    disabled={!walletAddress || harvestLoading}
-                    className="sona-btn sona-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {harvestLoading ? "Harvesting..." : "Harvest"}
-                  </button>
+                  <div className="flex flex-col gap-2 md:flex-row">
+                    <button
+                      onClick={triggerHarvest}
+                      disabled={!walletAddress || harvestLoading}
+                      className="sona-btn sona-btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {harvestLoading ? "Harvesting..." : "Harvest"}
+                    </button>
+                    <button
+                      onClick={manualSwap}
+                      disabled={!walletAddress || manualSwapLoading}
+                      className="sona-btn sona-btn-ghost disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {manualSwapLoading ? "Swapping..." : "Manual swap"}
+                    </button>
+                    <button
+                      onClick={withdrawSteth}
+                      disabled={
+                        !walletAddress ||
+                        withdrawStethLoading ||
+                        !data.strategy?.owner ||
+                        data.strategy.owner.toLowerCase() !== walletAddress.toLowerCase() ||
+                        (data.strategy?.failedSwapCount ?? 0n) < 3n
+                      }
+                      className="sona-btn sona-btn-outline disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {withdrawStethLoading ? "Withdrawing..." : "Withdraw stETH (owner)"}
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (
@@ -781,6 +1019,15 @@ export default function TestnetStatusPage() {
               <>
                 <Row label="totalAssets (stETH)" value={fmt(data.fluid.totalAssets, data.tokens?.steth?.decimals ?? 18)} />
                 <Row label="strategy shares (mFLUID)" value={fmt(data.fluid.strategyShares, data.fluid.decimals)} />
+                <Row
+                  label="strategy assets (stETH)"
+                  value={fmt(
+                    data.fluid?.strategyShares
+                      ? (data.fluid.shareToAsset * data.fluid.strategyShares) / (10n ** BigInt(data.fluid.decimals))
+                      : 0n,
+                    data.tokens?.steth?.decimals ?? 18
+                  )}
+                />
                 <Row
                   label="1 share → assets"
                   value={fmt(data.fluid.shareToAsset, data.tokens?.steth?.decimals ?? 18)}

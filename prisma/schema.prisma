@@ -68,3 +68,25 @@ model Vote {
   @@index([userId])
   @@index([portfolioId])
 }
+
+/* ---------- Core bundle time-series snapshots ---------- */
+model CoreBundleSnapshot {
+  id               String   @id @default(uuid())
+  chainId          String
+  vaultAddress     String
+  blockNumber      BigInt
+  blockTimestamp   DateTime
+  vaultDecimals    Int
+  totalAssetsRaw   String
+  totalSupplyRaw   String
+  sharePriceRaw    String
+  totalAssets      String
+  totalSupply      String
+  sharePrice       String
+  growthPct        String
+  createdAt        DateTime @default(now())
+
+  @@unique([chainId, vaultAddress, blockNumber])
+  @@index([chainId, vaultAddress, blockTimestamp])
+  @@index([createdAt])
+}

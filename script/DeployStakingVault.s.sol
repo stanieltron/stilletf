@@ -29,6 +29,7 @@ contract DeployStakingVault is Script {
     MockERC20 public wbtc;
     MockERC20 public usdc;
     MockStETH public stEth;
+    MockWstETH public wstEth;
     MockOracle public oracle;
     MockRouter public router;
     MockPool public pool;
@@ -47,20 +48,22 @@ contract DeployStakingVault is Script {
         wbtc = new MockERC20("Mock WBTC", "WBTC", 8);
         usdc = new MockERC20("Mock USDC", "USDC", 6);
         stEth = new MockStETH();
+        wstEth = new MockWstETH(address(stEth));
         oracle = new MockOracle();
         router = new MockRouter(address(oracle));
         pool = new MockPool(IERC20(address(wbtc)), IERC20(address(weth)), IAaveOracle(address(oracle)));
 
         // Seed liquidity with a small ETH footprint (keeps Sepolia spend low)
-        weth.deposit{value: 0.02 ether}(); // funds unwrapping capacity
+        weth.deposit{value: 1.00 ether}(); // funds unwrapping capacity
         weth.mint(address(pool), 1 ether); // lendable WETH liquidity
-        wbtc.mint(deployer, 10e8); // 10 WBTC to the deployer for testing
+        wbtc.mint(deployer, 100e8); // 10 WBTC to the deployer for testing
 
         uint256 unit = oracle.UNIT(); // 1e8
         oracle.setPrice(address(wbtc), 60_000 * unit); // $60k per WBTC
         oracle.setPrice(address(usdc), 1 * unit);      // $1 per USDC
         oracle.setPrice(address(weth), 3_000 * unit);  // $3k per WETH
         oracle.setPrice(address(stEth), 3_000 * unit); // $3k per stETH
+        oracle.setPrice(address(wstEth), 3_000 * unit); // $3k per wstETH
 
         // --- Fluid mock vault + strategy + staking vault ---
         uint256 startingNonce = vm.getNonce(deployer);
@@ -77,7 +80,8 @@ contract DeployStakingVault is Script {
             address(pool),
             address(fluid),
             address(router),
-            address(oracle)
+            address(oracle),
+            address(wstEth)
         );
 
         vault = new StakingVault(
@@ -113,6 +117,7 @@ contract DeployStakingVault is Script {
         json = vm.serializeAddress(label, "usdc", address(usdc));
         json = vm.serializeAddress(label, "weth", address(weth));
         json = vm.serializeAddress(label, "stEth", address(stEth));
+        json = vm.serializeAddress(label, "wstEth", address(wstEth));
         json = vm.serializeAddress(label, "oracle", address(oracle));
         json = vm.serializeAddress(label, "pool", address(pool));
         json = vm.serializeAddress(label, "router", address(router));

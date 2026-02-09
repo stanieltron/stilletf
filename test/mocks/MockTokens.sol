@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MockERC20 is ERC20 {
     uint8 private _dec;
@@ -42,4 +43,28 @@ contract MockStETH is MockERC20 {
     }
 
     receive() external payable {}
+}
+
+contract MockWstETH is MockERC20 {
+    IERC20 public immutable steth;
+    uint256 private _rate = 1e18;
+
+    constructor(address stEth) MockERC20("Mock wstETH", "wstETH", 18) {
+        steth = IERC20(stEth);
+    }
+
+    function stEthPerToken() external view returns (uint256) {
+        return _rate;
+    }
+
+    function setRate(uint256 rate) external {
+        _rate = rate;
+    }
+
+    function wrap(uint256 stETHAmount) external returns (uint256) {
+        require(stETHAmount > 0, "Zero amount");
+        steth.transferFrom(msg.sender, address(this), stETHAmount);
+        _mint(msg.sender, stETHAmount);
+        return stETHAmount;
+    }
 }
