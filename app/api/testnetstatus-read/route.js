@@ -16,6 +16,8 @@ const ORACLE_ABI = [
   "function BASE_CURRENCY_UNIT() view returns (uint256)",
 ];
 
+const WSTETH_ABI = ["function stEthPerToken() view returns (uint256)"];
+
 const POOL_ABI = [
   "function getUserAccountData(address) view returns (uint256,uint256,uint256,uint256,uint256,uint256)",
   "function supplied() view returns (uint256)",
@@ -56,6 +58,7 @@ function normalizeAddresses(src = {}) {
     usdc: src.usdc,
     weth: src.weth,
     steth: src.steth || src.stEth,
+    wsteth: src.wsteth || src.wstEth,
     pool: src.pool,
     oracle: src.oracle,
     router: src.router,
@@ -97,6 +100,7 @@ export async function GET(req) {
     usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS || fileAddresses.usdc,
     weth: process.env.NEXT_PUBLIC_WETH_ADDRESS || fileAddresses.weth,
     steth: process.env.NEXT_PUBLIC_STETH_ADDRESS || fileAddresses.steth,
+    wsteth: process.env.NEXT_PUBLIC_WSTETH_ADDRESS || fileAddresses.wsteth,
     pool: process.env.NEXT_PUBLIC_AAVE_POOL_ADDRESS || fileAddresses.pool,
     oracle: process.env.NEXT_PUBLIC_AAVE_ORACLE_ADDRESS || fileAddresses.oracle,
     router: process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS || fileAddresses.router,
@@ -141,19 +145,27 @@ export async function GET(req) {
 async function fetchOracle(provider, addresses) {
   const oracle = new Contract(addresses.oracle, ORACLE_ABI, provider);
   const base = await oracle.BASE_CURRENCY_UNIT();
-  const prices = await Promise.all(
-    [addresses.wbtc, addresses.usdc, addresses.weth, addresses.steth].map((a) =>
-      oracle.getAssetPrice(a).catch(() => 0n)
-    )
-  );
+  const [wbtc, usdc, weth] = await Promise.all([
+    oracle.getAssetPrice(addresses.wbtc).catch(() => 0n),
+    oracle.getAssetPrice(addresses.usdc).catch(() => 0n),
+    oracle.getAssetPrice(addresses.weth).catch(() => 0n),
+  ]);
+  let steth = await oracle.getAssetPrice(addresses.steth).catch(() => 0n);
+  if (steth === 0n && addresses.wsteth) {
+    const wstethPrice = await oracle.getAssetPrice(addresses.wsteth).catch(() => 0n);
+    if (wstethPrice > 0n) {
+      try {
+        const wst = new Contract(addresses.wsteth, WSTETH_ABI, provider);
+        const rate = await wst.stEthPerToken();
+        if (rate > 0n) {
+          steth = (wstethPrice * 10n ** 18n) / rate;
+        }
+      } catch {}
+    }
+  }
   return {
     base,
-    prices: {
-      wbtc: prices[0],
-      usdc: prices[1],
-      weth: prices[2],
-      steth: prices[3],
-    },
+    prices: { wbtc, usdc, weth, steth },
   };
 }
 
