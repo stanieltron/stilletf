@@ -1,12 +1,10 @@
 ﻿// app/useretfs/[id]/page.js
 import PortfolioDetailClient from "./ClientPortfolioDetail";
-import { Metadata } from "next";
 
 export async function generateMetadata({ params }) {
   const id = params.id;
 
-  const baseUrl =
-    process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
 
   let title = "Sona ETF portfolio";
   let description =
@@ -24,7 +22,6 @@ export async function generateMetadata({ params }) {
         title = p.nickname;
       }
       if (p?.comment) {
-        // comment as main description, with a small fallback suffix
         description = p.comment.slice(0, 200);
       }
     }
@@ -36,25 +33,16 @@ export async function generateMetadata({ params }) {
   const ogImagePath = `/api/portfolio-og/${id}`;
 
   return {
-    // page <title>
     title,
     description,
-
-    // base for relative urls in metadata (Next.js app router feature)
     metadataBase: new URL(baseUrl),
-
-    // canonical URL
     alternates: {
       canonical: canonicalPath,
     },
-
-    // good for indexing
     robots: {
       index: true,
       follow: true,
     },
-
-    // keyword hinting (not magic, but harmless)
     keywords: [
       "crypto ETF",
       "onchain ETF",
@@ -64,7 +52,6 @@ export async function generateMetadata({ params }) {
       "user portfolio",
       "crypto index",
     ],
-
     openGraph: {
       type: "website",
       siteName: "Sona ETF",
@@ -76,22 +63,20 @@ export async function generateMetadata({ params }) {
           url: ogImagePath,
           width: 1200,
           height: 675,
-                    alt: `${title} – Sona ETF portfolio`,
+          alt: `${title} - Sona ETF portfolio`,
         },
       ],
     },
-
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      // set these if/when you have the actual handle
       site: "@sonaetf",
       creator: "@sonaetf",
       images: [
         {
           url: ogImagePath,
-                    alt: `${title} – Sona ETF portfolio`,
+          alt: `${title} - Sona ETF portfolio`,
         },
       ],
     },
@@ -101,5 +86,3 @@ export async function generateMetadata({ params }) {
 export default function Page({ params }) {
   return <PortfolioDetailClient id={params.id} />;
 }
-
-

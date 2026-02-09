@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 
 import Header from "./components/Header";
@@ -213,7 +213,9 @@ export default function HomeClient() {
                         </div>
                       </div>
 
-                      <BuilderSection embedded />
+                      <Suspense fallback={null}>
+                        <BuilderSection embedded />
+                      </Suspense>
                     </div>
                   </div>
                 </div>
