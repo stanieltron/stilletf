@@ -8,7 +8,7 @@
     "deploy:local": "set -a && source .env && set +a && ./scripts/local-fork-deploy.sh",
     "kill_anvil": "pkill -9 -f \"^anvil\" || true",
     "build": "prisma generate && next build",
-    "start": "node scripts/start.js",
+    "start": "prisma migrate deploy && next start -p 3000",
     "lint": "next lint",
     "test": "forge test",
     "deploy": "forge script script/DeployStakingVault.s.sol:DeployStakingVault --rpc-url https://sepolia.gateway.tenderly.co --broadcast"
