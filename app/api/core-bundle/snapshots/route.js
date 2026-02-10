@@ -24,6 +24,14 @@ function getRpcUrl() {
   );
 }
 
+function getRpcEnvDebug() {
+  return {
+    hasSepoliaRpcUrl: Boolean(process.env.SEPOLIA_RPC_URL),
+    hasNextPublicSepoliaRpcUrl: Boolean(process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL),
+    hasNextPublicRpcUrl: Boolean(process.env.NEXT_PUBLIC_RPC_URL),
+  };
+}
+
 function getConfiguredAddresses() {
   return {
     vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
@@ -124,8 +132,17 @@ export async function POST(req) {
     const { searchParams } = new URL(req.url);
     const chainId = searchParams.get("chainId") || DEFAULT_CHAIN_ID;
     const rpcUrl = getRpcUrl();
+    const rpcEnv = getRpcEnvDebug();
     if (!rpcUrl) {
-      return Response.json({ error: "RPC URL missing." }, { status: 500 });
+      console.error("[core-bundle] rpc url missing", {
+        at: new Date().toISOString(),
+        chainId,
+        rpcEnv,
+      });
+      return Response.json(
+        { error: "RPC URL missing.", rpcEnv },
+        { status: 500 }
+      );
     }
 
     const configured = getConfiguredAddresses();
