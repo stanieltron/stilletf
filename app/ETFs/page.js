@@ -46,6 +46,10 @@ const ERC20_ABI = [
   "function decimals() external view returns (uint8)",
 ];
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getVaultConfig() {
   const vault = ENV_VAULT_ADDRESS;
   const wbtc = ENV_WBTC_ADDRESS;
@@ -232,9 +236,9 @@ export default function ETFsPage() {
     let completed = false;
     try {
       setTxBusy(true);
-      setTxPhase("pending");
+      setTxPhase("preparing");
       setTxError("");
-      setTxStatus("Loading contract addresses...");
+      setTxStatus("Preparing transaction...");
 
       const nextAddresses =
         addresses.vault && addresses.wbtc ? addresses : getVaultConfig();
@@ -249,7 +253,7 @@ export default function ETFsPage() {
       }
 
       const provider = new BrowserProvider(window.ethereum);
-      setTxStatus(`Switching to chain ${DEFAULT_CHAIN_ID} if needed...`);
+      setTxStatus(`Checking network (chain ${DEFAULT_CHAIN_ID})...`);
       const chainReady = await ensureCorrectChain(provider);
       if (!chainReady) {
         throw new Error(`Switch MetaMask to chain ${DEFAULT_CHAIN_ID}.`);
@@ -274,21 +278,28 @@ export default function ETFsPage() {
       setTxStatus("Checking WBTC allowance...");
       const allowance = await wbtc.allowance(account, nextAddresses.vault);
       if (allowance < value) {
-        setTxStatus("Approve WBTC in MetaMask...");
+        setTxPhase("approval-signing");
+        setTxStatus("Confirming approval...");
         const approveTx = await wbtc.approve(nextAddresses.vault, value);
-        setTxStatus("Waiting for approval confirmation...");
+        setTxPhase("approval-pending");
+        setTxStatus("Approval pending...");
         await approveTx.wait();
+        setTxPhase("approval-complete");
+        setTxStatus("Approval completed.");
+        await sleep(350);
       }
 
-      setTxStatus("Confirm deposit in MetaMask...");
+      setTxPhase("deposit-signing");
+      setTxStatus("Confirming deposit...");
       const stakeTx = await vault.stake(value);
-      setTxStatus("Waiting for deposit confirmation...");
+      setTxPhase("deposit-pending");
+      setTxStatus("Deposit pending...");
       await stakeTx.wait();
 
       const nextBalance = await wbtc.balanceOf(account);
       setWalletAddress(account);
       setWalletBalanceRaw(nextBalance);
-      setTxStatus("Deposit confirmed.");
+      setTxStatus("Deposit complete.");
       setTxPhase("success");
       await new Promise((resolve) => setTimeout(resolve, 1200));
       completed = true;
@@ -296,6 +307,7 @@ export default function ETFsPage() {
       return;
     } catch (error) {
       console.error("deposit failed", error);
+      setTxPhase("idle");
       setTxStatus("");
       setTxError(
         error?.shortMessage ||
@@ -698,12 +710,12 @@ export default function ETFsPage() {
 
       <Footer />
 
-      {txBusy && <TxPendingOverlay phase={txPhase} />}
+      {txBusy && <TxPendingOverlay phase={txPhase} status={txStatus} />}
     </div>
   );
 }
 
-function TxPendingOverlay({ phase = "pending" }) {
+function TxPendingOverlay({ phase = "pending", status = "" }) {
   if (phase === "success") {
     return (
       <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
@@ -726,7 +738,7 @@ function TxPendingOverlay({ phase = "pending" }) {
             </div>
           </div>
           <p className="mt-12 text-[#17213a] text-[52px] leading-none font-semibold tracking-[-0.03em] text-center">
-            Deposit Successful!
+            Deposit Complete.
           </p>
         </div>
       </div>
@@ -778,7 +790,7 @@ function TxPendingOverlay({ phase = "pending" }) {
           </svg>
         </div>
         <p className="mt-10 text-[#17213a] text-[30px] font-semibold tracking-[-0.02em] text-center">
-          Confirming Deposit...
+          {status || "Processing transaction..."}
         </p>
         <div className="mt-8 flex items-center gap-4">
           <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb] animate-bounce [animation-delay:-0.2s]" />

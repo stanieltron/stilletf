@@ -59,6 +59,10 @@ async function safeRead(promise, fallback) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function BTCETFPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
@@ -241,6 +245,19 @@ export default function BTCETFPage() {
     setErr("");
   };
 
+  async function runTransactionStep({
+    signingLabel,
+    confirmingLabel,
+    successLabel,
+    sendTx,
+  }) {
+    setActionState({ phase: "signing", label: signingLabel });
+    const tx = await sendTx();
+    setActionState({ phase: "pending", label: confirmingLabel });
+    await tx.wait();
+    setActionState({ phase: "success", label: successLabel });
+  }
+
   async function connectWallet() {
     if (typeof window === "undefined" || !window.ethereum) {
       setErr("Please install MetaMask to continue.");
@@ -311,19 +328,25 @@ export default function BTCETFPage() {
     }
     try {
       setErr("");
-      setActionState({ phase: "approval", label: "Waiting for your wallet" });
       const value = parseUnits(amount, wbtcDecimals);
 
       if (dialogMode === "deposit") {
         const allowance = await wbtc.allowance(walletAddress, addresses.vault);
         if (allowance < value) {
-          const approveTx = await wbtc.approve(addresses.vault, value);
-          setActionState({ phase: "pending", label: "Approval pending on-chain" });
-          await approveTx.wait();
+          await runTransactionStep({
+            signingLabel: "Confirming approval...",
+            confirmingLabel: "Approval pending...",
+            successLabel: "Approval completed.",
+            sendTx: () => wbtc.approve(addresses.vault, value),
+          });
+          await sleep(350);
         }
-        setActionState({ phase: "pending", label: "Depositing WBTC..." });
-        const tx = await vault.stake(value);
-        await tx.wait();
+        await runTransactionStep({
+          signingLabel: "Confirming deposit...",
+          confirmingLabel: "Deposit pending...",
+          successLabel: "Deposit complete.",
+          sendTx: () => vault.stake(value),
+        });
       } else {
         const sharesNeeded = value;
         if (sharesNeeded === 0n) {
@@ -336,11 +359,13 @@ export default function BTCETFPage() {
           setActionState({ phase: "idle", label: "" });
           return;
         }
-        setActionState({ phase: "pending", label: "Withdrawing from vault..." });
-        const tx = await vault.unstake(sharesNeeded);
-        await tx.wait();
+        await runTransactionStep({
+          signingLabel: "Confirming withdrawal...",
+          confirmingLabel: "Withdrawal pending...",
+          successLabel: "Withdrawal complete.",
+          sendTx: () => vault.unstake(sharesNeeded),
+        });
       }
-      setActionState({ phase: "success", label: "Confirmed on-chain" });
       setAmount("");
       setDialogOpen(false);
       await refresh();
@@ -360,10 +385,12 @@ export default function BTCETFPage() {
     }
     try {
       setErr("");
-      setActionState({ phase: "pending", label: "Claiming yield..." });
-      const tx = await vault.claim();
-      await tx.wait();
-      setActionState({ phase: "success", label: "Yield claimed" });
+      await runTransactionStep({
+        signingLabel: "Confirming claim...",
+        confirmingLabel: "Claim pending...",
+        successLabel: "Claim complete.",
+        sendTx: () => vault.claim(),
+      });
       await refresh();
     } catch (e) {
       console.error(e);

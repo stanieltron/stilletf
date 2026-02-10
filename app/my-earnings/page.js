@@ -62,6 +62,10 @@ async function safeRead(promise, fallback) {
   }
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export default function MyEarningsPage() {
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
@@ -274,6 +278,19 @@ export default function MyEarningsPage() {
     setAmount("");
   }
 
+  async function runTransactionStep({
+    signingLabel,
+    confirmingLabel,
+    successLabel,
+    sendTx,
+  }) {
+    setActionState({ phase: "signing", label: signingLabel });
+    const tx = await sendTx();
+    setActionState({ phase: "pending", label: confirmingLabel });
+    await tx.wait();
+    setActionState({ phase: "success", label: successLabel });
+  }
+
   async function handleSubmitAction() {
     if (!ready || actionBusy) return;
     if (!amount || Number(amount) <= 0) {
@@ -281,23 +298,38 @@ export default function MyEarningsPage() {
       return;
     }
     try {
-      setActionState({ phase: "pending", label: "Waiting for wallet..." });
+      setErr("");
       const value = parseUnits(amount, wbtcDecimals);
+      if (value <= 0n) {
+        throw new Error("Enter an amount greater than zero.");
+      }
       if (dialogMode === "deposit") {
         const allowance = await wbtc.allowance(walletAddress, addresses.vault);
         if (allowance < value) {
-          const approveTx = await wbtc.approve(addresses.vault, value);
-          await approveTx.wait();
+          await runTransactionStep({
+            signingLabel: "Confirming approval...",
+            confirmingLabel: "Approval pending...",
+            successLabel: "Approval completed.",
+            sendTx: () => wbtc.approve(addresses.vault, value),
+          });
+          await sleep(350);
         }
-        const tx = await vault.stake(value);
-        await tx.wait();
+        await runTransactionStep({
+          signingLabel: "Confirming deposit...",
+          confirmingLabel: "Deposit pending...",
+          successLabel: "Deposit complete.",
+          sendTx: () => vault.stake(value),
+        });
       } else {
         if (value > userStats.shares) throw new Error("Not enough principal to withdraw.");
-        const tx = await vault.unstake(value);
-        await tx.wait();
+        await runTransactionStep({
+          signingLabel: "Confirming withdrawal...",
+          confirmingLabel: "Withdrawal pending...",
+          successLabel: "Withdrawal complete.",
+          sendTx: () => vault.unstake(value),
+        });
       }
       setDialogOpen(false);
-      setActionState({ phase: "success", label: "Confirmed on-chain" });
       await refresh();
     } catch (error) {
       setErr(error?.shortMessage || error?.message || "Transaction failed.");
@@ -309,10 +341,13 @@ export default function MyEarningsPage() {
   async function claimEarnings() {
     if (!ready || actionBusy) return;
     try {
-      setActionState({ phase: "pending", label: "Claiming earnings..." });
-      const tx = await vault.claim();
-      await tx.wait();
-      setActionState({ phase: "success", label: "Earnings claimed" });
+      setErr("");
+      await runTransactionStep({
+        signingLabel: "Confirming claim...",
+        confirmingLabel: "Claim pending...",
+        successLabel: "Claim complete.",
+        sendTx: () => vault.claim(),
+      });
       await refresh();
     } catch (error) {
       setErr(error?.shortMessage || error?.message || "Could not claim earnings.");
@@ -596,6 +631,11 @@ function PageView({
             </div>
 
             <div className="mt-5 text-[12px] text-[#9a9079]">Wallet balance: {walletBalanceDisplay} wBTC</div>
+            {actionBusy && !dialogOpen && (
+              <div className="mt-4">
+                <ActionStatus state={actionState} />
+              </div>
+            )}
           </section>
         </div>
 
@@ -666,6 +706,23 @@ function PerformanceChart({ data }) {
         <Line type="monotone" dataKey="btc" stroke="#a79f89" strokeWidth={2.3} dot={false} isAnimationActive={false} />
       </ComposedChart>
     </ResponsiveContainer>
+  );
+}
+
+function ActionStatus({ state }) {
+  if (!state || state.phase === "idle") return null;
+  const showSpinner = state.phase !== "success";
+  const tone =
+    state.phase === "success" ? "text-[#009966]" : "text-[#645c4a]";
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-[rgba(17,19,24,0.08)] bg-white/80 px-3 py-2 text-xs">
+      {showSpinner ? (
+        <span className="h-3 w-3 rounded-full border-2 border-[#201909] border-t-transparent animate-spin" />
+      ) : (
+        <span className="h-2 w-2 rounded-full bg-[#009966]" />
+      )}
+      <span className={tone}>{state.label}</span>
+    </div>
   );
 }
 
