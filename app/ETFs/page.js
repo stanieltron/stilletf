@@ -18,6 +18,11 @@ import Footer from "../components/Footer";
 import { fetchAssets } from "../../lib/portfolio";
 
 const imgTokenBtc = "/assets/btc%20small.png";
+const imgTokenEth = "/assets/eth%20small.png";
+const imgTokenUsd = "/assets/usd%20small.png";
+const imgTokenTreasuries = "/assets/us%20treasury%20small.png";
+const imgTokenSp500 = "/assets/snp%20500.png";
+const imgTokenGold = "/assets/gold%20small.png";
 const TIMEFRAMES = [
   // { id: "1y", label: "1Y AGO", months: 12 },
   { id: "3y", label: "3Y AGO", months: 36 },
@@ -25,7 +30,6 @@ const TIMEFRAMES = [
 ];
 const TARGET_POINTS = 60;
 const INITIAL_CAPITAL = 1000;
-const STILLWATER_APY = 0.03;
 const STILLWATER_EARNINGS_MODE = "compounding"; // "monthly" | "compounding"
 const DEFAULT_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || "11155111";
 const TARGET_CHAIN_HEX = `0x${Number(DEFAULT_CHAIN_ID).toString(16)}`;
@@ -46,6 +50,44 @@ const ERC20_ABI = [
   "function decimals() external view returns (uint8)",
 ];
 
+const BUNDLES = [
+  {
+    id: "core",
+    title: "Core bundle",
+    description: "Earning passive yield on the top of Bitcoin yearly growth.",
+    assetItems: [{ key: "asset1", label: "bitcoin", img: imgTokenBtc }],
+    fixedApy: 0.03,
+    chartSourceLabel: "Projection based on the historical Bitcoin market performance.",
+    growthLabel: "Overall core bundle size growth",
+    growthSource: "onchain",
+    isLiveOnChain: true,
+  },
+];
+
+const COMING_SOON_BUNDLES = [
+  {
+    id: "crypto",
+    title: "Crypto bundle",
+    description: "Staples of the digital economy in one basket.",
+    assetItems: [
+      { label: "bitcoin", img: imgTokenBtc },
+      { label: "ethereum", img: imgTokenEth },
+      { label: "usdt", img: imgTokenUsd },
+    ],
+  },
+  {
+    id: "flagship",
+    title: "Flagship bundle",
+    description: "Best assets of this generation, combined.",
+    assetItems: [
+      { label: "bitcoin", img: imgTokenBtc },
+      { label: "us treasuries", img: imgTokenTreasuries },
+      { label: "s&p 500", img: imgTokenSp500 },
+      { label: "gold", img: imgTokenGold },
+    ],
+  },
+];
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -63,9 +105,13 @@ function getVaultConfig() {
 
 export default function ETFsPage() {
   const router = useRouter();
-  const [timeframe, setTimeframe] = useState("5y");
-  const [showChartDetails, setShowChartDetails] = useState(false);
-  const [priceSeries, setPriceSeries] = useState([]);
+  const [timeframeByBundle, setTimeframeByBundle] = useState(() =>
+    Object.fromEntries(BUNDLES.map((bundle) => [bundle.id, "5y"]))
+  );
+  const [showChartDetailsByBundle, setShowChartDetailsByBundle] = useState(() =>
+    Object.fromEntries(BUNDLES.map((bundle) => [bundle.id, false]))
+  );
+  const [assetsCatalog, setAssetsCatalog] = useState({});
   const [bundleGrowthSeries, setBundleGrowthSeries] = useState([]);
   const [chartError, setChartError] = useState("");
   const [depositAmount, setDepositAmount] = useState("0.01");
@@ -86,11 +132,11 @@ export default function ETFsPage() {
         setChartError("");
         const data = await fetchAssets();
         if (!alive) return;
-        const btc = data?.assets?.asset1?.prices;
-        if (!Array.isArray(btc) || btc.length === 0) {
-          throw new Error("Missing Bitcoin price data.");
+        const assets = data?.assets;
+        if (!assets || typeof assets !== "object") {
+          throw new Error("Missing prices data.");
         }
-        setPriceSeries(btc);
+        setAssetsCatalog(assets);
       } catch (err) {
         if (!alive) return;
         setChartError(err?.message || "Failed to load price data.");
@@ -128,6 +174,18 @@ export default function ETFsPage() {
               Number.isFinite(row.timestamp) && Number.isFinite(row.totalAssets)
           )
           .sort((a, b) => a.timestamp - b.timestamp);
+        console.log("[core-bundle] snapshots loaded", {
+          at: new Date().toISOString(),
+          chainId: DEFAULT_CHAIN_ID,
+          count: parsed.length,
+          latest:
+            parsed.length > 0
+              ? {
+                  timestamp: new Date(parsed[parsed.length - 1].timestamp).toISOString(),
+                  totalAssets: parsed[parsed.length - 1].totalAssets,
+                }
+              : null,
+        });
         setBundleGrowthSeries(parsed);
       } catch {
         if (!alive) return;
@@ -336,7 +394,127 @@ export default function ETFsPage() {
     }
   }, [walletBalanceRaw, wbtcDecimals]);
 
-  const latestBtcPrice = priceSeries[priceSeries.length - 1];
+  const coreBtcSeries = useMemo(() => {
+    const btc = assetsCatalog?.asset1?.prices;
+    return Array.isArray(btc) ? btc : [];
+  }, [assetsCatalog]);
+
+  const bundleViews = useMemo(() => {
+    const views = {};
+
+    for (const bundle of BUNDLES) {
+      const selectedTimeframe = timeframeByBundle[bundle.id] || "5y";
+      const frame = TIMEFRAMES.find((item) => item.id === selectedTimeframe);
+      const assetSeries = bundle.assetItems
+        .map((item) => assetsCatalog?.[item.key]?.prices)
+        .filter((series) => Array.isArray(series) && series.length >= 2);
+      const bundlePriceSeries =
+        assetSeries.length === bundle.assetItems.length
+          ? buildEqualWeightSeries(assetSeries, INITIAL_CAPITAL)
+          : [];
+      const apys = bundle.assetItems
+        .map((item) => Number(assetsCatalog?.[item.key]?.yearlyYield))
+        .filter((value) => Number.isFinite(value));
+      const apy = Number.isFinite(bundle.fixedApy)
+        ? bundle.fixedApy
+        : apys.length
+          ? apys.reduce((sum, value) => sum + value, 0) / apys.length
+          : 0;
+
+      let chartState = { data: [], baseEnd: null, yieldEnd: null, diffLabel: "" };
+      if (frame && bundlePriceSeries.length > 0) {
+        const monthlyPrices = bundlePriceSeries.slice(-frame.months);
+        if (monthlyPrices.length >= 2) {
+          const baseMonthly = buildValueSeries(monthlyPrices, INITIAL_CAPITAL);
+          const yieldMonthly =
+            STILLWATER_EARNINGS_MODE === "monthly"
+              ? buildMonthlyEarningsSeries(baseMonthly, INITIAL_CAPITAL, apy)
+              : buildCompoundingSeries(baseMonthly, INITIAL_CAPITAL, apy);
+          const baseSeries = resampleSeries(baseMonthly, TARGET_POINTS).map(
+            (value) => Number((value - INITIAL_CAPITAL).toFixed(2))
+          );
+          const yieldSeries = resampleSeries(yieldMonthly, TARGET_POINTS).map(
+            (value) => Number((value - INITIAL_CAPITAL).toFixed(2))
+          );
+          chartState = {
+            data: baseSeries.map((value, index) => ({
+              i: index,
+              btc: value,
+              stillwater: yieldSeries[index] ?? value,
+            })),
+            baseEnd: baseSeries[baseSeries.length - 1],
+            yieldEnd: yieldSeries[yieldSeries.length - 1],
+          };
+        }
+      }
+
+      let growthState = { data: [], growthPct: null };
+      if (frame) {
+        if (bundle.growthSource === "onchain") {
+          if (bundleGrowthSeries.length >= 2) {
+            const monthMs = 30 * 24 * 60 * 60 * 1000;
+            const cutoffTs = Date.now() - frame.months * monthMs;
+            const scoped = bundleGrowthSeries.filter((row) => row.timestamp >= cutoffTs);
+            const source = scoped.length >= 2 ? scoped : bundleGrowthSeries;
+            if (source.length >= 2) {
+              const startAssets = source[0].totalAssets;
+              const endAssets = source[source.length - 1].totalAssets;
+              if (
+                Number.isFinite(startAssets) &&
+                startAssets > 0 &&
+                Number.isFinite(endAssets)
+              ) {
+                const growthRaw = source.map(
+                  (row) => ((row.totalAssets - startAssets) / startAssets) * 100
+                );
+                const growthSeries = resampleSeries(growthRaw, TARGET_POINTS).map((value) =>
+                  Number(value.toFixed(4))
+                );
+                growthState = {
+                  data: growthSeries.map((value, index) => ({ i: index, growth: value })),
+                  growthPct: ((endAssets - startAssets) / startAssets) * 100,
+                };
+              }
+            }
+          }
+        } else if (bundlePriceSeries.length >= 2) {
+          const scoped = bundlePriceSeries.slice(-frame.months);
+          const source = scoped.length >= 2 ? scoped : bundlePriceSeries;
+          if (source.length >= 2) {
+            const startValue = source[0];
+            const endValue = source[source.length - 1];
+            if (
+              Number.isFinite(startValue) &&
+              startValue > 0 &&
+              Number.isFinite(endValue)
+            ) {
+              const growthRaw = source.map(
+                (value) => ((value - startValue) / startValue) * 100
+              );
+              const growthSeries = resampleSeries(growthRaw, TARGET_POINTS).map((value) =>
+                Number(value.toFixed(4))
+              );
+              growthState = {
+                data: growthSeries.map((value, index) => ({ i: index, growth: value })),
+                growthPct: ((endValue - startValue) / startValue) * 100,
+              };
+            }
+          }
+        }
+      }
+
+      views[bundle.id] = {
+        timeframe: selectedTimeframe,
+        apy,
+        chartState,
+        growthState,
+      };
+    }
+
+    return views;
+  }, [assetsCatalog, bundleGrowthSeries, timeframeByBundle]);
+
+  const latestBtcPrice = coreBtcSeries[coreBtcSeries.length - 1];
   const approxUsd = useMemo(() => {
     const numericAmount = Number(depositAmount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) return "$0.00";
@@ -344,96 +522,47 @@ export default function ETFsPage() {
     return formatCurrency(numericAmount * latestBtcPrice);
   }, [depositAmount, latestBtcPrice]);
 
-  const chartState = useMemo(() => {
-    const frame = TIMEFRAMES.find((item) => item.id === timeframe);
-    if (!frame || priceSeries.length === 0) {
-      return { data: [], baseEnd: null, yieldEnd: null, diffLabel: "" };
-    }
-
-    const monthlyPrices = priceSeries.slice(-frame.months);
-    if (monthlyPrices.length < 2) {
-      return { data: [], baseEnd: null, yieldEnd: null, diffLabel: "" };
-    }
-
-    const baseMonthly = buildValueSeries(monthlyPrices, INITIAL_CAPITAL);
-    const yieldMonthly =
-      STILLWATER_EARNINGS_MODE === "monthly"
-        ? buildMonthlyEarningsSeries(
-            monthlyPrices,
-            INITIAL_CAPITAL,
-            STILLWATER_APY
-          )
-        : buildCompoundingSeries(
-            monthlyPrices,
-            INITIAL_CAPITAL,
-            STILLWATER_APY
-          );
-    const baseSeries = resampleSeries(baseMonthly, TARGET_POINTS).map(
-      (value) => Number((value - INITIAL_CAPITAL).toFixed(2))
-    );
-    const yieldSeries = resampleSeries(yieldMonthly, TARGET_POINTS).map(
-      (value) => Number((value - INITIAL_CAPITAL).toFixed(2))
-    );
-
-    const data = baseSeries.map((value, index) => ({
-      i: index,
-      btc: value,
-      stillwater: yieldSeries[index] ?? value,
-    }));
-
-    const baseEnd = baseSeries[baseSeries.length - 1];
-    const yieldEnd = yieldSeries[yieldSeries.length - 1];
-
-    return { data, baseEnd, yieldEnd };
-  }, [priceSeries, timeframe]);
-
-  const bundleGrowthChartState = useMemo(() => {
-    const frame = TIMEFRAMES.find((item) => item.id === timeframe);
-    if (!frame || bundleGrowthSeries.length < 2) {
-      return { data: [], startAssets: null, endAssets: null, growthPct: null };
-    }
-
-    const monthMs = 30 * 24 * 60 * 60 * 1000;
-    const cutoffTs = Date.now() - frame.months * monthMs;
-    const scoped = bundleGrowthSeries.filter((row) => row.timestamp >= cutoffTs);
-    const source = scoped.length >= 2 ? scoped : bundleGrowthSeries;
-    if (source.length < 2) {
-      return { data: [], startAssets: null, endAssets: null, growthPct: null };
-    }
-
-    const startAssets = source[0].totalAssets;
-    const endAssets = source[source.length - 1].totalAssets;
-    if (!Number.isFinite(startAssets) || startAssets <= 0 || !Number.isFinite(endAssets)) {
-      return { data: [], startAssets: null, endAssets: null, growthPct: null };
-    }
-
-    const growthRaw = source.map(
-      (row) => ((row.totalAssets - startAssets) / startAssets) * 100
-    );
-    const growthSeries = resampleSeries(growthRaw, TARGET_POINTS).map((value) =>
-      Number(value.toFixed(4))
-    );
-    const data = growthSeries.map((value, index) => ({ i: index, growth: value }));
-    const growthPct = ((endAssets - startAssets) / startAssets) * 100;
-
-    return { data, startAssets, endAssets, growthPct };
-  }, [bundleGrowthSeries, timeframe]);
-
   return (
     <div className="min-h-screen flex flex-col text-[#201909]">
       <Header />
 
       <main className="flex-1">
         <div className="max-w-6xl mx-auto px-6 pt-12 pb-32">
-          <section className="bg-[#fdfbf9] rounded-[20px] border border-[#f2ebde] p-4 md:p-8 shadow-sm">
+          <div className="mb-8">
+            <h1 className="text-[36px] md:text-[44px] font-semibold tracking-[-1.2px] text-[#201909] leading-none">
+              Stillwater ETFs
+            </h1>
+          </div>
+          {BUNDLES.map((bundle) => {
+            const activeBundle = bundle;
+            const bundleView = bundleViews[bundle.id] || {
+              timeframe: "5y",
+              apy: 0,
+              chartState: { data: [], baseEnd: null, yieldEnd: null },
+              growthState: { data: [], growthPct: null },
+            };
+            const activeBundleApy = Number(bundleView.apy) || 0;
+            const chartState = bundleView.chartState || {
+              data: [],
+              baseEnd: null,
+              yieldEnd: null,
+            };
+            const growthChartState = bundleView.growthState || {
+              data: [],
+              growthPct: null,
+            };
+            const timeframe = bundleView.timeframe || "5y";
+            const showChartDetails = !!showChartDetailsByBundle[bundle.id];
+            return (
+          <section key={bundle.id} className="bg-[#fdfbf9] rounded-[20px] border border-[#f2ebde] p-4 md:p-8 shadow-sm mb-8">
             <div className="flex flex-col md:flex-row justify-between gap-14 mb-8">
               <div className="flex-1 space-y-10 max-w-[560px]">
                 <div className="space-y-2 mb-[24px]">
                   <h2 className="text-[40px] font-semibold tracking-[-1.28px] text-[#201909] leading-none">
-                    Core bundle
+                    {activeBundle.title}
                   </h2>
                   <p className="text-base text-[#756c57] tracking-[-0.64px]">
-                    Earning passive yield on the top of Bitcoin yearly growth.
+                    {activeBundle.description}
                   </p>
                 </div>
 
@@ -443,7 +572,9 @@ export default function ETFsPage() {
                       Assets in the bundle
                     </p>
                     <div className="flex items-center gap-1.5 h-[32px]">
-                      <TokenPill label="bitcoin" img={imgTokenBtc} />
+                      {activeBundle.assetItems.map((asset) => (
+                        <TokenPill key={`${activeBundle.id}-${asset.label}`} label={asset.label} img={asset.img} />
+                      ))}
                     </div>
                   </div>
                   <div className="space-y-2.5">
@@ -459,93 +590,106 @@ export default function ETFsPage() {
                       Target APY
                     </p>
                     <p className="text-[16px] font-semibold text-[rgb(0,153,102)]">
-                      3%
+                      {formatPercent(activeBundleApy * 100)}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-6 pt-2">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-end">
-                      <label className="text-[16px] font-semibold text-[#756c57] tracking-[-0.48px]">
-                        Deposit principal wBTC
-                      </label>
-                      <span className="text-[12px] font-medium text-[#645c4a]">
-                        {walletAddress
-                          ? `Balance: ${walletBalanceLabel} wBTC`
-                          : "Balance: connect wallet"}
-                      </span>
-                    </div>
+                  {activeBundle.isLiveOnChain ? (
+                    <>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-end">
+                          <label className="text-[16px] font-semibold text-[#756c57] tracking-[-0.48px]">
+                            Deposit principal wBTC
+                          </label>
+                          <span className="text-[12px] font-medium text-[#645c4a]">
+                            {walletAddress
+                              ? `Balance: ${walletBalanceLabel} wBTC`
+                              : "Balance: connect wallet"}
+                          </span>
+                        </div>
 
-                    <div className="relative h-[74px] bg-white border rounded-[12px] flex items-center px-6 transition-colors border-[#f2ebde]">
-                      <div className="flex flex-col flex-1 justify-center">
-                        <input
-                          type="text"
-                          value={depositAmount}
-                          onChange={(event) =>
-                            setDepositAmount(event.target.value)
-                          }
-                          className="bg-transparent text-[24px] font-semibold text-[#201909] placeholder-[#b1a995] outline-none w-full leading-tight"
-                        />
-                        <span className="text-[12px] font-medium text-[#b1a995] leading-none mt-0.5">
-                          &asymp; {approxUsd}
-                        </span>
+                        <div className="relative h-[74px] bg-white border rounded-[12px] flex items-center px-6 transition-colors border-[#f2ebde]">
+                          <div className="flex flex-col flex-1 justify-center">
+                            <input
+                              type="text"
+                              value={depositAmount}
+                              onChange={(event) =>
+                                setDepositAmount(event.target.value)
+                              }
+                              className="bg-transparent text-[24px] font-semibold text-[#201909] placeholder-[#b1a995] outline-none w-full leading-tight"
+                            />
+                            <span className="text-[12px] font-medium text-[#b1a995] leading-none mt-0.5">
+                              &asymp; {approxUsd}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[14px] font-bold text-[#645c4a]">
+                              wBTC
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setDepositAmount(walletBalanceExact)}
+                              disabled={walletBalanceRaw === 0n || txBusy}
+                              className="bg-[#f4e0b3] h-[23px] px-2.5 rounded-[4px] text-[10px] font-bold text-[#201909] hover:opacity-80 transition-opacity"
+                            >
+                              MAX
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[14px] font-bold text-[#645c4a]">
-                          wBTC
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setDepositAmount(walletBalanceExact)}
-                          disabled={walletBalanceRaw === 0n || txBusy}
-                          className="bg-[#f4e0b3] h-[23px] px-2.5 rounded-[4px] text-[10px] font-bold text-[#201909] hover:opacity-80 transition-opacity"
-                        >
-                          MAX
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleDeposit}
-                    disabled={txBusy || !addresses.vault || !addresses.wbtc}
-                    className="w-full bg-[#201909] h-[64px] rounded-[12px] shadow-[0px_10px_15px_-3px_#f2ebde,0px_4px_6px_-4px_#f2ebde] flex items-center justify-center gap-5 hover:opacity-90 transition-all active:scale-[0.98] group disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <div className="flex items-center gap-1 font-semibold text-[16px]">
-                      <span className="text-white">
-                        {txBusy ? "Processing..." : "Deposit wBTC"}
-                      </span>
-                      <span className="text-[#b1a995]">to start earning</span>
+                      <button
+                        type="button"
+                        onClick={handleDeposit}
+                        disabled={txBusy || !addresses.vault || !addresses.wbtc}
+                        className="w-full bg-[#201909] h-[64px] rounded-[12px] shadow-[0px_10px_15px_-3px_#f2ebde,0px_4px_6px_-4px_#f2ebde] flex items-center justify-center gap-5 hover:opacity-90 transition-all active:scale-[0.98] group disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <div className="flex items-center gap-1 font-semibold text-[16px]">
+                          <span className="text-white">
+                            {txBusy ? "Processing..." : "Deposit wBTC"}
+                          </span>
+                          <span className="text-[#b1a995]">to start earning</span>
+                        </div>
+                        <svg className="size-5" fill="none" viewBox="0 0 20 20">
+                          <path
+                            d="M4.16667 10H15.8333"
+                            stroke="white"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.66667"
+                          />
+                          <path
+                            d="M10 4.16667L15.8333 10L10 15.8333"
+                            stroke="white"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.66667"
+                          />
+                        </svg>
+                      </button>
+                      {txStatus ? (
+                        <p className="text-[12px] font-medium text-[#645c4a]">
+                          {txStatus}
+                        </p>
+                      ) : null}
+                      {txError ? (
+                        <p className="text-[12px] font-medium text-rose-700">
+                          {txError}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <div className="rounded-[12px] border border-[#f2ebde] bg-white/70 p-5 space-y-2">
+                      <p className="text-[15px] font-semibold text-[#201909]">
+                        On-chain deposits for this bundle are coming soon.
+                      </p>
+                      <p className="text-[13px] text-[#756c57]">
+                        You can still review historical price behavior and projected outcomes below.
+                      </p>
                     </div>
-                    <svg className="size-5" fill="none" viewBox="0 0 20 20">
-                      <path
-                        d="M4.16667 10H15.8333"
-                        stroke="white"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.66667"
-                      />
-                      <path
-                        d="M10 4.16667L15.8333 10L10 15.8333"
-                        stroke="white"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.66667"
-                      />
-                    </svg>
-                  </button>
-                  {txStatus ? (
-                    <p className="text-[12px] font-medium text-[#645c4a]">
-                      {txStatus}
-                    </p>
-                  ) : null}
-                  {txError ? (
-                    <p className="text-[12px] font-medium text-rose-700">
-                      {txError}
-                    </p>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -584,7 +728,12 @@ export default function ETFsPage() {
                 <div className="w-full">
                   <button
                     type="button"
-                    onClick={() => setShowChartDetails((value) => !value)}
+                    onClick={() =>
+                      setShowChartDetailsByBundle((prev) => ({
+                        ...prev,
+                        [bundle.id]: !prev[bundle.id],
+                      }))
+                    }
                     className="text-[#CAA34A] text-[14px] font-medium flex items-center gap-1 hover:text-[#b88c35] transition-colors"
                   >
                     <span>Details</span>
@@ -611,7 +760,7 @@ export default function ETFsPage() {
                         How much would you earn if you invested earlier?
                       </h2>
                       <p className="text-[#756c57] text-[14px]">
-                        Projection based on the historical Bitcoin market performance.
+                        {activeBundle.chartSourceLabel}
                       </p>
                     </div>
 
@@ -622,7 +771,12 @@ export default function ETFsPage() {
                           <button
                             key={frame.id}
                             type="button"
-                            onClick={() => setTimeframe(frame.id)}
+                            onClick={() =>
+                              setTimeframeByBundle((prev) => ({
+                                ...prev,
+                                [bundle.id]: frame.id,
+                              }))
+                            }
                             className={`w-[68px] h-[24px] flex items-center justify-center rounded-[12px] text-[11px] font-semibold transition-all ${
                               isActive
                                 ? "bg-white text-[#201909] shadow-sm border border-[#f2ebde]"
@@ -640,7 +794,9 @@ export default function ETFsPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <div className="bg-[#b1a995] rounded-full size-[8px]" />
                           <p className="text-[13px] text-[#756c57] font-medium">
-                            Missed potential earnings only holding BTC
+                            {activeBundle.id === "core"
+                              ? "Missed potential earnings only holding BTC"
+                              : "Missed potential earnings only holding this bundle"}
                           </p>
                         </div>
                         <p className="text-[20px] font-semibold text-[#201909] px-4">
@@ -653,7 +809,9 @@ export default function ETFsPage() {
                         <div className="flex items-center gap-2 mb-1">
                           <div className="bg-[#009966] rounded-full size-[8px]" />
                           <p className="text-[13px] text-[#756c57] font-medium">
-                            Missed potential earnings with Stillwater
+                            {activeBundle.id === "core"
+                              ? "Missed potential earnings with Stillwater"
+                              : "Missed potential earnings with bundle APY"}
                           </p>
                         </div>
                         <p className="text-[20px] font-semibold text-[#009966] px-4">
@@ -666,9 +824,9 @@ export default function ETFsPage() {
 
                     <div className="h-[200px] w-full">
                       {chartState.data.length ? (
-                        <EarningsChart data={chartState.data} />
+                        <EarningsChart data={chartState.data} idPrefix={`earn-${bundle.id}`} />
                       ) : (
-                        <ChartPreview />
+                        <ChartPreview idPrefix={`preview-${bundle.id}`} />
                       )}
                     </div>
                     {chartError ? (
@@ -679,32 +837,75 @@ export default function ETFsPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <div className="bg-[#009966] rounded-full size-[8px]" />
                         <p className="text-[13px] text-[#756c57] font-medium">
-                          Overall core bundle size growth
+                          {activeBundle.growthLabel}
                         </p>
                       </div>
                       <p className="text-[20px] font-semibold text-[#009966] px-4">
-                        {bundleGrowthChartState.growthPct != null
-                          ? formatSignedPercent(bundleGrowthChartState.growthPct)
+                        {growthChartState.growthPct != null
+                          ? formatSignedPercent(growthChartState.growthPct)
                           : "No data yet"}
                       </p>
                       <div className="h-[200px] w-full mt-2">
-                        {bundleGrowthChartState.data.length ? (
-                          <BundleGrowthChart data={bundleGrowthChartState.data} />
+                        {growthChartState.data.length ? (
+                          <BundleGrowthChart
+                            data={growthChartState.data}
+                            idPrefix={`growth-${bundle.id}`}
+                          />
                         ) : (
-                          <EmptyChart message="No data yet." />
+                          <EmptyChart
+                            message={
+                              activeBundle.growthSource === "onchain"
+                                ? "No on-chain data yet."
+                                : "No historical data yet."
+                            }
+                          />
                         )}
                       </div>
-                      <img
-                        src="/assets/core_bundle_flow.png"
-                        alt="Core bundle flow"
-                        className="mt-4 w-full rounded-[10px] border border-[#f2ebde] bg-white/40"
-                      />
+                      {activeBundle.id === "core" ? (
+                        <img
+                          src="/assets/core_bundle_flow.png"
+                          alt="Core bundle flow"
+                          className="mt-4 w-full rounded-[10px] border border-[#f2ebde] bg-white/40"
+                        />
+                      ) : null}
                     </div>
                   </>
                 ) : null}
               </div>
             </div>
           </section>
+            );
+          })}
+
+          <div className="flex flex-col gap-3">
+            {COMING_SOON_BUNDLES.map((bundle) => (
+              <div
+                key={bundle.id}
+                className="w-full rounded-[14px] border border-[#f2ebde] bg-[#f7f3eb] p-4 md:p-5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-[20px] font-semibold tracking-[-0.5px] text-[#201909]">
+                    {bundle.title}
+                  </h3>
+                  <span className="h-7 px-3 rounded-full border border-[#dfd2b9] text-[#756c57] text-[11px] font-semibold uppercase tracking-[0.08em] inline-flex items-center">
+                    Coming soon
+                  </span>
+                </div>
+                <p className="mt-2 text-[14px] text-[#756c57] leading-[1.4]">
+                  {bundle.description}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {bundle.assetItems.map((asset) => (
+                    <TokenPill
+                      key={`${bundle.id}-${asset.label}`}
+                      label={asset.label}
+                      img={asset.img}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </main>
 
@@ -929,7 +1130,8 @@ function YieldIcon() {
   );
 }
 
-function ChartPreview() {
+function ChartPreview({ idPrefix = "preview" }) {
+  const fillId = `${idPrefix}-stillwater-fill`;
   return (
     <svg
       viewBox="0 0 600 200"
@@ -938,7 +1140,7 @@ function ChartPreview() {
       aria-label="Projection chart"
     >
       <defs>
-        <linearGradient id="stillwater-fill" x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={fillId} x1="0" x2="0" y1="0" y2="1">
           <stop offset="5%" stopColor="#009966" stopOpacity="0.15" />
           <stop offset="95%" stopColor="#009966" stopOpacity="0" />
         </linearGradient>
@@ -991,24 +1193,25 @@ function ChartPreview() {
       />
       <path
         d="M0 190 L40 189 L80 188 L120 186 L160 183 L200 178 L240 172 L280 164 L320 152 L360 138 L400 122 L440 106 L480 92 L520 78 L560 60 L600 48 L600 200 L0 200 Z"
-        fill="url(#stillwater-fill)"
+        fill={`url(#${fillId})`}
       />
     </svg>
   );
 }
 
-function EarningsChart({ data }) {
+function EarningsChart({ data, idPrefix = "earnings" }) {
   const values = data
     .flatMap((point) => [point.btc, point.stillwater])
     .filter((value) => Number.isFinite(value));
   const minValue = values.length ? Math.min(...values, 0) : 0;
   const maxValue = values.length ? Math.max(...values, 0) : 0;
+  const areaId = `${idPrefix}-stillwater-area`;
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
         <defs>
-          <linearGradient id="stillwater-area" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#009966" stopOpacity="0.15" />
             <stop offset="95%" stopColor="#009966" stopOpacity="0" />
           </linearGradient>
@@ -1025,7 +1228,7 @@ function EarningsChart({ data }) {
           dataKey="stillwater"
           stroke="#009966"
           strokeWidth={2.5}
-          fill="url(#stillwater-area)"
+          fill={`url(#${areaId})`}
           fillOpacity={1}
           dot={false}
           baseValue={0}
@@ -1044,18 +1247,19 @@ function EarningsChart({ data }) {
   );
 }
 
-function BundleGrowthChart({ data }) {
+function BundleGrowthChart({ data, idPrefix = "growth" }) {
   const values = data
     .map((point) => point.growth)
     .filter((value) => Number.isFinite(value));
   const minValue = values.length ? Math.min(...values, 0) : 0;
   const maxValue = values.length ? Math.max(...values, 0) : 0;
+  const areaId = `${idPrefix}-bundle-growth-area`;
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
         <defs>
-          <linearGradient id="bundle-growth-area" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="5%" stopColor="#009966" stopOpacity="0.15" />
             <stop offset="95%" stopColor="#009966" stopOpacity="0" />
           </linearGradient>
@@ -1072,7 +1276,7 @@ function BundleGrowthChart({ data }) {
           dataKey="growth"
           stroke="#009966"
           strokeWidth={2.5}
-          fill="url(#bundle-growth-area)"
+          fill={`url(#${areaId})`}
           fillOpacity={1}
           dot={false}
           baseValue={0}
@@ -1094,6 +1298,28 @@ function EmptyChart({ message = "No data yet." }) {
 function buildValueSeries(prices, initial) {
   const start = prices[0] || 1;
   return prices.map((price) => Number((initial * (price / start)).toFixed(2)));
+}
+
+function buildEqualWeightSeries(seriesList, initial) {
+  if (!Array.isArray(seriesList) || seriesList.length === 0) return [];
+  const minLen = Math.min(...seriesList.map((series) => series?.length || 0));
+  if (!Number.isFinite(minLen) || minLen < 2) return [];
+  const aligned = seriesList.map((series) => series.slice(-minLen));
+  return Array.from({ length: minLen }, (_, index) => {
+    let ratioSum = 0;
+    let count = 0;
+    for (const series of aligned) {
+      const start = series[0];
+      const point = series[index];
+      if (!Number.isFinite(start) || start <= 0 || !Number.isFinite(point)) {
+        continue;
+      }
+      ratioSum += point / start;
+      count += 1;
+    }
+    if (count === 0) return initial;
+    return Number((initial * (ratioSum / count)).toFixed(2));
+  });
 }
 
 function buildCompoundingSeries(prices, initial, apy) {

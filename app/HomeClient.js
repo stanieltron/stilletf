@@ -87,7 +87,7 @@ export default function HomeClient() {
 
               <div className="w-full flex flex-col gap-2">
                 <div className="w-full grid md:grid-cols-3 gap-2">
-                  <div className="bundle-card bundle-card-muted h-[200px]">
+                  <Link href="/etfs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-header">
                       <div className="bundle-title-row">
                         <div className="bundle-title">Crypto Bundle</div>
@@ -105,9 +105,9 @@ export default function HomeClient() {
                       <TokenPill label="ethereum" img={imgTokenEth} />
                       <TokenPill label="usdt" img={imgTokenUsdt} />
                     </div>
-                  </div>
+                  </Link>
 
-                  <div className="bundle-card bundle-card-core h-[200px]">
+                  <Link href="/etfs" className="bundle-card bundle-card-core h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-spotlight">
                       <div className="bundle-spotlight-inner">
                         <img
@@ -132,9 +132,9 @@ export default function HomeClient() {
                     <div className="bundle-tokens bundle-core-content">
                       <TokenPill label="bitcoin" img={imgTokenBtc} />
                     </div>
-                  </div>
+                  </Link>
 
-                  <div className="bundle-card bundle-card-muted h-[200px]">
+                  <Link href="/etfs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-header">
                       <div className="bundle-title-row">
                         <div className="bundle-title">Flagship Bundle</div>
@@ -153,7 +153,7 @@ export default function HomeClient() {
                       <TokenPill label="s&p 500" img={imgTokenSp500} />
                       <TokenPill label="gold" img={imgTokenGold} />
                     </div>
-                  </div>
+                  </Link>
                 </div>
 
                 <div className="w-full">

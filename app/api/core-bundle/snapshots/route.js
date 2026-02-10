@@ -137,6 +137,12 @@ export async function POST(req) {
       );
     }
 
+    console.log("[core-bundle] ingest started", {
+      at: new Date().toISOString(),
+      chainId,
+      vaultAddress,
+    });
+
     const provider = new JsonRpcProvider(rpcUrl);
     const vault = new Contract(vaultAddress, VAULT_ABI, provider);
 
@@ -172,6 +178,22 @@ export async function POST(req) {
         : 0;
     const growthPct = asDecimalString(growthPctNumber, 8);
 
+    console.log("[core-bundle] on-chain snapshot fetched", {
+      at: new Date().toISOString(),
+      chainId,
+      rpcChainId: network.chainId?.toString?.() || String(network.chainId || ""),
+      vaultAddress,
+      blockNumber: String(blockNumberNow),
+      blockTimestamp: new Date(
+        (block?.timestamp || Math.floor(Date.now() / 1000)) * 1000
+      ).toISOString(),
+      vaultDecimals,
+      totalAssets,
+      totalSupply,
+      sharePrice,
+      growthPct,
+    });
+
     const snapshot = await prisma.coreBundleSnapshot.upsert({
       where: {
         chainId_vaultAddress_blockNumber: {
@@ -205,6 +227,19 @@ export async function POST(req) {
         sharePrice,
         growthPct,
       },
+    });
+
+    console.log("[core-bundle] snapshot stored", {
+      at: new Date().toISOString(),
+      id: snapshot.id,
+      chainId: snapshot.chainId,
+      vaultAddress: snapshot.vaultAddress,
+      blockNumber: snapshot.blockNumber?.toString?.() || String(snapshot.blockNumber),
+      totalAssets: snapshot.totalAssets,
+      totalSupply: snapshot.totalSupply,
+      sharePrice: snapshot.sharePrice,
+      growthPct: snapshot.growthPct,
+      createdAt: snapshot.createdAt?.toISOString?.() || String(snapshot.createdAt),
     });
 
     return Response.json({

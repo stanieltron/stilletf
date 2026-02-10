@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
+import Link from "next/link";
 import {
   Area,
   CartesianGrid,
@@ -479,6 +480,28 @@ function PageView({
       <Header />
       <main className="flex-1">
         <div className="max-w-6xl mx-auto px-6 pt-12 pb-28">
+          <div className="mb-5">
+            <Link
+              href="/ETFs"
+              className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[#201909] hover:opacity-70 transition-opacity"
+            >
+              <svg
+                aria-hidden="true"
+                className="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <path
+                  d="M15 6L9 12L15 18"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span>Back to ETFs</span>
+            </Link>
+          </div>
           <section className="bg-[#fdfbf9] rounded-[24px] border border-[#e2dacd] shadow-sm p-5 md:p-7">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
