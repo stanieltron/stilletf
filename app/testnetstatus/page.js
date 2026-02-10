@@ -19,22 +19,6 @@ const ENV_ADDR = {
 };
 const DEFAULT_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || "11155111";
 
-function normalizeAddresses(src = {}) {
-  return {
-    vault: src.vault,
-    strategy: src.strategy,
-    fluid: src.fluid,
-    wbtc: src.wbtc,
-    usdc: src.usdc,
-    weth: src.weth,
-    steth: src.steth || src.stEth,
-    wsteth: src.wsteth || src.wstEth,
-    pool: src.pool,
-    oracle: src.oracle,
-    router: src.router,
-  };
-}
-
 const ERC20_ABI = [
   "function name() view returns (string)",
   "function symbol() view returns (string)",
@@ -126,7 +110,7 @@ export default function TestnetStatusPage() {
   const [err, setErr] = useState("");
   const [data, setData] = useState(null);
   const [diagnostics, setDiagnostics] = useState({});
-  const [addresses, setAddresses] = useState(ENV_ADDR);
+  const addresses = ENV_ADDR;
   const [walletAddress, setWalletAddress] = useState("");
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
@@ -152,28 +136,6 @@ export default function TestnetStatusPage() {
       addresses.oracle,
     [addresses, provider]
   );
-
-  useEffect(() => {
-    // Try loading cached deployment addresses; fall back to env on failure.
-    const loadConfig = async () => {
-      try {
-        const res = await fetch(
-          `/api/testnetstatus-config?chainId=${DEFAULT_CHAIN_ID}`
-        );
-        if (res.ok) {
-          const json = await res.json();
-          // Merge to preserve any env overrides (router etc.)
-          setAddresses((prev) => ({
-            ...prev,
-            ...normalizeAddresses(json.addresses),
-          }));
-        }
-      } catch (e) {
-        console.error("config fetch failed", e);
-      }
-    };
-    loadConfig();
-  }, []);
 
   useEffect(() => {
     if (!ready) return;

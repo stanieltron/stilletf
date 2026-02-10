@@ -23,6 +23,10 @@ const DEFAULT_WBTC_DECIMALS = Number(
 );
 const REWARD_DECIMALS = Number(process.env.NEXT_PUBLIC_REWARD_DECIMALS || 6);
 const REWARD_SYMBOL = process.env.NEXT_PUBLIC_REWARD_SYMBOL || "USDC";
+const ENV_ADDRESSES = {
+  vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
+  wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
+};
 const TARGET_APY = 0.03;
 const INITIAL_CAPITAL = 1000;
 
@@ -103,22 +107,6 @@ export default function MyEarningsPage() {
   const actionBusy = actionState.phase !== "idle";
 
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const res = await fetch(
-          `/api/testnetstatus-config?chainId=${DEFAULT_CHAIN_ID}`
-        );
-        if (!res.ok) return;
-        const json = await res.json();
-        setAddresses({
-          vault: json?.addresses?.vault || "",
-          wbtc: json?.addresses?.wbtc || "",
-        });
-      } catch {
-        // no-op
-      }
-    };
-
     const loadPrices = async () => {
       try {
         const data = await fetchAssets();
@@ -129,7 +117,12 @@ export default function MyEarningsPage() {
       }
     };
 
-    loadConfig();
+    setAddresses(ENV_ADDRESSES);
+    if (!ENV_ADDRESSES.vault || !ENV_ADDRESSES.wbtc) {
+      setErr(
+        "Vault/WBTC address missing in env. Set NEXT_PUBLIC_STAKING_VAULT_ADDRESS and NEXT_PUBLIC_WBTC_ADDRESS."
+      );
+    }
     loadPrices();
   }, []);
 

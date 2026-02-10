@@ -13,6 +13,10 @@ const DEFAULT_WBTC_DECIMALS = Number(process.env.NEXT_PUBLIC_WBTC_DECIMALS || 8)
 const REWARD_DECIMALS = Number(process.env.NEXT_PUBLIC_REWARD_DECIMALS || 6);
 const REWARD_SYMBOL = process.env.NEXT_PUBLIC_REWARD_SYMBOL || "USDC";
 const TARGET_CHAIN_HEX = `0x${Number(DEFAULT_CHAIN_ID).toString(16)}`;
+const ENV_ADDRESSES = {
+  vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
+  wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
+};
 
 const STAKING_VAULT_ABI = [
   "function stake(uint256 amountUA) external returns (uint256)",
@@ -111,22 +115,12 @@ export default function BTCETFPage() {
   );
 
   useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const res = await fetch(`/api/testnetstatus-config?chainId=${DEFAULT_CHAIN_ID}`);
-        if (res.ok) {
-          const json = await res.json();
-          setAddresses((prev) => ({
-            ...prev,
-            vault: json.addresses?.vault || prev.vault,
-            wbtc: json.addresses?.wbtc || prev.wbtc,
-          }));
-        }
-      } catch (e) {
-        console.error("config fetch failed", e);
-      }
-    };
-    loadConfig();
+    setAddresses(ENV_ADDRESSES);
+    if (!ENV_ADDRESSES.vault || !ENV_ADDRESSES.wbtc) {
+      setErr(
+        "Vault/WBTC address missing in env. Set NEXT_PUBLIC_STAKING_VAULT_ADDRESS and NEXT_PUBLIC_WBTC_ADDRESS."
+      );
+    }
   }, []);
 
   useEffect(() => {

@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { Contract, JsonRpcProvider, formatUnits } from "ethers";
 import { prisma } from "../../../../lib/prisma";
 
@@ -26,19 +24,10 @@ function getRpcUrl() {
   );
 }
 
-function getConfiguredAddresses(chainId) {
-  const filePath = path.join(process.cwd(), "cache", "deployments", `${chainId}.json`);
-  let fileAddresses = {};
-  try {
-    const raw = fs.readFileSync(filePath, "utf8");
-    fileAddresses = JSON.parse(raw);
-  } catch {
-    // ignore and rely on env fallback
-  }
-
+function getConfiguredAddresses() {
   return {
-    vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || fileAddresses.vault || "",
-    wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || fileAddresses.wbtc || "",
+    vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
+    wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
   };
 }
 
@@ -86,11 +75,11 @@ export async function GET(req) {
       ? Math.min(Math.max(requestedLimit, 1), 2000)
       : 120;
 
-    const configured = getConfiguredAddresses(chainId);
+    const configured = getConfiguredAddresses();
     const vaultAddress = configured.vault;
     if (!vaultAddress) {
       return Response.json(
-        { error: "Vault address missing in deployment config." },
+        { error: "Vault address missing in env config." },
         { status: 400 }
       );
     }
@@ -139,11 +128,11 @@ export async function POST(req) {
       return Response.json({ error: "RPC URL missing." }, { status: 500 });
     }
 
-    const configured = getConfiguredAddresses(chainId);
+    const configured = getConfiguredAddresses();
     const vaultAddress = configured.vault;
     if (!vaultAddress) {
       return Response.json(
-        { error: "Vault address missing in deployment config." },
+        { error: "Vault address missing in env config." },
         { status: 400 }
       );
     }

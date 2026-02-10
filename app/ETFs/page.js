@@ -32,6 +32,8 @@ const TARGET_CHAIN_HEX = `0x${Number(DEFAULT_CHAIN_ID).toString(16)}`;
 const DEFAULT_WBTC_DECIMALS = Number(
   process.env.NEXT_PUBLIC_WBTC_DECIMALS || 8
 );
+const ENV_VAULT_ADDRESS = process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "";
+const ENV_WBTC_ADDRESS = process.env.NEXT_PUBLIC_WBTC_ADDRESS || "";
 
 const STAKING_VAULT_ABI = [
   "function stake(uint256 amountUA) external returns (uint256)",
@@ -44,18 +46,13 @@ const ERC20_ABI = [
   "function decimals() external view returns (uint8)",
 ];
 
-async function fetchVaultConfig() {
-  const response = await fetch(
-    `/api/testnetstatus-config?chainId=${DEFAULT_CHAIN_ID}`
-  );
-  if (!response.ok) {
-    throw new Error("Could not load deployment config.");
-  }
-  const json = await response.json();
-  const vault = json?.addresses?.vault;
-  const wbtc = json?.addresses?.wbtc;
+function getVaultConfig() {
+  const vault = ENV_VAULT_ADDRESS;
+  const wbtc = ENV_WBTC_ADDRESS;
   if (!vault || !wbtc) {
-    throw new Error("Vault or WBTC address missing in cache/deployments.");
+    throw new Error(
+      "Vault/WBTC address missing in env. Set NEXT_PUBLIC_STAKING_VAULT_ADDRESS and NEXT_PUBLIC_WBTC_ADDRESS."
+    );
   }
   return { vault, wbtc };
 }
@@ -146,13 +143,13 @@ export default function ETFsPage() {
 
     async function initializeDepositConfig() {
       try {
-        const nextAddresses = await fetchVaultConfig();
+        const nextAddresses = getVaultConfig();
         if (!alive) return;
         setAddresses(nextAddresses);
       } catch (error) {
         console.error("failed loading vault config", error);
         if (!alive) return;
-        setTxError(error?.message || "Failed to load vault deployment config.");
+        setTxError(error?.message || "Failed to load vault/token config.");
       }
     }
 
@@ -237,10 +234,10 @@ export default function ETFsPage() {
       setTxBusy(true);
       setTxPhase("pending");
       setTxError("");
-      setTxStatus("Loading deployment addresses...");
+      setTxStatus("Loading contract addresses...");
 
       const nextAddresses =
-        addresses.vault && addresses.wbtc ? addresses : await fetchVaultConfig();
+        addresses.vault && addresses.wbtc ? addresses : getVaultConfig();
       setAddresses(nextAddresses);
 
       const accounts = await window.ethereum.request({

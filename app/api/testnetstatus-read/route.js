@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { Contract, JsonRpcProvider } from "ethers";
 
 const ERC20_ABI = [
@@ -82,28 +80,18 @@ export async function GET(req) {
     );
   }
 
-  const cfgPathJson = path.join(process.cwd(), "cache", "deployments", `${chainId}.json`);
-  let fileAddresses = {};
-  try {
-    const rawJson = fs.readFileSync(cfgPathJson, "utf8");
-    fileAddresses = JSON.parse(rawJson);
-  } catch (e) {
-    // ignore; we still merge env below
-  }
-
   const addresses = normalizeAddresses({
-    ...fileAddresses,
-    vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || fileAddresses.vault,
-    strategy: process.env.NEXT_PUBLIC_YIELD_STRATEGY_ADDRESS || fileAddresses.strategy,
-    fluid: process.env.NEXT_PUBLIC_FLUID_VAULT_ADDRESS || fileAddresses.fluid,
-    wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || fileAddresses.wbtc,
-    usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS || fileAddresses.usdc,
-    weth: process.env.NEXT_PUBLIC_WETH_ADDRESS || fileAddresses.weth,
-    steth: process.env.NEXT_PUBLIC_STETH_ADDRESS || fileAddresses.steth,
-    wsteth: process.env.NEXT_PUBLIC_WSTETH_ADDRESS || fileAddresses.wsteth,
-    pool: process.env.NEXT_PUBLIC_AAVE_POOL_ADDRESS || fileAddresses.pool,
-    oracle: process.env.NEXT_PUBLIC_AAVE_ORACLE_ADDRESS || fileAddresses.oracle,
-    router: process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS || fileAddresses.router,
+    vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
+    strategy: process.env.NEXT_PUBLIC_YIELD_STRATEGY_ADDRESS || "",
+    fluid: process.env.NEXT_PUBLIC_FLUID_VAULT_ADDRESS || "",
+    wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
+    usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS || "",
+    weth: process.env.NEXT_PUBLIC_WETH_ADDRESS || "",
+    steth: process.env.NEXT_PUBLIC_STETH_ADDRESS || "",
+    wsteth: process.env.NEXT_PUBLIC_WSTETH_ADDRESS || "",
+    pool: process.env.NEXT_PUBLIC_AAVE_POOL_ADDRESS || "",
+    oracle: process.env.NEXT_PUBLIC_AAVE_ORACLE_ADDRESS || "",
+    router: process.env.NEXT_PUBLIC_UNISWAP_ROUTER_ADDRESS || "",
   });
 
   try {
