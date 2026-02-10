@@ -59,7 +59,7 @@ async function main() {
   const cronSecret =
     process.env.CORE_BUNDLE_INGEST_SECRET || process.env.CRON_SECRET || "";
 
-  const nextProcess = spawn(nextBin, ["start", "-p", port], {
+  const nextProcess = spawn(nextBin, ["start", "-H", "0.0.0.0", "-p", port], {
     stdio: "inherit",
     env: process.env,
     shell: false,
