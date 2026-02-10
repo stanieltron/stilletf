@@ -157,97 +157,120 @@ export async function POST(req) {
       ]);
 
     const block = await provider.getBlock(blockNumberNow);
+    const rpcChainId = network.chainId?.toString?.() || String(network.chainId || "");
+    const blockTimestamp = new Date(
+      (block?.timestamp || Math.floor(Date.now() / 1000)) * 1000
+    );
     const vaultDecimals = Number(decimalsRaw);
     const totalAssets = formatUnits(totalAssetsRaw, vaultDecimals);
     const totalSupply = formatUnits(totalSupplyRaw, vaultDecimals);
     const sharePrice = formatUnits(sharePriceRaw, vaultDecimals);
-
-    const first = await prisma.coreBundleSnapshot.findFirst({
-      where: { chainId, vaultAddress },
-      orderBy: { blockNumber: "asc" },
-      select: { totalAssets: true },
-    });
-    const baselineTotalAssets = first
-      ? Number.parseFloat(first.totalAssets)
-      : Number.parseFloat(totalAssets);
-    const currentTotalAssets = Number.parseFloat(totalAssets);
-    // Current vault implementation keeps sharePrice fixed at 1, so growth is tracked via totalAssets.
-    const growthPctNumber =
-      baselineTotalAssets > 0
-        ? ((currentTotalAssets - baselineTotalAssets) / baselineTotalAssets) * 100
-        : 0;
-    const growthPct = asDecimalString(growthPctNumber, 8);
-
-    console.log("[core-bundle] on-chain snapshot fetched", {
-      at: new Date().toISOString(),
+    const onChainSnapshot = {
       chainId,
-      rpcChainId: network.chainId?.toString?.() || String(network.chainId || ""),
+      rpcChainId,
       vaultAddress,
       blockNumber: String(blockNumberNow),
-      blockTimestamp: new Date(
-        (block?.timestamp || Math.floor(Date.now() / 1000)) * 1000
-      ).toISOString(),
+      blockTimestamp: blockTimestamp.toISOString(),
       vaultDecimals,
+      totalAssetsRaw: totalAssetsRaw.toString(),
+      totalSupplyRaw: totalSupplyRaw.toString(),
+      sharePriceRaw: sharePriceRaw.toString(),
       totalAssets,
       totalSupply,
       sharePrice,
-      growthPct,
+    };
+
+    console.log("[core-bundle] on-chain snapshot fetched (pre-db)", {
+      at: new Date().toISOString(),
+      ...onChainSnapshot,
     });
 
-    const snapshot = await prisma.coreBundleSnapshot.upsert({
-      where: {
-        chainId_vaultAddress_blockNumber: {
+    try {
+      const first = await prisma.coreBundleSnapshot.findFirst({
+        where: { chainId, vaultAddress },
+        orderBy: { blockNumber: "asc" },
+        select: { totalAssets: true },
+      });
+      const baselineTotalAssets = first
+        ? Number.parseFloat(first.totalAssets)
+        : Number.parseFloat(totalAssets);
+      const currentTotalAssets = Number.parseFloat(totalAssets);
+      // Current vault implementation keeps sharePrice fixed at 1, so growth is tracked via totalAssets.
+      const growthPctNumber =
+        baselineTotalAssets > 0
+          ? ((currentTotalAssets - baselineTotalAssets) / baselineTotalAssets) * 100
+          : 0;
+      const growthPct = asDecimalString(growthPctNumber, 8);
+
+      const snapshot = await prisma.coreBundleSnapshot.upsert({
+        where: {
+          chainId_vaultAddress_blockNumber: {
+            chainId,
+            vaultAddress,
+            blockNumber: BigInt(blockNumberNow),
+          },
+        },
+        create: {
           chainId,
           vaultAddress,
           blockNumber: BigInt(blockNumberNow),
+          blockTimestamp,
+          vaultDecimals,
+          totalAssetsRaw: totalAssetsRaw.toString(),
+          totalSupplyRaw: totalSupplyRaw.toString(),
+          sharePriceRaw: sharePriceRaw.toString(),
+          totalAssets,
+          totalSupply,
+          sharePrice,
+          growthPct,
         },
-      },
-      create: {
+        update: {
+          blockTimestamp,
+          vaultDecimals,
+          totalAssetsRaw: totalAssetsRaw.toString(),
+          totalSupplyRaw: totalSupplyRaw.toString(),
+          sharePriceRaw: sharePriceRaw.toString(),
+          totalAssets,
+          totalSupply,
+          sharePrice,
+          growthPct,
+        },
+      });
+
+      console.log("[core-bundle] snapshot stored", {
+        at: new Date().toISOString(),
+        id: snapshot.id,
+        chainId: snapshot.chainId,
+        vaultAddress: snapshot.vaultAddress,
+        blockNumber: snapshot.blockNumber?.toString?.() || String(snapshot.blockNumber),
+        totalAssets: snapshot.totalAssets,
+        totalSupply: snapshot.totalSupply,
+        sharePrice: snapshot.sharePrice,
+        growthPct: snapshot.growthPct,
+        createdAt: snapshot.createdAt?.toISOString?.() || String(snapshot.createdAt),
+      });
+
+      return Response.json({
+        ok: true,
         chainId,
-        vaultAddress,
-        blockNumber: BigInt(blockNumberNow),
-        blockTimestamp: new Date((block?.timestamp || Math.floor(Date.now() / 1000)) * 1000),
-        vaultDecimals,
-        totalAssetsRaw: totalAssetsRaw.toString(),
-        totalSupplyRaw: totalSupplyRaw.toString(),
-        sharePriceRaw: sharePriceRaw.toString(),
-        totalAssets,
-        totalSupply,
-        sharePrice,
-        growthPct,
-      },
-      update: {
-        blockTimestamp: new Date((block?.timestamp || Math.floor(Date.now() / 1000)) * 1000),
-        vaultDecimals,
-        totalAssetsRaw: totalAssetsRaw.toString(),
-        totalSupplyRaw: totalSupplyRaw.toString(),
-        sharePriceRaw: sharePriceRaw.toString(),
-        totalAssets,
-        totalSupply,
-        sharePrice,
-        growthPct,
-      },
-    });
-
-    console.log("[core-bundle] snapshot stored", {
-      at: new Date().toISOString(),
-      id: snapshot.id,
-      chainId: snapshot.chainId,
-      vaultAddress: snapshot.vaultAddress,
-      blockNumber: snapshot.blockNumber?.toString?.() || String(snapshot.blockNumber),
-      totalAssets: snapshot.totalAssets,
-      totalSupply: snapshot.totalSupply,
-      sharePrice: snapshot.sharePrice,
-      growthPct: snapshot.growthPct,
-      createdAt: snapshot.createdAt?.toISOString?.() || String(snapshot.createdAt),
-    });
-
-    return Response.json({
-      ok: true,
-      chainId,
-      rpcChainId: network.chainId?.toString?.() || String(network.chainId || ""),
-      snapshot: mapSnapshot(snapshot),
-    });
+        rpcChainId,
+        snapshot: mapSnapshot(snapshot),
+      });
+    } catch (dbError) {
+      console.error("[core-bundle] snapshot persistence failed", dbError);
+      return Response.json(
+        {
+          ok: false,
+          persisted: false,
+          chainId,
+          rpcChainId,
+          onChainSnapshot,
+          error: "Failed to persist snapshot.",
+          dbError: dbError?.message || "Unknown database error.",
+        },
+        { status: 503 }
+      );
+    }
   } catch (error) {
     console.error("core-bundle snapshot ingest failed", error);
     return Response.json(
