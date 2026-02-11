@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -133,12 +133,17 @@ export default function Header() {
     );
   }
 
+  function handleMenuSignOut() {
+    setMenuOpen(false);
+    void signOut();
+  }
+
   function renderWalletEntry() {
     if (!isWalletFirstRoute) {
       if (isAuthed) {
         return (
           <Link
-            href="/useretfs"
+            href="/leaderboard"
             className="h-10 px-5 inline-flex items-center justify-center border border-[#201909] text-[#201909] text-base font-medium rounded-3xl hover:bg-[#201909] hover:text-white transition-all active:scale-95"
           >
             My Portfolio
@@ -232,6 +237,15 @@ export default function Header() {
                 >
                   My earnings
                 </Link>
+                {isAuthed ? (
+                  <button
+                    type="button"
+                    onClick={handleMenuSignOut}
+                    className="mt-1 block w-full text-left rounded-lg px-3 py-2 text-sm font-medium text-[#201909] hover:bg-[#f7f3eb] transition-colors"
+                  >
+                    Sign out
+                  </button>
+                ) : null}
               </div>
             )}
           </div>

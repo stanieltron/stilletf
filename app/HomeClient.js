@@ -156,7 +156,7 @@ export default function HomeClient() {
                   </Link>
                 </div>
 
-                <div className="w-full">
+                <div id="builder" className="w-full">
                   <div className="launch-card w-full">
                     <div className="launch-stack">
                       <div className="launch-row">
@@ -175,7 +175,7 @@ export default function HomeClient() {
                               </p>
                             </div>
                           </div>
-                        <Link href="/useretfs" className="launch-link">
+                        <Link href="/leaderboard" className="launch-link">
                           Explore Leaderboard
                         </Link>
                         </div>

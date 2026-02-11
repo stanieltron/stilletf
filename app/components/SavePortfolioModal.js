@@ -63,8 +63,8 @@ export default function SavePortfolioModal({
       const url =
         result?.url ||
         (typeof window !== "undefined"
-          ? `${window.location.origin}/useretfs/${id}`
-          : `/useretfs/${id}`);
+          ? `${window.location.origin}/leaderboard/${id}`
+          : `/leaderboard/${id}`);
       setSaved({ id, url });
       setShareUrl(url);
       setStep("share");

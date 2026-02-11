@@ -400,10 +400,17 @@ export default function BuilderSection({ keepAssets = true, embedded = false }) 
                           <button
                             type="button"
                             onClick={handleFirstYieldActivate}
-                            className="relative cta-btn cta-btn-sm cta-blue text-[10px] sm:text-xs shadow-[0_0_18px_rgba(37,99,235,0.9)]"
+                            className={[
+                              "relative inline-flex items-center justify-center gap-1",
+                              "h-9 sm:h-10 px-3 sm:px-4 rounded-3xl",
+                              "border border-[#dfd2b9] bg-white/70 text-[#201909]",
+                              "text-[10px] sm:text-xs font-semibold uppercase tracking-[0.04em]",
+                              "hover:bg-white hover:border-[#cdbb97] transition-all active:scale-[0.98]",
+                              "shadow-[0_8px_20px_rgba(242,197,95,0.4)]",
+                            ].join(" ")}
                           >
                             <span
-                              className="pointer-events-none absolute inset-[-4px] rounded-none border border-blue-400/70 animate-ping"
+                              className="pointer-events-none absolute inset-[-4px] rounded-3xl border border-[#f2c55f] opacity-80 animate-ping"
                               aria-hidden="true"
                             />
                             <span className="relative flex items-center gap-1">

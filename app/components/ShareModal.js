@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as htmlToImage from "html-to-image";
 import ChartBuilder from "./ChartBuilder";
 import MetricsBuilder from "./MetricsBuilder";
@@ -23,6 +23,7 @@ export default function ShareModal({
   const [error, setError] = useState(null);
   const [sharing, setSharing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const CAPTURE_SAFE_MARGIN = 32;
 
   const shareUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
   const shareText = "I created this portfolio on Stillwater - can you do better?";
@@ -38,6 +39,36 @@ export default function ShareModal({
   const shareQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
     shareUrl
   )}`;
+  const compositionItems = useMemo(() => {
+    const rows = (assets || [])
+      .map((asset, index) => ({
+        asset,
+        weight: Number(weights?.[index]) || 0,
+      }))
+      .filter((item) => item.weight > 0);
+
+    const total = rows.reduce((sum, item) => sum + item.weight, 0);
+    return rows.map((item) => {
+      const meta = assetMeta?.[item.asset] || {};
+      const label =
+        meta.name ||
+        meta.symbol ||
+        meta.ticker ||
+        meta.shortName ||
+        item.asset;
+      const pct = total > 0 ? (item.weight / total) * 100 : 0;
+      return {
+        key: item.asset,
+        label,
+        pctLabel: `${pct.toFixed(1)}%`,
+      };
+    });
+  }, [assets, weights, assetMeta]);
+  const compositionVisibleItems = useMemo(
+    () => compositionItems.slice(0, 7),
+    [compositionItems]
+  );
+  const compositionHasMore = compositionItems.length > 7;
 
   const router = useRouter();
 
@@ -176,72 +207,119 @@ export default function ShareModal({
       style={{ width: "1200px", height: "675px", boxSizing: "border-box" }}
     >
       <div
-        className="w-full h-full grid"
+        className="w-full h-full"
         style={{
-          gridTemplateColumns: "repeat(4, 300px)",
-          gridTemplateRows: "300px 75px 300px",
+          padding: `${CAPTURE_SAFE_MARGIN}px`,
+          boxSizing: "border-box",
         }}
       >
-        <div className="flex items-center justify-center" style={{ padding: 10 }}>
-          <div className="flex items-center justify-center w-full h-full bg-white">
-            <div className="text-[44px] font-semibold tracking-[-0.04em] text-[#201909]">
-              stillwater
+        <div
+          className="w-full h-full grid"
+          style={{
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+            gridTemplateRows: "4fr 1fr 4fr",
+          }}
+        >
+          <div className="flex items-center justify-center" style={{ padding: 10 }}>
+            <div className="w-full h-full bg-white border border-[#f2ebde] rounded-[10px] px-3 pt-2 pb-2 flex flex-col">
+              <div className="text-center text-[30px] font-semibold tracking-[-0.03em] text-[#201909] leading-none">
+                stillwater
+              </div>
+              <div className="mt-3 text-center text-[10px] font-semibold tracking-[0.11em] uppercase text-[#756c57]">
+                composition
+              </div>
+
+              <div className="mt-2 flex-1 min-h-0">
+                {compositionVisibleItems.length ? (
+                  <div
+                    className="grid gap-x-3 gap-y-1 content-start"
+                    style={{
+                      gridTemplateColumns: `repeat(${
+                        compositionVisibleItems.length > 5 ? 2 : 1
+                      }, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {compositionVisibleItems.map((item, index) => (
+                      <div
+                        key={`${item.key}-${index}`}
+                        className="min-w-0 flex items-center justify-between gap-2 leading-tight"
+                      >
+                        <span className="truncate text-[12px] font-semibold text-[#201909]">
+                          {item.label}
+                        </span>
+                        <span className="shrink-0 text-[11px] text-[#756c57]">
+                          {item.pctLabel}
+                        </span>
+                      </div>
+                    ))}
+                    {compositionHasMore && (
+                      <div className="text-[12px] font-semibold text-[#756c57] leading-tight">
+                        ...
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-[11px] text-[#756c57] text-center">
+                    Add assets to show composition
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div
-          className="flex items-center justify-center"
-          style={{ gridColumn: "2 / span 3", gridRow: "1 / span 1", padding: 10 }}
-        >
-          <div className="w-full h-full bg-white flex items-center justify-center">
-            <ChartBuilder
-              assets={assets}
-              weights={weights}
-              showYield={showYield}
-              size="l"
-              fixed
-              width={880}
-              height={280}
-              animated={false}
-              yieldOnly={true}
-              onReady={() => setChartReady(true)}
-              legendOff={true}
+          <div
+            className="flex items-center justify-center"
+            style={{ gridColumn: "2 / span 3", gridRow: "1 / span 1", padding: 10 }}
+          >
+            <div className="w-full h-full bg-white flex items-center justify-center">
+              <ChartBuilder
+                assets={assets}
+                weights={weights}
+                showYield={showYield}
+                size="l"
+                fixed
+                width={880}
+                height={280}
+                animated={false}
+                yieldOnly={true}
+                onReady={() => setChartReady(true)}
+                legendOff={true}
+              />
+            </div>
+          </div>
+
+          <div
+            className="flex items-center justify-center text-center"
+            style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
+          >
+            <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
+              {shareText}
+            </p>
+          </div>
+
+          <div
+            className="flex flex-col items-center justify-center"
+            style={{ gridColumn: "1 / span 1", gridRow: "3 / span 1", padding: 10 }}
+          >
+            <img
+              src={shareQrUrl}
+              alt={`${shareHost} share QR`}
+              className="w-full h-full object-contain"
             />
           </div>
-        </div>
 
-        <div
-          className="flex items-center justify-center text-center"
-          style={{ gridColumn: "1 / span 4", gridRow: "2 / span 1", padding: 10 }}
-        >
-          <p className="w-full text-[22px] font-semibold leading-snug text-black m-0">
-            {shareText}
-          </p>
-        </div>
-
-        <div
-          className="flex flex-col items-center justify-center"
-          style={{ gridColumn: "1 / span 1", gridRow: "3 / span 1", padding: 10 }}
-        >
-          <img
-            src={shareQrUrl}
-            alt={`${shareHost} share QR`}
-            className="w-full h-full object-contain"
-          />
-        </div>
-
-        <div
-          className="flex"
-          style={{ gridColumn: "2 / span 3", gridRow: "3 / span 1", padding: 10 }}
-        >
-          <div className="w-full h-full text-[14px] text-black bg-white">
-            <MetricsBuilder
-              assets={assets}
-              weights={weights}
-              showYield={showYield}
-              assetMeta={assetMeta}
-            />
+          <div
+            className="flex"
+            style={{ gridColumn: "2 / span 3", gridRow: "3 / span 1", padding: 10 }}
+          >
+            <div className="w-full h-full text-[14px] text-black bg-white">
+              <MetricsBuilder
+                assets={assets}
+                weights={weights}
+                showYield={showYield}
+                assetMeta={assetMeta}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -251,36 +329,36 @@ export default function ShareModal({
   if (!open) return null;
 
   return (
-    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-3 sm:px-4">
+    <section className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
       <div
-        className="bg-black text-white shadow-xl w-full flex flex-col border border-[var(--border)] overflow-y-auto"
+        className="w-full flex flex-col overflow-y-auto rounded-2xl border border-[rgba(255,255,255,0.14)] bg-[#1c1a15] text-white shadow-[0_24px_64px_rgba(0,0,0,0.45)]"
         style={{
-          fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)",
           maxWidth: 560,
           maxHeight: "90vh",
         }}
       >
-        <div className="px-4 pt-4">
+        <div className="px-6 pt-6">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-2xl sm:text-3xl font-semibold leading-snug m-0">
-              Share your portfolio
-            </h2>
+            <div>
+              <h2 className="text-[24px] font-semibold leading-none m-0">
+                Share your portfolio
+              </h2>
+            </div>
             <button
               type="button"
               onClick={onClose}
-              className="cta-btn cta-white"
+              className="h-10 w-10 rounded-full border border-[rgba(255,255,255,0.2)] text-white/70 text-[24px] leading-none hover:text-white hover:border-[rgba(255,255,255,0.35)] transition-colors"
               aria-label="Close"
               title="Close"
-              style={{ height: "40px", minHeight: "40px", width: "40px", padding: 0 }}
             >
-              X
+              x
             </button>
           </div>
         </div>
 
-        <div className="px-4 pb-4 pt-5 flex flex-col items-center gap-4">
+        <div className="px-6 pb-6 pt-4 flex flex-col items-center gap-4">
           <div
-            className="border border-[var(--border)] bg-white overflow-hidden flex items-center justify-center w-full"
+            className="w-full rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] overflow-hidden flex items-center justify-center"
             style={{ aspectRatio: "16 / 9" }}
           >
             {imgDataUrl ? (
@@ -290,7 +368,7 @@ export default function ShareModal({
                 className="w-full h-full object-contain"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-base text-black px-4 text-center">
+              <div className="w-full h-full flex items-center justify-center text-base text-white/80 px-4 text-center">
                 {error ? "Could not generate preview." : "Preparing preview..."}
               </div>
             )}
@@ -301,7 +379,7 @@ export default function ShareModal({
               type="button"
               onClick={handleShareNative}
               disabled={!imgDataUrl || sharing}
-              className="cta-btn cta-black w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-11 w-full rounded-xl bg-[#f1c255] text-[#201909] text-sm font-semibold hover:bg-[#eab444] transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {sharing ? "Opening share..." : "Share"}
             </button>
@@ -311,14 +389,14 @@ export default function ShareModal({
                 type="button"
                 onClick={handleDownload}
                 disabled={!imgDataUrl}
-                className="cta-btn cta-black flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-11 flex-1 rounded-xl bg-[#f1c255] text-[#201909] text-sm font-semibold hover:bg-[#eab444] transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Download
               </button>
               <button
                 type="button"
                 onClick={openSignIn}
-                className="cta-btn cta-btn-sm cta-grey flex-1 opacity-60"
+                className="h-11 flex-1 rounded-xl border border-[rgba(255,255,255,0.2)] bg-transparent text-white/80 text-sm font-semibold hover:text-white hover:border-[rgba(255,255,255,0.35)] transition-colors active:scale-[0.98]"
                 aria-label="Share on X (sign in required)"
                 title="Share on X (sign in required)"
               >
@@ -327,7 +405,7 @@ export default function ShareModal({
               <button
                 type="button"
                 onClick={openSignIn}
-                className="cta-btn cta-btn-sm cta-grey flex-1 opacity-60"
+                className="h-11 flex-1 rounded-xl border border-[rgba(255,255,255,0.2)] bg-transparent text-white/80 text-sm font-semibold hover:text-white hover:border-[rgba(255,255,255,0.35)] transition-colors active:scale-[0.98]"
                 aria-label="Share on Facebook (sign in required)"
                 title="Share on Facebook (sign in required)"
               >
@@ -337,10 +415,10 @@ export default function ShareModal({
           )}
 
           {!!error && (
-            <div className="text-sm text-red-400 w-full">{error}</div>
+            <div className="text-sm text-rose-300 w-full">{error}</div>
           )}
           {!imgDataUrl && !error && (
-            <div className="text-sm text-[var(--muted)] w-full">
+            <div className="text-sm text-white/70 w-full">
               {generating ? "Generating preview..." : ""}
             </div>
           )}
