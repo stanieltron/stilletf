@@ -69,7 +69,7 @@ export default function HomeClient() {
                 </p>
                 <div className="flex flex-col items-center gap-12 pt-4">
                   <Link
-                    href="/ETFs"
+                    href="/etfs"
                     className="bg-[#201909] text-white px-8 py-4 rounded-[34px] flex items-center gap-3 text-lg font-semibold hover:opacity-90 transition-all active:scale-95 shadow-xl shadow-[#f2ebde]"
                   >
                     Start earning
@@ -87,7 +87,7 @@ export default function HomeClient() {
 
               <div className="w-full flex flex-col gap-2">
                 <div className="w-full grid md:grid-cols-3 gap-2">
-                  <Link href="/ETFs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
+                  <Link href="/etfs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-header">
                       <div className="bundle-title-row">
                         <div className="bundle-title">Crypto Bundle</div>
@@ -107,7 +107,7 @@ export default function HomeClient() {
                     </div>
                   </Link>
 
-                  <Link href="/ETFs" className="bundle-card bundle-card-core h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
+                  <Link href="/etfs" className="bundle-card bundle-card-core h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-spotlight">
                       <div className="bundle-spotlight-inner">
                         <img
@@ -134,7 +134,7 @@ export default function HomeClient() {
                     </div>
                   </Link>
 
-                  <Link href="/ETFs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
+                  <Link href="/etfs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-header">
                       <div className="bundle-title-row">
                         <div className="bundle-title">Flagship Bundle</div>

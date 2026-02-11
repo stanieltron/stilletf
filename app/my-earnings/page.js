@@ -284,12 +284,13 @@ export default function MyEarningsPage() {
     confirmingLabel,
     successLabel,
     sendTx,
+    successPhase = "success",
   }) {
     setActionState({ phase: "signing", label: signingLabel });
     const tx = await sendTx();
     setActionState({ phase: "pending", label: confirmingLabel });
     await tx.wait();
-    setActionState({ phase: "success", label: successLabel });
+    setActionState({ phase: successPhase, label: successLabel });
   }
 
   async function handleSubmitAction() {
@@ -298,6 +299,7 @@ export default function MyEarningsPage() {
       setErr("Enter an amount greater than zero.");
       return;
     }
+    let completed = false;
     try {
       setErr("");
       const value = parseUnits(amount, wbtcDecimals);
@@ -312,6 +314,7 @@ export default function MyEarningsPage() {
             confirmingLabel: "Approval pending...",
             successLabel: "Approval completed.",
             sendTx: () => wbtc.approve(addresses.vault, value),
+            successPhase: "pending",
           });
           await sleep(350);
         }
@@ -332,15 +335,20 @@ export default function MyEarningsPage() {
       }
       setDialogOpen(false);
       await refresh();
+      completed = true;
     } catch (error) {
+      setActionState({ phase: "idle", label: "" });
       setErr(error?.shortMessage || error?.message || "Transaction failed.");
     } finally {
-      setTimeout(() => setActionState({ phase: "idle", label: "" }), 800);
+      if (completed) {
+        setTimeout(() => setActionState({ phase: "idle", label: "" }), 1200);
+      }
     }
   }
 
   async function claimEarnings() {
     if (!ready || actionBusy) return;
+    let completed = false;
     try {
       setErr("");
       await runTransactionStep({
@@ -350,10 +358,14 @@ export default function MyEarningsPage() {
         sendTx: () => vault.claim(),
       });
       await refresh();
+      completed = true;
     } catch (error) {
+      setActionState({ phase: "idle", label: "" });
       setErr(error?.shortMessage || error?.message || "Could not claim earnings.");
     } finally {
-      setTimeout(() => setActionState({ phase: "idle", label: "" }), 800);
+      if (completed) {
+        setTimeout(() => setActionState({ phase: "idle", label: "" }), 1200);
+      }
     }
   }
 
@@ -482,7 +494,7 @@ function PageView({
         <div className="max-w-6xl mx-auto px-6 pt-12 pb-28">
           <div className="mb-5">
             <Link
-              href="/ETFs"
+              href="/etfs"
               className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[#201909] hover:opacity-70 transition-opacity"
             >
               <svg
@@ -654,11 +666,6 @@ function PageView({
             </div>
 
             <div className="mt-5 text-[12px] text-[#9a9079]">Wallet balance: {walletBalanceDisplay} wBTC</div>
-            {actionBusy && !dialogOpen && (
-              <div className="mt-4">
-                <ActionStatus state={actionState} />
-              </div>
-            )}
           </section>
         </div>
 
@@ -693,7 +700,6 @@ function PageView({
                   MAX
                 </button>
               </div>
-              {actionBusy && <div className="text-[14px] text-white/80">{actionState.label}</div>}
               <div className="pt-2 flex justify-end gap-3">
                 <button onClick={() => setDialogOpen(false)} className="h-11 px-4 rounded-xl border border-[rgba(255,255,255,0.2)] text-white text-[14px]">Cancel</button>
                 <button onClick={handleSubmitAction} disabled={actionBusy || !ready} className="h-11 px-5 rounded-xl bg-[#f1c255] text-[#201909] text-[14px] font-semibold disabled:opacity-50">
@@ -705,6 +711,12 @@ function PageView({
         )}
       </main>
       <Footer />
+      {actionBusy && (
+        <TxPendingOverlay
+          phase={actionState.phase}
+          status={actionState.label}
+        />
+      )}
     </div>
   );
 }
@@ -732,19 +744,89 @@ function PerformanceChart({ data }) {
   );
 }
 
-function ActionStatus({ state }) {
-  if (!state || state.phase === "idle") return null;
-  const showSpinner = state.phase !== "success";
-  const tone =
-    state.phase === "success" ? "text-[#009966]" : "text-[#645c4a]";
+function TxPendingOverlay({ phase = "pending", status = "" }) {
+  if (phase === "success") {
+    return (
+      <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
+        <div className="flex flex-col items-center -mt-8">
+          <div className="h-40 w-40 rounded-full bg-[#bfead7] shadow-[0_22px_40px_rgba(16,185,129,0.22)] flex items-center justify-center">
+            <div className="h-16 w-16 rounded-full border-[6px] border-[#0b9b63] flex items-center justify-center">
+              <svg
+                className="h-9 w-9"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M6.5 12.5L10.3 16.3L17.5 9.1"
+                  stroke="#0b9b63"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.8"
+                />
+              </svg>
+            </div>
+          </div>
+          <p className="mt-12 text-[#17213a] text-[52px] leading-none font-semibold tracking-[-0.03em] text-center">
+            {status || "Transaction complete."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-[rgba(17,19,24,0.08)] bg-white/80 px-3 py-2 text-xs">
-      {showSpinner ? (
-        <span className="h-3 w-3 rounded-full border-2 border-[#201909] border-t-transparent animate-spin" />
-      ) : (
-        <span className="h-2 w-2 rounded-full bg-[#009966]" />
-      )}
-      <span className={tone}>{state.label}</span>
+    <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
+      <div className="flex flex-col items-center -mt-8">
+        <div className="relative h-44 w-44 flex items-center justify-center">
+          <span className="h-44 w-44 rounded-full border-[6px] border-[#d7dbe2]" />
+          <span
+            className="absolute h-44 w-44 rounded-full border-[6px] border-transparent border-t-[#2563eb] border-l-[#2563eb] animate-spin"
+            style={{ animationDuration: "1.4s" }}
+          />
+          <svg
+            className="absolute h-14 w-14 text-[#9fc0f2]"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M21 12a9 9 0 0 0-15.5-6.36L3 8"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.9"
+            />
+            <path
+              d="M3 3v5h5"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.9"
+            />
+            <path
+              d="M3 12a9 9 0 0 0 15.5 6.36L21 16"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.9"
+            />
+            <path
+              d="M16 16h5v5"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.9"
+            />
+          </svg>
+        </div>
+        <p className="mt-10 text-[#17213a] text-[30px] font-semibold tracking-[-0.02em] text-center">
+          {status || "Processing transaction..."}
+        </p>
+        <div className="mt-8 flex items-center gap-4">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb] animate-bounce [animation-delay:-0.2s]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb] animate-bounce [animation-delay:-0.1s]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#2563eb] animate-bounce" />
+        </div>
+      </div>
     </div>
   );
 }

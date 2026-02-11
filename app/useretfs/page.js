@@ -529,7 +529,7 @@ export default function UserETFsPage() {
                   {othersAll.length > 0 && (
                     <div className="mb-8">
                       <Link
-                        href="/ETFs"
+                        href="/etfs"
                         className="w-full inline-flex items-center justify-center px-6 py-3 border border-black bg-black text-white text-lg md:text-2xl font-semibold transition-transform duration-150 hover:-translate-y-1 hover:bg-white hover:text-black hover:shadow-md"
                       >
                         discover Sona ETFs and interact on testnet for additional rewards
@@ -585,4 +585,3 @@ export default function UserETFsPage() {
     </div>
   );
 }
-

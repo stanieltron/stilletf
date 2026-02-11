@@ -1,4 +1,4 @@
-// app/ETFs/page.js
+// app/etfs/page.js
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
