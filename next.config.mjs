@@ -4,6 +4,11 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        source: "/etfs",
+        destination: "/ETFs",
+        permanent: false,
+      },
+      {
         source: "/my-earnings.js",
         destination: "/my-earnings",
         permanent: false,
