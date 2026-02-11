@@ -58,33 +58,39 @@ const BUNDLES = [
     assetItems: [{ key: "asset1", label: "bitcoin", img: imgTokenBtc }],
     fixedApy: 0.03,
     chartSourceLabel: "Projection based on the historical Bitcoin market performance.",
-    growthLabel: "Overall core bundle size growth",
     growthSource: "onchain",
     isLiveOnChain: true,
   },
-];
-
-const COMING_SOON_BUNDLES = [
   {
     id: "crypto",
     title: "Crypto bundle",
     description: "Staples of the digital economy in one basket.",
     assetItems: [
-      { label: "bitcoin", img: imgTokenBtc },
-      { label: "ethereum", img: imgTokenEth },
-      { label: "usdt", img: imgTokenUsd },
+      { key: "asset1", label: "bitcoin", img: imgTokenBtc },
+      { key: "asset2", label: "ethereum", img: imgTokenEth },
+      { key: "asset11", label: "usdt", img: imgTokenUsd },
     ],
+    fixedApy: 0.07,
+    chartSourceLabel:
+      "Projection based on equal-weight historical performance of Bitcoin, Ethereum, and USDT.",
+    growthSource: "historical",
+    isLiveOnChain: false,
   },
   {
     id: "flagship",
     title: "Flagship bundle",
     description: "Best assets of this generation, combined.",
     assetItems: [
-      { label: "bitcoin", img: imgTokenBtc },
-      { label: "us treasuries", img: imgTokenTreasuries },
-      { label: "s&p 500", img: imgTokenSp500 },
-      { label: "gold", img: imgTokenGold },
+      { key: "asset1", label: "bitcoin", img: imgTokenBtc },
+      { key: "asset10", label: "us treasuries", img: imgTokenTreasuries },
+      { key: "asset3", label: "s&p 500", img: imgTokenSp500 },
+      { key: "asset7", label: "gold", img: imgTokenGold },
     ],
+    fixedApy: 0.055,
+    chartSourceLabel:
+      "Projection based on equal-weight historical performance of Bitcoin, US Treasuries, S&P 500, and Gold.",
+    growthSource: "historical",
+    isLiveOnChain: false,
   },
 ];
 
@@ -547,20 +553,31 @@ export default function ETFsPage() {
               baseEnd: null,
               yieldEnd: null,
             };
-            const growthChartState = bundleView.growthState || {
-              data: [],
-              growthPct: null,
-            };
+            const isInactiveBundle = !activeBundle.isLiveOnChain;
             const timeframe = bundleView.timeframe || "5y";
             const showChartDetails = !!showChartDetailsByBundle[bundle.id];
             return (
-          <section key={bundle.id} className="bg-[#fdfbf9] rounded-[20px] border border-[#f2ebde] p-4 md:p-8 shadow-sm mb-8">
+          <section
+            key={bundle.id}
+            className={`rounded-[20px] border p-4 md:p-8 shadow-sm mb-8 transition-colors ${
+              isInactiveBundle
+                ? "bg-[#f6f5f2] border-[#e8e1d1] opacity-90"
+                : "bg-[#fdfbf9] border-[#f2ebde]"
+            }`}
+          >
             <div className="flex flex-col md:flex-row justify-between gap-14 mb-8">
               <div className="flex-1 space-y-10 max-w-[560px]">
                 <div className="space-y-2 mb-[24px]">
-                  <h2 className="text-[40px] font-semibold tracking-[-1.28px] text-[#201909] leading-none">
-                    {activeBundle.title}
-                  </h2>
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-[40px] font-semibold tracking-[-1.28px] text-[#201909] leading-none">
+                      {activeBundle.title}
+                    </h2>
+                    {isInactiveBundle ? (
+                      <span className="h-7 px-3 rounded-full border border-[#d5d0c4] text-[#756c57] text-[11px] font-semibold uppercase tracking-[0.08em] inline-flex items-center">
+                        Coming soon
+                      </span>
+                    ) : null}
+                  </div>
                   <p className="text-base text-[#756c57] tracking-[-0.64px]">
                     {activeBundle.description}
                   </p>
@@ -832,43 +849,6 @@ export default function ETFsPage() {
                     {chartError ? (
                       <p className="text-xs text-[#b1a995]">{chartError}</p>
                     ) : null}
-
-                    <div className="w-full pt-4 border-t border-[#f2ebde]">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="bg-[#009966] rounded-full size-[8px]" />
-                        <p className="text-[13px] text-[#756c57] font-medium">
-                          {activeBundle.growthLabel}
-                        </p>
-                      </div>
-                      <p className="text-[20px] font-semibold text-[#009966] px-4">
-                        {growthChartState.growthPct != null
-                          ? formatSignedPercent(growthChartState.growthPct)
-                          : "No data yet"}
-                      </p>
-                      <div className="h-[200px] w-full mt-2">
-                        {growthChartState.data.length ? (
-                          <BundleGrowthChart
-                            data={growthChartState.data}
-                            idPrefix={`growth-${bundle.id}`}
-                          />
-                        ) : (
-                          <EmptyChart
-                            message={
-                              activeBundle.growthSource === "onchain"
-                                ? "No on-chain data yet."
-                                : "No historical data yet."
-                            }
-                          />
-                        )}
-                      </div>
-                      {activeBundle.id === "core" ? (
-                        <img
-                          src="/assets/core_bundle_flow.png"
-                          alt="Core bundle flow"
-                          className="mt-4 w-full rounded-[10px] border border-[#f2ebde] bg-white/40"
-                        />
-                      ) : null}
-                    </div>
                   </>
                 ) : null}
               </div>
@@ -877,35 +857,6 @@ export default function ETFsPage() {
             );
           })}
 
-          <div className="flex flex-col gap-3">
-            {COMING_SOON_BUNDLES.map((bundle) => (
-              <div
-                key={bundle.id}
-                className="w-full rounded-[14px] border border-[#f2ebde] bg-[#f7f3eb] p-4 md:p-5"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-[20px] font-semibold tracking-[-0.5px] text-[#201909]">
-                    {bundle.title}
-                  </h3>
-                  <span className="h-7 px-3 rounded-full border border-[#dfd2b9] text-[#756c57] text-[11px] font-semibold uppercase tracking-[0.08em] inline-flex items-center">
-                    Coming soon
-                  </span>
-                </div>
-                <p className="mt-2 text-[14px] text-[#756c57] leading-[1.4]">
-                  {bundle.description}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {bundle.assetItems.map((asset) => (
-                    <TokenPill
-                      key={`${bundle.id}-${asset.label}`}
-                      label={asset.label}
-                      img={asset.img}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </main>
 
@@ -1247,54 +1198,6 @@ function EarningsChart({ data, idPrefix = "earnings" }) {
   );
 }
 
-function BundleGrowthChart({ data, idPrefix = "growth" }) {
-  const values = data
-    .map((point) => point.growth)
-    .filter((value) => Number.isFinite(value));
-  const minValue = values.length ? Math.min(...values, 0) : 0;
-  const maxValue = values.length ? Math.max(...values, 0) : 0;
-  const areaId = `${idPrefix}-bundle-growth-area`;
-
-  return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#009966" stopOpacity="0.15" />
-            <stop offset="95%" stopColor="#009966" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <CartesianGrid
-          vertical={false}
-          strokeDasharray="3 3"
-          stroke="#F2EBDE"
-        />
-        <XAxis dataKey="i" hide />
-        <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
-        <Area
-          type="monotone"
-          dataKey="growth"
-          stroke="#009966"
-          strokeWidth={2.5}
-          fill={`url(#${areaId})`}
-          fillOpacity={1}
-          dot={false}
-          baseValue={0}
-          isAnimationActive={false}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
-  );
-}
-
-function EmptyChart({ message = "No data yet." }) {
-  return (
-    <div className="h-full w-full rounded-[12px] border border-[#f2ebde] bg-white/30 flex items-center justify-center text-[#9b917b] text-sm">
-      {message}
-    </div>
-  );
-}
-
 function buildValueSeries(prices, initial) {
   const start = prices[0] || 1;
   return prices.map((price) => Number((initial * (price / start)).toFixed(2)));
@@ -1432,9 +1335,4 @@ function formatMoney(value) {
 function formatPercent(value) {
   if (!Number.isFinite(value)) return "-";
   return `${value.toFixed(2)}%`;
-}
-
-function formatSignedPercent(value) {
-  if (!Number.isFinite(value)) return "-";
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }

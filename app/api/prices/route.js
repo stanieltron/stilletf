@@ -12,6 +12,7 @@ const COLORS = {
   asset8: "#6B5BD6", // blue-violet
   asset9: "#8B6FD6", // muted violet
   asset10: "#9F7AEA", // soft purple
+  asset11: "#A3A3A3", // neutral gray
 
 };
 
@@ -167,6 +168,11 @@ const BASE_ASSETS = {
       93.02, 95.32, 95.37, 96.07, 94.57, 95.77,
       94.9, 96.15, 96.46, 96.85, 97.5, 96.77
     ],
+  },
+  asset11: {
+    name: "USDT",
+    yearlyYield: 0,
+    prices: Array.from({ length: 60 }, () => 1),
   },
 };
 
