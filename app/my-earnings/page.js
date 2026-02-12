@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import Link from "next/link";
 import {
@@ -9,6 +9,7 @@ import {
   ComposedChart,
   Line,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -574,7 +575,7 @@ function PageView({
               </div>
             </div>
 
-            <div className="mt-7 bg-[#f7f3eb] rounded-[16px] border border-[#f2ebde] p-6">
+            <div className="mt-7 md:bg-[#f7f3eb] md:rounded-[16px] md:border md:border-[#f2ebde] md:p-6">
               <div className="flex flex-col md:flex-row justify-between items-start gap-5">
                 <div>
                   <p className="text-[#756c57] text-[16px] font-medium">My earnings</p>
@@ -608,7 +609,7 @@ function PageView({
 
               {showDetails && (
                 <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_280px]">
-                  <section className="bg-[#fbfaf7] rounded-[16px] border border-[#f2ebde] p-6">
+                  <section className="p-0 md:bg-[#fbfaf7] md:rounded-[16px] md:border md:border-[#f2ebde] md:p-6">
                     <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
                       <div>
                         <h3 className="font-semibold text-[#201909] text-[20px] tracking-[-0.02em]">Portfolio Performance</h3>
@@ -636,7 +637,7 @@ function PageView({
 
                     <div className="h-[240px] w-full">
                       {chartState.data.length ? (
-                        <PerformanceChart data={chartState.data} />
+                        <PerformanceChart data={chartState.data} timeframe={timeframe} />
                       ) : (
                         <ChartPlaceholder />
                       )}
@@ -721,26 +722,241 @@ function PageView({
   );
 }
 
-function PerformanceChart({ data }) {
+function PerformanceChart({ data, timeframe = "all" }) {
   const values = data.flatMap((point) => [point.btc, point.stillwater]).filter(Number.isFinite);
   const minValue = values.length ? Math.min(...values, 0) : 0;
   const maxValue = values.length ? Math.max(...values, 0) : 0;
+  const frameLabel = TIMEFRAMES.find((item) => item.id === timeframe)?.label || "ALL";
+  const chartWrapRef = useRef(null);
+  const [isTouchMode, setIsTouchMode] = useState(false);
+  const [pinnedTooltipState, setPinnedTooltipState] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 900px), (hover: none), (pointer: coarse)");
+    const updateTouchMode = () => setIsTouchMode(media.matches);
+    updateTouchMode();
+    if (media.addEventListener) {
+      media.addEventListener("change", updateTouchMode);
+      return () => media.removeEventListener("change", updateTouchMode);
+    }
+    media.addListener(updateTouchMode);
+    return () => media.removeListener(updateTouchMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isTouchMode) setPinnedTooltipState(null);
+  }, [isTouchMode]);
+
+  useEffect(() => {
+    if (!isTouchMode || !pinnedTooltipState) return;
+    const handleOutsideTap = (event) => {
+      const target = event.target;
+      if (
+        chartWrapRef.current &&
+        target instanceof Node &&
+        chartWrapRef.current.contains(target)
+      ) {
+        return;
+      }
+      setPinnedTooltipState(null);
+    };
+    document.addEventListener("pointerdown", handleOutsideTap);
+    return () => document.removeEventListener("pointerdown", handleOutsideTap);
+  }, [isTouchMode, pinnedTooltipState]);
+
+  const readTooltipState = (chartState) => {
+    if (!chartState) return null;
+    let payload = Array.isArray(chartState.activePayload)
+      ? chartState.activePayload
+      : [];
+    const indexRaw = Number(
+      payload[0]?.payload?.i ?? chartState.activeTooltipIndex ?? chartState.activeLabel
+    );
+    const index = Number.isFinite(indexRaw) ? indexRaw : null;
+    if (!payload.length && index != null && index >= 0 && index < data.length) {
+      const point = data[index];
+      if (point) {
+        payload = [
+          {
+            dataKey: "stillwater",
+            name: "Earned with Stillwater",
+            value: point.stillwater,
+            color: "#009966",
+            payload: point,
+          },
+          {
+            dataKey: "btc",
+            name: "Earned only holding",
+            value: point.btc,
+            color: "#a79f89",
+            payload: point,
+          },
+        ];
+      }
+    }
+    if (!payload.length) return null;
+    const coordinateRaw = chartState.activeCoordinate;
+    const coordinate =
+      coordinateRaw &&
+      Number.isFinite(coordinateRaw.x) &&
+      Number.isFinite(coordinateRaw.y)
+        ? { x: coordinateRaw.x, y: coordinateRaw.y }
+        : null;
+    return {
+      payload,
+      label: index ?? chartState.activeLabel ?? 0,
+      index,
+      coordinate,
+    };
+  };
+
+  const handleChartClick = (chartState) => {
+    if (!isTouchMode) return;
+    const nextState = readTooltipState(chartState);
+    if (!nextState) {
+      setPinnedTooltipState(null);
+      return;
+    }
+    setPinnedTooltipState((current) =>
+      current?.index === nextState.index ? null : nextState
+    );
+  };
+
+  const mobileTooltipStyle = useMemo(() => {
+    if (!isTouchMode || !pinnedTooltipState?.payload?.length) return null;
+    const container = chartWrapRef.current;
+    const width = container?.clientWidth || 0;
+    const height = container?.clientHeight || 0;
+    const coordinate = pinnedTooltipState.coordinate || {
+      x: width / 2,
+      y: height / 2,
+    };
+    const tooltipWidth = width > 0 ? Math.min(300, Math.max(210, width - 16)) : 270;
+    const tooltipHeight = 156;
+
+    let left = coordinate.x - tooltipWidth / 2;
+    left = Math.max(8, Math.min(left, Math.max(8, width - tooltipWidth - 8)));
+
+    let top = coordinate.y - tooltipHeight - 14;
+    if (top < 8) {
+      top = Math.min(Math.max(8, height - tooltipHeight - 8), coordinate.y + 14);
+    }
+    if (!Number.isFinite(top)) top = 8;
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${tooltipWidth}px`,
+    };
+  }, [isTouchMode, pinnedTooltipState]);
+
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="stillwater-performance-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#009966" stopOpacity="0.14" />
-            <stop offset="95%" stopColor="#009966" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#ece7de" />
-        <XAxis dataKey="i" hide />
-        <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
-        <Area type="monotone" dataKey="stillwater" stroke="#009966" strokeWidth={3} fill="url(#stillwater-performance-fill)" fillOpacity={1} dot={false} baseValue={0} isAnimationActive={false} />
-        <Line type="monotone" dataKey="btc" stroke="#a79f89" strokeWidth={2.3} dot={false} isAnimationActive={false} />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <div ref={chartWrapRef} className="relative h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
+          data={data}
+          margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
+          onClick={handleChartClick}
+        >
+          <defs>
+            <linearGradient id="stillwater-performance-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#009966" stopOpacity="0.14" />
+              <stop offset="95%" stopColor="#009966" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#ece7de" />
+          <XAxis dataKey="i" hide />
+          <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
+          <Tooltip
+            isAnimationActive={false}
+            cursor={{ stroke: "#d6d1c6", strokeWidth: 1 }}
+            content={
+              isTouchMode ? (
+                () => null
+              ) : (
+                <PerformanceTooltip frameLabel={frameLabel} pointCount={data.length} />
+              )
+            }
+            wrapperStyle={{ outline: "none", zIndex: 40, pointerEvents: "none" }}
+          />
+          <Area
+            type="monotone"
+            dataKey="stillwater"
+            stroke="#009966"
+            strokeWidth={3}
+            fill="url(#stillwater-performance-fill)"
+            fillOpacity={1}
+            dot={false}
+            activeDot={{ r: 6.5, fill: "#FFFFFF", stroke: "#009966", strokeWidth: 3 }}
+            baseValue={0}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="btc"
+            stroke="#a79f89"
+            strokeWidth={2.3}
+            dot={false}
+            activeDot={{ r: 5.5, fill: "#FFFFFF", stroke: "#a79f89", strokeWidth: 2.5 }}
+            isAnimationActive={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+      {isTouchMode && pinnedTooltipState?.payload?.length && mobileTooltipStyle ? (
+        <div className="pointer-events-none absolute z-40" style={mobileTooltipStyle}>
+          <PerformanceTooltip
+            active
+            payload={pinnedTooltipState.payload}
+            label={pinnedTooltipState.label}
+            frameLabel={frameLabel}
+            pointCount={data.length}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PerformanceTooltip({ active, payload, label, frameLabel = "ALL", pointCount = 0 }) {
+  if (!active || !Array.isArray(payload) || !payload.length) return null;
+  const stillwaterEntry = payload.find((entry) => entry?.dataKey === "stillwater");
+  const btcEntry = payload.find((entry) => entry?.dataKey === "btc");
+  const rowPoint = payload[0]?.payload || {};
+  const stillwaterValue = Number(stillwaterEntry?.value ?? rowPoint.stillwater);
+  const btcValue = Number(btcEntry?.value ?? rowPoint.btc);
+  if (!Number.isFinite(stillwaterValue) || !Number.isFinite(btcValue)) return null;
+  const rawIndex = Number(payload[0]?.payload?.i ?? label);
+  const pointIndex = Number.isFinite(rawIndex) ? rawIndex : 0;
+  const addedValue = stillwaterValue - btcValue;
+  const addedClass = addedValue >= 0 ? "text-[#009966]" : "text-[#b42318]";
+
+  return (
+    <div className="rounded-[18px] border border-[#f2ebde] bg-white/95 px-4 py-3 shadow-[0_10px_24px_rgba(32,25,9,0.14)]">
+      <p className="text-[16px] leading-none font-semibold text-[#201909]">
+        {formatPerformancePeriod(pointIndex, pointCount, frameLabel)}
+      </p>
+      <div className="mt-3 space-y-1.5">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[13px] text-[#645c4a]">Earned with Stillwater:</span>
+          <span className="text-[13px] font-semibold text-[#009966]">
+            {formatCurrency(stillwaterValue)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[13px] text-[#645c4a]">Earned only holding:</span>
+          <span className="text-[13px] font-semibold text-[#a79f89]">
+            {formatCurrency(btcValue)}
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-4 border-t border-[#f2ebde] pt-2.5">
+        <span className="text-[13px] font-semibold text-[#201909]">Added value:</span>
+        <span className={`text-[13px] font-semibold ${addedClass}`}>
+          {formatSignedCurrency(addedValue)}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -748,7 +964,7 @@ function TxPendingOverlay({ phase = "pending", status = "" }) {
   if (phase === "success") {
     return (
       <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
-        <div className="flex flex-col items-center -mt-8">
+        <div className="flex w-full max-w-[560px] flex-col items-center justify-center text-center md:-mt-8">
           <div className="h-40 w-40 rounded-full bg-[#bfead7] shadow-[0_22px_40px_rgba(16,185,129,0.22)] flex items-center justify-center">
             <div className="h-16 w-16 rounded-full border-[6px] border-[#0b9b63] flex items-center justify-center">
               <svg
@@ -776,7 +992,7 @@ function TxPendingOverlay({ phase = "pending", status = "" }) {
 
   return (
     <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
-      <div className="flex flex-col items-center -mt-8">
+      <div className="flex w-full max-w-[560px] flex-col items-center justify-center text-center md:-mt-8">
         <div className="relative h-44 w-44 flex items-center justify-center">
           <span className="h-44 w-44 rounded-full border-[6px] border-[#d7dbe2]" />
           <span
@@ -944,6 +1160,13 @@ function formatCurrency(value) {
   } catch {
     return `$${value.toFixed(2)}`;
   }
+}
+
+function formatPerformancePeriod(index, pointCount, frameLabel) {
+  const safeIndex = Number.isFinite(index) ? Math.max(0, index) : 0;
+  const safeCount = Number.isFinite(pointCount) && pointCount > 0 ? pointCount : 1;
+  const point = Math.min(safeCount, safeIndex + 1);
+  return `${frameLabel} - Point ${point}`;
 }
 
 function formatSignedCurrency(value) {

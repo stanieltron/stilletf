@@ -46,7 +46,7 @@ export default function HomeClient() {
 
       <main className="home-main">
         <section className="w-full">
-          <div className="max-w-6xl mx-auto px-6 pt-12 pb-32">
+          <div className="max-w-6xl mx-auto px-6 pt-12 pb-16 md:pb-32">
             <div className="w-full flex flex-col items-center pt-8 space-y-12">
               <div className="flex flex-col items-center text-center max-w-3xl space-y-8">
                 <div className="bg-[#f6e6c1] px-4 py-2 rounded-full flex items-center gap-2 border border-[#f2ebde]">
@@ -59,7 +59,7 @@ export default function HomeClient() {
                     Secure & self-custodial by design
                   </span>
                 </div>
-                <h1 className="text-[72px] font-semibold leading-[0.95] tracking-[-2.88px] text-[#201909]">
+                <h1 className="text-[38px] sm:text-[52px] md:text-[72px] font-semibold leading-[0.95] tracking-[-1.2px] sm:tracking-[-2px] md:tracking-[-2.88px] text-[#201909]">
                   Earn passive income <br /> on your crypto
                 </h1>
                 <p className="text-[20px] leading-[1.4] text-[#645c4a] max-w-2xl">
@@ -87,7 +87,7 @@ export default function HomeClient() {
 
               <div className="w-full flex flex-col gap-2">
                 <div className="w-full grid md:grid-cols-3 gap-2">
-                  <Link href="/etfs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
+                  <Link href="/etfs" className="bundle-card bundle-card-muted min-h-[145px] md:h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-header">
                       <div className="bundle-title-row">
                         <div className="bundle-title">Crypto Bundle</div>
@@ -107,7 +107,7 @@ export default function HomeClient() {
                     </div>
                   </Link>
 
-                  <Link href="/etfs" className="bundle-card bundle-card-core h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
+                  <Link href="/etfs" className="bundle-card bundle-card-core min-h-[145px] md:h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-spotlight">
                       <div className="bundle-spotlight-inner">
                         <img
@@ -134,7 +134,7 @@ export default function HomeClient() {
                     </div>
                   </Link>
 
-                  <Link href="/etfs" className="bundle-card bundle-card-muted h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
+                  <Link href="/etfs" className="bundle-card bundle-card-muted min-h-[145px] md:h-[200px] block cursor-pointer hover:opacity-95 transition-opacity">
                     <div className="bundle-header">
                       <div className="bundle-title-row">
                         <div className="bundle-title">Flagship Bundle</div>

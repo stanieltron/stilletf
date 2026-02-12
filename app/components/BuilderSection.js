@@ -491,7 +491,7 @@ export default function BuilderSection({ keepAssets = true, embedded = false }) 
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
             <h3 className="m-0 font-semibold text-base">Assets selection</h3>
           </div>
-          <div className="max-h-[360px] overflow-y-auto px-3 py-3 space-y-3">
+          <div className="max-h-[360px] overflow-y-auto px-3 py-2.5 space-y-2">
             {assetKeys.map((key, idx) => {
               const current = weights[idx] ?? 0;
               const sumOthers = totalPointsUsed - current;
@@ -504,6 +504,7 @@ export default function BuilderSection({ keepAssets = true, embedded = false }) 
                   key={`m-${key}`}
                   label={`${assetMeta[key]?.name ?? key} weight`}
                   nameOnly={assetMeta[key]?.name ?? key}
+                  compactMobile
                   accentColor={assetMeta[key]?.color || undefined}
                   value={current}
                   maxForThis={maxForThis}
@@ -624,7 +625,7 @@ export default function BuilderSection({ keepAssets = true, embedded = false }) 
                 "flex items-center justify-center",
                 "h-[60px] w-[387px] rounded-[48px]",
                 "bg-[#201909] text-white",
-                "text-[17px] leading-[150%] font-semibold",
+                "text-[15px] md:text-[17px] leading-[150%] font-semibold",
                 shareDisabled ? "opacity-60 cursor-not-allowed" : "hover:opacity-95",
               ].join(" ")}
               aria-disabled={shareDisabled}
@@ -660,6 +661,7 @@ function WeightInput({
   onChange,
   accentColor,
   nameOnly = "",
+  compactMobile = false,
   maxForThis = 10,
   pointsRemaining = 0,
   highlightPlus = false,
@@ -689,9 +691,25 @@ function WeightInput({
     setTo(desired);
   };
 
+  const labelRowClass = compactMobile
+    ? "mb-0.5 leading-tight h-[22px] md:h-[35px] flex items-center"
+    : "mb-0.5 md:mb-1 leading-tight h-[30px] md:h-[35px] flex items-center";
+
+  const controlRowClass = compactMobile
+    ? "grid grid-cols-[auto_1fr_auto] items-center gap-1 md:gap-2 h-[30px] md:h-[40px]"
+    : "grid grid-cols-[auto_1fr_auto] items-center gap-1.5 md:gap-2 h-[36px] md:h-[40px]";
+
+  const controlButtonClass = compactMobile
+    ? "inline-flex items-center justify-center h-7 w-7 md:h-10 md:w-10 text-[22px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-[var(--brand)] hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-[var(--radius-sm)]"
+    : "inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-[var(--brand)] hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-[var(--radius-sm)]";
+
+  const barClass = compactMobile
+    ? "relative h-[7px] md:h-[10px] w-full rounded-[var(--radius-sm)] bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
+    : "relative h-[8px] md:h-[10px] w-full rounded-[var(--radius-sm)] bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]";
+
   return (
     <div style={accentColor ? { "--accent": accentColor } : undefined} className="select-none">
-      <div className="mb-0.5 md:mb-1 leading-tight h-[30px] md:h-[35px] flex items-center">
+      <div className={labelRowClass}>
         <span
           className="font-semibold [font-size:55%] md:[font-size:65%]"
           style={{ color: "var(--accent, var(--text))" }}
@@ -700,10 +718,10 @@ function WeightInput({
         </span>
       </div>
 
-      <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1.5 md:gap-2 h-[36px] md:h-[40px]">
+      <div className={controlRowClass}>
         <button
           type="button"
-          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-[var(--brand)] hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-[var(--radius-sm)]"
+          className={controlButtonClass}
           onClick={dec}
           disabled={decDisabled}
           aria-label={`Decrease ${label}`}
@@ -722,7 +740,7 @@ function WeightInput({
         <button
           type="button"
           onClick={handleBarClick}
-          className="relative h-[8px] md:h-[10px] w-full rounded-[var(--radius-sm)] bg-[var(--bg)] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--border)]"
+          className={barClass}
           aria-label={`${label}: current ${v} of 10`}
           title={`${v} / 10`}
         >
@@ -746,7 +764,7 @@ function WeightInput({
 
         <button
           type="button"
-          className="inline-flex items-center justify-center h-9 w-9 md:h-10 md:w-10 text-[26px] md:text-[32px] leading-none font-extrabold cursor-pointer bg-white text-[var(--brand)] hover:bg-[var(--bg-alt)] active:translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed rounded-[var(--radius-sm)]"
+          className={controlButtonClass}
           onClick={inc}
           disabled={incDisabled}
           aria-label={`Increase ${label}`}

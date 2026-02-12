@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { portfolioCalculator } from "../../lib/portfolio";
 
 /**
@@ -15,6 +16,10 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
   const [result, setResult] = useState(null);
   const [err, setErr] = useState("");
   const ticketRef = useRef(0);
+  const [isMobileHintMode, setIsMobileHintMode] = useState(false);
+  const [mobileHint, setMobileHint] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const hintPopupRef = useRef(null);
 
   useEffect(() => {
     let alive = true;
@@ -40,6 +45,53 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
     return () => { alive = false; };
   }, [assets, weights]);
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(hover: none), (pointer: coarse)");
+    const updateMode = () => setIsMobileHintMode(media.matches);
+    updateMode();
+    if (media.addEventListener) {
+      media.addEventListener("change", updateMode);
+      return () => media.removeEventListener("change", updateMode);
+    }
+    media.addListener(updateMode);
+    return () => media.removeListener(updateMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileHintMode) setMobileHint(null);
+  }, [isMobileHintMode]);
+
+  useEffect(() => {
+    if (!mobileHint) return;
+    const handlePointerDown = (event) => {
+      const target = event.target;
+      if (hintPopupRef.current?.contains(target)) return;
+      if (target instanceof Element && target.closest("[data-hint-trigger='true']")) return;
+      setMobileHint(null);
+    };
+    const handleEscape = (event) => {
+      if (event.key === "Escape") setMobileHint(null);
+    };
+    const handleViewportChange = () => setMobileHint(null);
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [mobileHint]);
+
   if (err) return <div className="mt-8 text-red-700 text-sm">{err}</div>;
   if (!result) return null;
 
@@ -63,15 +115,37 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
   const scoreSortino  = clamp01((m.sortino ?? 0) / 3);
   const scoreBalance  = clamp01(m.diversificationScore ?? 0);
 
-  const Hint = ({ text }) =>
+  const Hint = ({ id, text }) =>
     detail ? (
-      <span
+      <button
+        type="button"
         className="inline-flex items-center justify-center w-8 h-8 text-[20px] font-semibold text-slate-600 cursor-help select-none"
-        title={text}
+        title={isMobileHintMode ? undefined : text}
         aria-label={text}
+        aria-expanded={isMobileHintMode ? mobileHint?.id === id : undefined}
+        data-hint-trigger="true"
+        onClick={(event) => {
+          if (!isMobileHintMode) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const margin = 12;
+          const maxWidth = Math.min(300, window.innerWidth - margin * 2);
+          let left = rect.left + rect.width / 2 - maxWidth / 2;
+          left = Math.max(margin, Math.min(left, window.innerWidth - maxWidth - margin));
+          const popupHeight = 160;
+          const showBelow = rect.bottom + popupHeight + margin < window.innerHeight;
+          const top = showBelow
+            ? rect.bottom + 8
+            : Math.max(margin, rect.top - popupHeight - 8);
+
+          setMobileHint((prev) =>
+            prev?.id === id
+              ? null
+              : { id, text, left, top, maxWidth }
+          );
+        }}
       >
         ?
-      </span>
+      </button>
     ) : null;
 
   const tips = {
@@ -122,14 +196,31 @@ export default function MetricsBuilder({ assets = [], weights = [], showYield = 
 
         {/* Gauges: fill remaining vertical space */}
         <div className="grid grid-cols-3 grid-rows-2 gap-x-1.5 sm:gap-x-3 gap-y-1 sm:gap-y-0 mt-1 flex-1 items-stretch content-stretch min-h-0">
-          <GaugeRow category="Growth"     score={scoreGrowth}  hint={<Hint text={tips.growth} />} />
-          <GaugeRow category="Stability"  score={scoreStab}    hint={<Hint text={tips.stab} />} />
-          <GaugeRow category="Resilience" score={scoreResil}   hint={<Hint text={tips.resil} />} />
-          <GaugeRow category="Efficiency" score={scoreSharpe}  hint={<Hint text={tips.sharpe} />} />
-          <GaugeRow category="Smoothness" score={scoreSortino} hint={<Hint text={tips.sortino} />} />
-          <GaugeRow category="Balance"    score={scoreBalance} hint={<Hint text={tips.balance} />} />
+          <GaugeRow category="Growth"     score={scoreGrowth}  hint={<Hint id="growth" text={tips.growth} />} />
+          <GaugeRow category="Stability"  score={scoreStab}    hint={<Hint id="stab" text={tips.stab} />} />
+          <GaugeRow category="Resilience" score={scoreResil}   hint={<Hint id="resil" text={tips.resil} />} />
+          <GaugeRow category="Efficiency" score={scoreSharpe}  hint={<Hint id="sharpe" text={tips.sharpe} />} />
+          <GaugeRow category="Smoothness" score={scoreSortino} hint={<Hint id="sortino" text={tips.sortino} />} />
+          <GaugeRow category="Balance"    score={scoreBalance} hint={<Hint id="balance" text={tips.balance} />} />
         </div>
       </section>
+      {isMounted && isMobileHintMode && mobileHint &&
+        createPortal(
+          <div
+            ref={hintPopupRef}
+            role="dialog"
+            aria-label="Metric explanation"
+            className="fixed z-[1000] rounded-[10px] border border-[var(--border)] bg-white/95 px-3 py-2 text-[12px] leading-[1.35] text-[var(--text)] shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-[2px]"
+            style={{
+              left: `${mobileHint.left}px`,
+              top: `${mobileHint.top}px`,
+              maxWidth: `${mobileHint.maxWidth}px`,
+            }}
+          >
+            {mobileHint.text}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

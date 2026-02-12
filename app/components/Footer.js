@@ -10,18 +10,18 @@ export default function Footer() {
   return (
     <footer className="w-full bg-white">
       {/* Figma: padding: 24px 24px 40px; height: 398px */}
-      <div className="w-full flex justify-center px-6 pt-6 pb-10">
+      <div className="w-full flex justify-center px-4 md:px-6 pt-6 pb-10">
         {/* Frame 36: width 1080, height 334, gap 16, isolation isolate */}
         <div
-          className="relative w-[1080px] max-w-[1080px] h-[334px] flex flex-col items-center gap-4 isolate"
+          className="relative w-full max-w-[1080px] h-auto md:h-[334px] flex flex-col items-center gap-4 isolate"
         >
           {/* Big word: z-index 0 */}
-          <div className="relative w-full h-[274px] flex items-end justify-center">
-            <div className="w-full text-center select-none text-[#F7F3EB] font-bold tracking-[-0.03em] leading-[100%] text-[273.883px]">
+          <div className="relative w-full h-auto md:h-[274px] flex items-start md:items-end justify-center">
+            <div className="w-full text-center select-none text-[#F7F3EB] font-bold tracking-normal md:tracking-[-0.03em] leading-[100%] text-[clamp(82px,21vw,160px)] md:text-[273.883px]">
               stillwater
             </div>
 
-            <div className="absolute left-[1045px] top-[217px] text-[#645C4A] font-normal text-[13px] leading-[140%]">
+            <div className="hidden md:block absolute left-[1045px] top-[217px] text-[#645C4A] font-normal text-[13px] leading-[140%]">
               {year}
             </div>
           </div>

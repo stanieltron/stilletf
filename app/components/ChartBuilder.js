@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { portfolioCalculator, fetchAssets } from "../../lib/portfolio";
 import {
   LineChart,
@@ -92,6 +92,43 @@ export default function ChartBuilder({
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const initialCapital = 1000;
+  const chartWrapRef = useRef(null);
+  const [isTouchMode, setIsTouchMode] = useState(false);
+  const [pinnedTooltipState, setPinnedTooltipState] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 900px), (hover: none), (pointer: coarse)");
+    const updateTouchMode = () => setIsTouchMode(media.matches);
+    updateTouchMode();
+    if (media.addEventListener) {
+      media.addEventListener("change", updateTouchMode);
+      return () => media.removeEventListener("change", updateTouchMode);
+    }
+    media.addListener(updateTouchMode);
+    return () => media.removeListener(updateTouchMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isTouchMode) setPinnedTooltipState(null);
+  }, [isTouchMode]);
+
+  useEffect(() => {
+    if (!isTouchMode || !pinnedTooltipState) return;
+    const handleOutsideTap = (event) => {
+      const target = event.target;
+      if (
+        chartWrapRef.current &&
+        target instanceof Node &&
+        chartWrapRef.current.contains(target)
+      ) {
+        return;
+      }
+      setPinnedTooltipState(null);
+    };
+    document.addEventListener("pointerdown", handleOutsideTap);
+    return () => document.removeEventListener("pointerdown", handleOutsideTap);
+  }, [isTouchMode, pinnedTooltipState]);
 
   // fetch / compute portfolio result whenever assets or weights change
   useEffect(() => {
@@ -217,10 +254,26 @@ export default function ChartBuilder({
     }
 
     const rows = [];
+    const monthNames = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     for (let i = 0; i < len; i++) {
       const row = {
         i,
         year: years[i],
+        month: months[i],
+        periodLabel: `${monthNames[months[i]]} ${years[i]}`,
       };
       if (!yieldOnly && portfolio.length) {
         row.portfolio = portfolio[i];
@@ -252,6 +305,140 @@ export default function ChartBuilder({
     }
   };
 
+  const readTooltipState = (chartState) => {
+    if (!chartState) return null;
+    let payload = Array.isArray(chartState.activePayload)
+      ? chartState.activePayload
+      : [];
+    const indexRaw = Number(
+      payload[0]?.payload?.i ?? chartState.activeTooltipIndex ?? chartState.activeLabel
+    );
+    const index = Number.isFinite(indexRaw) ? indexRaw : null;
+    if (!payload.length && index != null && index >= 0 && index < chartData.rows.length) {
+      const point = chartData.rows[index];
+      if (point) {
+        const fallback = [];
+        if (!yieldOnly && Number.isFinite(point.portfolio)) {
+          fallback.push({
+            dataKey: "portfolio",
+            name: "ETF",
+            value: point.portfolio,
+            color: "var(--text, #201909)",
+            payload: point,
+          });
+        }
+        if ((showYield || yieldOnly) && Number.isFinite(point.portfolioYield)) {
+          fallback.push({
+            dataKey: "portfolioYield",
+            name: "ETF (with yield)",
+            value: point.portfolioYield,
+            color: "var(--yield-gold, #f2c55f)",
+            payload: point,
+          });
+        }
+        if (!yieldOnly) {
+          for (const asset of chartData.perAsset) {
+            const value = point?.[asset.key];
+            if (Number.isFinite(value)) {
+              fallback.push({
+                dataKey: asset.key,
+                name: asset.name,
+                value,
+                color: asset.color || "#8884d8",
+                payload: point,
+              });
+            }
+          }
+        }
+        payload = fallback;
+      }
+    }
+    if (!payload.length) return null;
+    const coordinateRaw = chartState.activeCoordinate;
+    const coordinate =
+      coordinateRaw &&
+      Number.isFinite(coordinateRaw.x) &&
+      Number.isFinite(coordinateRaw.y)
+        ? { x: coordinateRaw.x, y: coordinateRaw.y }
+        : null;
+    return {
+      payload,
+      label: index ?? chartState.activeLabel ?? 0,
+      index,
+      coordinate,
+    };
+  };
+
+  const handleChartClick = (chartState) => {
+    if (!isTouchMode) return;
+    const nextState = readTooltipState(chartState);
+    if (!nextState) {
+      setPinnedTooltipState(null);
+      return;
+    }
+    setPinnedTooltipState((current) =>
+      current?.index === nextState.index ? null : nextState
+    );
+  };
+
+  const mobileTooltipStyle = useMemo(() => {
+    if (!isTouchMode || !pinnedTooltipState?.payload?.length) return null;
+    const container = chartWrapRef.current;
+    const width = container?.clientWidth || 0;
+    const height = container?.clientHeight || 0;
+    const coordinate = pinnedTooltipState.coordinate || {
+      x: width / 2,
+      y: height / 2,
+    };
+    const tooltipWidth = width > 0 ? Math.min(280, Math.max(180, width - 12)) : 240;
+    const tooltipHeight = 120;
+
+    let left = coordinate.x - tooltipWidth / 2;
+    left = Math.max(6, Math.min(left, Math.max(6, width - tooltipWidth - 6)));
+
+    let top = coordinate.y - tooltipHeight - 12;
+    if (top < 6) {
+      top = Math.min(Math.max(6, height - tooltipHeight - 6), coordinate.y + 12);
+    }
+    if (!Number.isFinite(top)) top = 6;
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${tooltipWidth}px`,
+    };
+  }, [isTouchMode, pinnedTooltipState]);
+
+  const renderPortfolioTooltip = ({ active, payload, label }) => {
+    if (!active || !Array.isArray(payload) || !payload.length) return null;
+    const point = payload[0]?.payload || {};
+    const title = point.periodLabel || `Point ${Number(label) + 1}`;
+    return (
+      <div className="rounded-[14px] border border-[var(--line)] bg-white/95 px-3 py-2 shadow-[0_8px_20px_rgba(32,25,9,0.14)]">
+        <p className="text-[12px] font-semibold text-[var(--text)]">{title}</p>
+        <div className="mt-2 space-y-1.5">
+          {payload.map((entry) => (
+            <div
+              key={entry.dataKey}
+              className="flex items-center justify-between gap-3 text-[11px]"
+            >
+              <span className="flex items-center gap-1.5 text-[var(--muted)]">
+                <span
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: entry.color || "var(--text)" }}
+                />
+                {entry.name}
+              </span>
+              <span className="font-semibold text-[var(--text)]">
+                {fmtUSD(Number(entry.value))}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (err)
     return <div className="text-sm text-[var(--neg)] mt-8">{err}</div>;
   if (!result)
@@ -279,17 +466,12 @@ export default function ChartBuilder({
         tickLine={false}
         tick={{ fill: "var(--muted)", fontSize: 12 }}
       />
-      {/* <Tooltip
-        formatter={(val, name) => [fmtUSD(val), name]}
-        labelFormatter={(i) => chartData.years[i]}
-        wrapperStyle={{ outline: "none" }}
-        contentStyle={{
-          background: "var(--bg)",
-          border: "1px solid var(--line)",
-          borderRadius: 12,
-          color: "var(--text)",
-        }}
-      /> */}
+      <Tooltip
+        isAnimationActive={false}
+        cursor={{ stroke: "rgba(32,25,9,0.22)", strokeWidth: 1 }}
+        content={isTouchMode ? (() => null) : renderPortfolioTooltip}
+        wrapperStyle={{ outline: "none", zIndex: 30, pointerEvents: "none" }}
+      />
 
       {!legendOff && (
         <Legend
@@ -357,15 +539,29 @@ export default function ChartBuilder({
 
   // Responsive-only: fill parent (width & height)
   return (
-    <div className="w-full h-full" style={{ minHeight: 0, minWidth: 0 }}>
+    <div
+      ref={chartWrapRef}
+      className="relative w-full h-full"
+      style={{ minHeight: 0, minWidth: 0 }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={chartData.rows}
           margin={{ top: 6, right: 12, left: 0, bottom: 24 }}
+          onClick={handleChartClick}
         >
           {inner}
         </LineChart>
       </ResponsiveContainer>
+      {isTouchMode && pinnedTooltipState?.payload?.length && mobileTooltipStyle ? (
+        <div className="pointer-events-none absolute z-30" style={mobileTooltipStyle}>
+          {renderPortfolioTooltip({
+            active: true,
+            payload: pinnedTooltipState.payload,
+            label: pinnedTooltipState.label,
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }

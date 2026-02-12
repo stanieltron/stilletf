@@ -1,7 +1,7 @@
 // app/etfs/page.js
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import { useRouter } from "next/navigation";
 import {
@@ -10,6 +10,7 @@ import {
   ComposedChart,
   Line,
   ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -555,6 +556,8 @@ export default function ETFsPage() {
             };
             const isInactiveBundle = !activeBundle.isLiveOnChain;
             const timeframe = bundleView.timeframe || "5y";
+            const timeframeMonths =
+              TIMEFRAMES.find((item) => item.id === timeframe)?.months || TARGET_POINTS;
             const showChartDetails = !!showChartDetailsByBundle[bundle.id];
             return (
           <section
@@ -841,7 +844,11 @@ export default function ETFsPage() {
 
                     <div className="h-[200px] w-full">
                       {chartState.data.length ? (
-                        <EarningsChart data={chartState.data} idPrefix={`earn-${bundle.id}`} />
+                        <EarningsChart
+                          data={chartState.data}
+                          idPrefix={`earn-${bundle.id}`}
+                          timeframeMonths={timeframeMonths}
+                        />
                       ) : (
                         <ChartPreview idPrefix={`preview-${bundle.id}`} />
                       )}
@@ -871,7 +878,7 @@ function TxPendingOverlay({ phase = "pending", status = "" }) {
   if (phase === "success") {
     return (
       <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
-        <div className="flex flex-col items-center -mt-8">
+        <div className="flex w-full max-w-[560px] flex-col items-center justify-center text-center md:-mt-8">
           <div className="h-40 w-40 rounded-full bg-[#bfead7] shadow-[0_22px_40px_rgba(16,185,129,0.22)] flex items-center justify-center">
             <div className="h-16 w-16 rounded-full border-[6px] border-[#0b9b63] flex items-center justify-center">
               <svg
@@ -899,7 +906,7 @@ function TxPendingOverlay({ phase = "pending", status = "" }) {
 
   return (
     <div className="fixed inset-0 z-[70] bg-[#ececec] flex items-center justify-center px-4">
-      <div className="flex flex-col items-center -mt-8">
+      <div className="flex w-full max-w-[560px] flex-col items-center justify-center text-center md:-mt-8">
         <div className="relative h-44 w-44 flex items-center justify-center">
           <span className="h-44 w-44 rounded-full border-[6px] border-[#d7dbe2]" />
           <span
@@ -1150,51 +1157,263 @@ function ChartPreview({ idPrefix = "preview" }) {
   );
 }
 
-function EarningsChart({ data, idPrefix = "earnings" }) {
+function EarningsChart({
+  data,
+  idPrefix = "earnings",
+  timeframeMonths = TARGET_POINTS,
+}) {
   const values = data
     .flatMap((point) => [point.btc, point.stillwater])
     .filter((value) => Number.isFinite(value));
   const minValue = values.length ? Math.min(...values, 0) : 0;
   const maxValue = values.length ? Math.max(...values, 0) : 0;
   const areaId = `${idPrefix}-stillwater-area`;
+  const chartWrapRef = useRef(null);
+  const [isTouchMode, setIsTouchMode] = useState(false);
+  const [pinnedTooltipState, setPinnedTooltipState] = useState(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 900px), (hover: none), (pointer: coarse)");
+    const updateTouchMode = () => setIsTouchMode(media.matches);
+    updateTouchMode();
+    if (media.addEventListener) {
+      media.addEventListener("change", updateTouchMode);
+      return () => media.removeEventListener("change", updateTouchMode);
+    }
+    media.addListener(updateTouchMode);
+    return () => media.removeListener(updateTouchMode);
+  }, []);
+
+  useEffect(() => {
+    if (!isTouchMode) {
+      setPinnedTooltipState(null);
+    }
+  }, [isTouchMode]);
+
+  useEffect(() => {
+    if (!isTouchMode || !pinnedTooltipState) return;
+    const handleOutsideTap = (event) => {
+      const target = event.target;
+      if (
+        chartWrapRef.current &&
+        target instanceof Node &&
+        chartWrapRef.current.contains(target)
+      ) {
+        return;
+      }
+      setPinnedTooltipState(null);
+    };
+    document.addEventListener("pointerdown", handleOutsideTap);
+    return () => document.removeEventListener("pointerdown", handleOutsideTap);
+  }, [isTouchMode, pinnedTooltipState]);
+
+  const readTooltipState = (chartState) => {
+    if (!chartState) return null;
+    let payload = Array.isArray(chartState.activePayload)
+      ? chartState.activePayload
+      : [];
+    const indexRaw = Number(
+      payload[0]?.payload?.i ?? chartState.activeTooltipIndex ?? chartState.activeLabel
+    );
+    const index = Number.isFinite(indexRaw) ? indexRaw : null;
+    if (!payload.length && index != null && index >= 0 && index < data.length) {
+      const point = data[index];
+      if (point) {
+        payload = [
+          {
+            dataKey: "stillwater",
+            name: "Earned with Stillwater",
+            value: point.stillwater,
+            color: "#009966",
+            payload: point,
+          },
+          {
+            dataKey: "btc",
+            name: "Earned only holding",
+            value: point.btc,
+            color: "#B1A995",
+            payload: point,
+          },
+        ];
+      }
+    }
+    if (!payload.length) return null;
+    const coordinateRaw = chartState.activeCoordinate;
+    const coordinate =
+      coordinateRaw &&
+      Number.isFinite(coordinateRaw.x) &&
+      Number.isFinite(coordinateRaw.y)
+        ? { x: coordinateRaw.x, y: coordinateRaw.y }
+        : null;
+    return {
+      payload,
+      label: index ?? chartState.activeLabel ?? 0,
+      index,
+      coordinate,
+    };
+  };
+
+  const handleChartClick = (chartState) => {
+    if (!isTouchMode) return;
+    const nextState = readTooltipState(chartState);
+    if (!nextState) {
+      setPinnedTooltipState(null);
+      return;
+    }
+    setPinnedTooltipState((current) =>
+      current?.index === nextState.index ? null : nextState
+    );
+  };
+
+  const mobileTooltipStyle = useMemo(() => {
+    if (!isTouchMode || !pinnedTooltipState?.payload?.length) return null;
+    const container = chartWrapRef.current;
+    const width = container?.clientWidth || 0;
+    const height = container?.clientHeight || 0;
+    const coordinate = pinnedTooltipState.coordinate || {
+      x: width / 2,
+      y: height / 2,
+    };
+    const tooltipWidth = width > 0 ? Math.min(310, Math.max(220, width - 16)) : 280;
+    const tooltipHeight = 166;
+
+    let left = coordinate.x - tooltipWidth / 2;
+    left = Math.max(8, Math.min(left, Math.max(8, width - tooltipWidth - 8)));
+
+    let top = coordinate.y - tooltipHeight - 14;
+    if (top < 8) {
+      top = Math.min(Math.max(8, height - tooltipHeight - 8), coordinate.y + 14);
+    }
+    if (!Number.isFinite(top)) top = 8;
+
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${tooltipWidth}px`,
+    };
+  }, [isTouchMode, pinnedTooltipState]);
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ComposedChart data={data} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#009966" stopOpacity="0.15" />
-            <stop offset="95%" stopColor="#009966" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <CartesianGrid
-          vertical={false}
-          strokeDasharray="3 3"
-          stroke="#F2EBDE"
-        />
-        <XAxis dataKey="i" hide />
-        <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
-        <Area
-          type="monotone"
-          dataKey="stillwater"
-          stroke="#009966"
-          strokeWidth={2.5}
-          fill={`url(#${areaId})`}
-          fillOpacity={1}
-          dot={false}
-          baseValue={0}
-          isAnimationActive={false}
-        />
-        <Line
-          type="monotone"
-          dataKey="btc"
-          stroke="#B1A995"
-          strokeWidth={2}
-          dot={false}
-          isAnimationActive={false}
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <div ref={chartWrapRef} className="relative h-full w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
+          data={data}
+          margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
+          onClick={handleChartClick}
+        >
+          <defs>
+            <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#009966" stopOpacity="0.15" />
+              <stop offset="95%" stopColor="#009966" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            vertical={false}
+            strokeDasharray="3 3"
+            stroke="#F2EBDE"
+          />
+          <XAxis dataKey="i" hide />
+          <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
+          <Tooltip
+            isAnimationActive={false}
+            cursor={{ stroke: "#D9D0BF", strokeWidth: 1 }}
+            content={
+              isTouchMode ? (
+                () => null
+              ) : (
+                <EarningsTooltip
+                  pointCount={data.length}
+                  timeframeMonths={timeframeMonths}
+                />
+              )
+            }
+            wrapperStyle={{ outline: "none", zIndex: 40, pointerEvents: "none" }}
+          />
+          <Area
+            type="monotone"
+            dataKey="stillwater"
+            stroke="#009966"
+            strokeWidth={2.5}
+            fill={`url(#${areaId})`}
+            fillOpacity={1}
+            dot={false}
+            activeDot={{ r: 6.5, fill: "#FFFFFF", stroke: "#009966", strokeWidth: 3 }}
+            baseValue={0}
+            isAnimationActive={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="btc"
+            stroke="#B1A995"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 5.5, fill: "#FFFFFF", stroke: "#B1A995", strokeWidth: 2.5 }}
+            isAnimationActive={false}
+          />
+        </ComposedChart>
+      </ResponsiveContainer>
+      {isTouchMode && pinnedTooltipState?.payload?.length && mobileTooltipStyle ? (
+        <div className="pointer-events-none absolute z-40" style={mobileTooltipStyle}>
+          <EarningsTooltip
+            active
+            payload={pinnedTooltipState.payload}
+            label={pinnedTooltipState.label}
+            pointCount={data.length}
+            timeframeMonths={timeframeMonths}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function EarningsTooltip({
+  active,
+  payload,
+  label,
+  pointCount = TARGET_POINTS,
+  timeframeMonths = TARGET_POINTS,
+}) {
+  if (!active || !Array.isArray(payload) || !payload.length) return null;
+  const stillwaterEntry = payload.find((entry) => entry?.dataKey === "stillwater");
+  const btcEntry = payload.find((entry) => entry?.dataKey === "btc");
+  const rowPoint = payload[0]?.payload || {};
+  const stillwaterValue = Number(stillwaterEntry?.value ?? rowPoint.stillwater);
+  const btcValue = Number(btcEntry?.value ?? rowPoint.btc);
+  if (!Number.isFinite(stillwaterValue) || !Number.isFinite(btcValue)) return null;
+  const rawIndex = Number(payload[0]?.payload?.i ?? label);
+  const pointIndex = Number.isFinite(rawIndex) ? rawIndex : 0;
+  const addedValue = stillwaterValue - btcValue;
+  const addedValueClass =
+    addedValue >= 0 ? "text-[#009966]" : "text-[#b42318]";
+
+  return (
+    <div className="rounded-[22px] border border-[#f2ebde] bg-white/95 px-5 py-4 shadow-[0_10px_24px_rgba(32,25,9,0.14)]">
+      <p className="text-[18px] leading-none font-semibold text-[#201909]">
+        {formatTooltipPeriod(pointIndex, pointCount, timeframeMonths)}
+      </p>
+      <div className="mt-4 space-y-1.5">
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[14px] text-[#645c4a]">Earned with Stillwater:</span>
+          <span className="text-[14px] font-semibold text-[#009966]">
+            {formatCurrency(stillwaterValue)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-[14px] text-[#645c4a]">Earned only holding:</span>
+          <span className="text-[14px] font-semibold text-[#B1A995]">
+            {formatCurrency(btcValue)}
+          </span>
+        </div>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-4 border-t border-[#f2ebde] pt-3">
+        <span className="text-[14px] font-semibold text-[#201909]">Added value:</span>
+        <span className={`text-[14px] font-semibold ${addedValueClass}`}>
+          {formatSignedCurrency(addedValue)}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -1289,6 +1508,31 @@ function formatCurrency(value) {
   } catch {
     return `$${value.toFixed(2)}`;
   }
+}
+
+function formatSignedCurrency(value) {
+  if (!Number.isFinite(value)) return "-";
+  const sign = value >= 0 ? "+" : "-";
+  return `${sign}${formatCurrency(Math.abs(value))}`;
+}
+
+function formatTooltipPeriod(index, pointCount, timeframeMonths) {
+  const safeIndex = Number.isFinite(index) ? Math.max(0, index) : 0;
+  const safePointCount =
+    Number.isFinite(pointCount) && pointCount > 1 ? pointCount : TARGET_POINTS;
+  const safeMonths =
+    Number.isFinite(timeframeMonths) && timeframeMonths > 0
+      ? timeframeMonths
+      : TARGET_POINTS;
+  const monthProgress =
+    safePointCount > 1 ? safeIndex / (safePointCount - 1) : 0;
+  const absoluteMonth = Math.max(
+    1,
+    Math.min(safeMonths, Math.round(monthProgress * safeMonths))
+  );
+  const year = Math.floor((absoluteMonth - 1) / 12) + 1;
+  const monthInYear = ((absoluteMonth - 1) % 12) + 1;
+  return `Year ${year}, Month ${monthInYear}`;
 }
 
 function formatTokenAmount(value, decimals, maximumFractionDigits = 8) {
