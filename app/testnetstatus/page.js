@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 import {
   getMissingMetaMaskMessage,
   isLikelyMobileDevice,
@@ -708,7 +710,9 @@ export default function TestnetStatusPage() {
   }
 
   return (
-    <main className="sona-container max-w-6xl flex min-h-screen flex-col gap-6 py-10">
+    <div className="min-h-screen flex flex-col text-[var(--text)]">
+      <Header />
+      <main className="sona-container max-w-6xl flex flex-1 flex-col gap-6 py-10">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-col gap-2">
           <div className="sona-chip w-fit">Testnet Monitor</div>
@@ -1060,7 +1064,9 @@ export default function TestnetStatusPage() {
           </SummaryCard>
         </div>
       )}
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }
 
