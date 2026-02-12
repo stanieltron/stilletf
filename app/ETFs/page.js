@@ -571,13 +571,13 @@ export default function ETFsPage() {
             <div className="flex flex-col md:flex-row justify-between gap-14 mb-8">
               <div className="flex-1 space-y-10 max-w-[560px]">
                 <div className="space-y-2 mb-[24px]">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-start gap-3">
                     <h2 className="text-[40px] font-semibold tracking-[-1.28px] text-[#201909] leading-none">
                       {activeBundle.title}
                     </h2>
                     {isInactiveBundle ? (
-                      <span className="h-7 px-3 rounded-full border border-[#d5d0c4] text-[#756c57] text-[11px] font-semibold uppercase tracking-[0.08em] inline-flex items-center">
-                        Coming soon
+                      <span className="inline-flex h-[30px] shrink-0 items-center whitespace-nowrap rounded-full border border-[#d5d0c4] px-3.5 text-[12px] font-medium tracking-[0.04em] text-[#756c57] md:h-7 md:px-3 md:text-[11px] md:font-semibold md:uppercase md:tracking-[0.08em]">
+                        Coming Soon
                       </span>
                     ) : null}
                   </div>
@@ -741,7 +741,7 @@ export default function ETFsPage() {
               <div
                 className={
                   showChartDetails
-                    ? "bg-[rgba(255,255,255,0.4)] flex flex-col gap-[24px] items-start px-[24px] py-[20px] relative w-full border border-[#f2ebde] rounded-[12px]"
+                    ? "flex flex-col gap-[24px] items-start px-0 md:px-[24px] py-[20px] relative w-full md:bg-[rgba(255,255,255,0.4)] md:border md:border-[#f2ebde] md:rounded-[12px]"
                     : "flex w-full items-start py-[4px]"
                 }
               >
@@ -1301,6 +1301,7 @@ function EarningsChart({
           data={data}
           margin={{ top: 6, right: 8, left: 0, bottom: 0 }}
           onClick={handleChartClick}
+          accessibilityLayer={!isTouchMode}
         >
           <defs>
             <linearGradient id={areaId} x1="0" y1="0" x2="0" y2="1">
@@ -1317,7 +1318,7 @@ function EarningsChart({
           <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
           <Tooltip
             isAnimationActive={false}
-            cursor={{ stroke: "#D9D0BF", strokeWidth: 1 }}
+            cursor={isTouchMode ? false : { stroke: "#D9D0BF", strokeWidth: 1 }}
             content={
               isTouchMode ? (
                 () => null

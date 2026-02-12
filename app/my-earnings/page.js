@@ -858,6 +858,7 @@ function PerformanceChart({ data, timeframe = "all" }) {
           data={data}
           margin={{ top: 10, right: 0, left: 0, bottom: 0 }}
           onClick={handleChartClick}
+          accessibilityLayer={!isTouchMode}
         >
           <defs>
             <linearGradient id="stillwater-performance-fill" x1="0" y1="0" x2="0" y2="1">
@@ -870,7 +871,7 @@ function PerformanceChart({ data, timeframe = "all" }) {
           <YAxis hide domain={[minValue, maxValue]} tickCount={4} />
           <Tooltip
             isAnimationActive={false}
-            cursor={{ stroke: "#d6d1c6", strokeWidth: 1 }}
+            cursor={isTouchMode ? false : { stroke: "#d6d1c6", strokeWidth: 1 }}
             content={
               isTouchMode ? (
                 () => null

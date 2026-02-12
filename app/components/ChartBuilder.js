@@ -468,7 +468,7 @@ export default function ChartBuilder({
       />
       <Tooltip
         isAnimationActive={false}
-        cursor={{ stroke: "rgba(32,25,9,0.22)", strokeWidth: 1 }}
+        cursor={isTouchMode ? false : { stroke: "rgba(32,25,9,0.22)", strokeWidth: 1 }}
         content={isTouchMode ? (() => null) : renderPortfolioTooltip}
         wrapperStyle={{ outline: "none", zIndex: 30, pointerEvents: "none" }}
       />
@@ -549,6 +549,7 @@ export default function ChartBuilder({
           data={chartData.rows}
           margin={{ top: 6, right: 12, left: 0, bottom: 24 }}
           onClick={handleChartClick}
+          accessibilityLayer={!isTouchMode}
         >
           {inner}
         </LineChart>
