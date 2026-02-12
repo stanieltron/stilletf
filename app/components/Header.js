@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { openMetaMaskForCurrentDevice } from "../../lib/metamask";
 
 const imgNewTwitter = "/assets/social_twitter.svg";
 const imgLinkedin02 = "/assets/social_linkedin.svg";
@@ -98,7 +99,7 @@ export default function Header() {
     if (typeof window === "undefined") return;
     const eth = window.ethereum;
     if (!eth?.request) {
-      window.open("https://metamask.io/download/", "_blank", "noopener,noreferrer");
+      openMetaMaskForCurrentDevice();
       return;
     }
     try {

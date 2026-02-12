@@ -5,6 +5,11 @@ import Link from "next/link";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import {
+  getMissingMetaMaskMessage,
+  isLikelyMobileDevice,
+  openMetaMaskForCurrentDevice,
+} from "../../lib/metamask";
 
 const HOW_TO_WALLET_HREF = "/wallets";
 const HOW_IT_WORKS_HREF = "/how-it-works";
@@ -197,7 +202,7 @@ export default function BTCETFPage() {
 
   async function initializeWallet(address) {
     if (!window.ethereum) {
-      setErr("MetaMask not detected.");
+      setErr(getMissingMetaMaskMessage());
       return;
     }
     if (!addresses.vault || !addresses.wbtc) {
@@ -260,7 +265,10 @@ export default function BTCETFPage() {
 
   async function connectWallet() {
     if (typeof window === "undefined" || !window.ethereum) {
-      setErr("Please install MetaMask to continue.");
+      setErr(getMissingMetaMaskMessage({ opening: true }));
+      if (isLikelyMobileDevice()) {
+        openMetaMaskForCurrentDevice();
+      }
       return;
     }
     try {

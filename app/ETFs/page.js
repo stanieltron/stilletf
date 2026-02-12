@@ -17,6 +17,11 @@ import {
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { fetchAssets } from "../../lib/portfolio";
+import {
+  getMissingMetaMaskMessage,
+  isLikelyMobileDevice,
+  openMetaMaskForCurrentDevice,
+} from "../../lib/metamask";
 
 const imgTokenBtc = "/assets/btc%20small.png";
 const imgTokenEth = "/assets/eth%20small.png";
@@ -290,7 +295,10 @@ export default function ETFsPage() {
   async function handleDeposit() {
     if (txBusy) return;
     if (typeof window === "undefined" || !window.ethereum) {
-      setTxError("MetaMask not detected.");
+      setTxError(getMissingMetaMaskMessage({ opening: true }));
+      if (isLikelyMobileDevice()) {
+        openMetaMaskForCurrentDevice();
+      }
       return;
     }
     if (!depositAmount || Number(depositAmount) <= 0) {

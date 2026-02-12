@@ -16,6 +16,11 @@ import {
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { fetchAssets } from "../../lib/portfolio";
+import {
+  getMissingMetaMaskMessage,
+  isLikelyMobileDevice,
+  openMetaMaskForCurrentDevice,
+} from "../../lib/metamask";
 
 const BTC_ICON = "/assets/btc%20small.png";
 const DEFAULT_CHAIN_ID = process.env.NEXT_PUBLIC_CHAIN_ID || "11155111";
@@ -218,7 +223,10 @@ export default function MyEarningsPage() {
 
   async function connectWallet() {
     if (!window.ethereum) {
-      setErr("Please install MetaMask to continue.");
+      setErr(getMissingMetaMaskMessage({ opening: true }));
+      if (isLikelyMobileDevice()) {
+        openMetaMaskForCurrentDevice();
+      }
       return;
     }
     try {

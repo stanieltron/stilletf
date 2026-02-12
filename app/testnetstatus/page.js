@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BrowserProvider, Contract, formatUnits, parseUnits } from "ethers";
+import {
+  getMissingMetaMaskMessage,
+  isLikelyMobileDevice,
+  openMetaMaskForCurrentDevice,
+} from "../../lib/metamask";
 
 const ENV_ADDR = {
   vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
@@ -298,7 +303,7 @@ export default function TestnetStatusPage() {
 
   async function initializeWallet(address) {
     if (!window.ethereum) {
-      setErr("MetaMask not detected.");
+      setErr(getMissingMetaMaskMessage());
       return;
     }
     try {
@@ -316,7 +321,10 @@ export default function TestnetStatusPage() {
 
   async function connectWallet() {
     if (typeof window === "undefined" || !window.ethereum) {
-      setErr("Please install MetaMask to continue.");
+      setErr(getMissingMetaMaskMessage({ opening: true }));
+      if (isLikelyMobileDevice()) {
+        openMetaMaskForCurrentDevice();
+      }
       return;
     }
     try {
