@@ -536,7 +536,7 @@ export default function LeaderboardPage() {
                         href="/etfs"
                         className="w-full inline-flex items-center justify-center px-6 py-3 rounded-[12px] border border-[#201909] bg-[#201909] text-white text-base sm:text-lg font-semibold transition-transform duration-150 hover:-translate-y-1 hover:opacity-95 hover:shadow-md"
                       >
-                        discover Sona ETFs and interact on testnet for additional rewards
+                        discover Sona bundles and interact on testnet for additional rewards
                       </Link>
                     </div>
                   )}

@@ -116,7 +116,7 @@ export default function DigitalWealthETFPage() {
 
               <div className="flex flex-wrap items-center gap-3 mt-6">
                 <Link href="/etfs" className="sona-btn sona-btn-outline">
-                  ← Back to ETFs
+                  Back to bundles
                 </Link>
                 <Link href="/" className="sona-btn sona-btn-primary">
                   Back to Builder

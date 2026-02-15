@@ -520,7 +520,7 @@ function PageView({
                   strokeLinejoin="round"
                 />
               </svg>
-              <span>Back to ETFs</span>
+              <span>Back to bundles</span>
             </Link>
           </div>
           <section className="bg-[#fdfbf9] rounded-[24px] border border-[#e2dacd] shadow-sm p-5 md:p-7">

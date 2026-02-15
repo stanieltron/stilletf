@@ -115,7 +115,7 @@ function getVaultConfig() {
   return { vault, wbtc };
 }
 
-export default function ETFsPage() {
+export default function EtfsPage() {
   const router = useRouter();
   const [timeframeByBundle, setTimeframeByBundle] = useState(() =>
     Object.fromEntries(BUNDLES.map((bundle) => [bundle.id, "5y"]))
@@ -545,7 +545,7 @@ export default function ETFsPage() {
         <div className="max-w-6xl mx-auto px-6 pt-12 pb-32">
           <div className="mb-8">
             <h1 className="text-[36px] md:text-[44px] font-semibold tracking-[-1.2px] text-[#201909] leading-none">
-              Stillwater ETFs
+              Stillwater Bundles
             </h1>
           </div>
           {BUNDLES.map((bundle) => {

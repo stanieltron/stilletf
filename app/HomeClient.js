@@ -230,7 +230,7 @@ export default function HomeClient() {
               <div className="how-left">
                 <div className="how-kicker">How does it work?</div>
                 <div className="how-title">
-                  Like ETFs,
+                  Like index funds,
                   <br />
                   on blockchain!
                 </div>
