@@ -5,9 +5,9 @@ import Link from "next/link";
 export default function WantMore() {
   const baseUrl =
     process.env.NEXT_PUBLIC_BASE_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "https://sonaetf.com");
+    (typeof window !== "undefined" ? window.location.origin : "https://stilletf.com");
 
-  const shareText = "Want more? Check out SONA:";
+  const shareText = "Want more? Check out Stillwater:";
 
   const xUrl = `https://x.com/intent/post?text=${encodeURIComponent(
     `${shareText} ${baseUrl}`

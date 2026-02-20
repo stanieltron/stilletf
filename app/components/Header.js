@@ -268,7 +268,7 @@ export default function Header() {
         <div className="flex items-center gap-6">
           <div className="hidden md:flex items-center w-[120px] h-10 gap-0">
             <a
-              href="https://x.com/sonaetf"
+              href="https://stilletf.com"
               target="_blank"
               rel="noreferrer"
               className="w-10 h-10 bg-[#F7F3EB] rounded-full flex items-center justify-center text-[#201909] transition-all hover:bg-[#efe6d8] hover:scale-[1.04] active:scale-95"
@@ -277,7 +277,7 @@ export default function Header() {
               <img src={imgNewTwitter} alt="X logo" className="h-9 w-9" />
             </a>
             <a
-              href="https://www.linkedin.com/company/sona-etf/"
+              href="https://stilletf.com"
               target="_blank"
               rel="noreferrer"
               className="w-10 h-10 bg-[#F7F3EB] rounded-full flex items-center justify-center text-[#201909] transition-all hover:bg-[#efe6d8] hover:scale-[1.04] active:scale-95"
@@ -290,7 +290,7 @@ export default function Header() {
               />
             </a>
             <a
-              href="https://t.me/sonaetf"
+              href="https://stilletf.com"
               target="_blank"
               rel="noreferrer"
               className="w-10 h-10 bg-[#F7F3EB] rounded-full flex items-center justify-center text-[#201909] transition-all hover:bg-[#efe6d8] hover:scale-[1.04] active:scale-95"

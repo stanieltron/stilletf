@@ -29,7 +29,7 @@ export default function Footer() {
           {/* Socials row: width 224, height 44, gap 16 */}
           <div className="flex items-center justify-center w-[224px] h-[44px] gap-4 text-[#645C4A]">
             <a
-              href="https://x.com/sonaetf"
+              href="https://stilletf.com"
               target="_blank"
               rel="noreferrer"
               className="w-16 h-11 bg-[#F7F3EB] rounded-full flex items-center justify-center transition-all hover:bg-[#efe6d8] hover:scale-[1.04] active:scale-95"
@@ -43,7 +43,7 @@ export default function Footer() {
             </a>
 
             <a
-              href="https://www.linkedin.com/company/sona-etf/"
+              href="https://stilletf.com"
               target="_blank"
               rel="noreferrer"
               className="w-16 h-11 bg-[#F7F3EB] rounded-full flex items-center justify-center transition-all hover:bg-[#efe6d8] hover:scale-[1.04] active:scale-95"
@@ -57,7 +57,7 @@ export default function Footer() {
             </a>
 
             <a
-              href="https://t.me/sonaetf"
+              href="https://stilletf.com"
               target="_blank"
               rel="noreferrer"
               className="w-16 h-11 bg-[#F7F3EB] rounded-full flex items-center justify-center transition-all hover:bg-[#efe6d8] hover:scale-[1.04] active:scale-95"
