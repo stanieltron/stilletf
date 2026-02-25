@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#201909" />
   <text
@@ -12,4 +13,18 @@
   >
     S
   </text>
+=======
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <defs>
+    <style>
+      :root { --gold: #D4AF37; }
+      text {
+        font-family: "Alberta", "Alberta Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+        font-weight: 700;
+      }
+    </style>
+  </defs>
+  <rect width="64" height="64" fill="#ffffff"></rect>
+  <text x="32" y="32" fill="var(--gold)" font-size="44" text-anchor="middle" dominant-baseline="central">S</text>
+>>>>>>> acf2eed (faucet+updater)
 </svg>

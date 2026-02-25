@@ -35,6 +35,15 @@ const ENV_ADDRESSES = {
   wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
 };
 const TARGET_APY = 0.03;
+const TARGET_APY_BPS = BigInt(Math.round(TARGET_APY * 10000));
+const SECONDS_PER_YEAR = 365n * 24n * 60n * 60n;
+const ASSUMED_WBTC_USD_CENTS = (() => {
+  const parsed = Number.parseFloat(
+    String(process.env.NEXT_PUBLIC_TESTNET_WBTC_USD ?? "").trim()
+  );
+  const value = Number.isFinite(parsed) && parsed > 0 ? parsed : 60000;
+  return BigInt(Math.round(value * 100));
+})();
 const INITIAL_CAPITAL = 1000;
 
 const TIMEFRAMES = [
@@ -98,6 +107,8 @@ export default function MyEarningsPage() {
   const [loadingData, setLoadingData] = useState(false);
   const [err, setErr] = useState("");
   const [actionState, setActionState] = useState({ phase: "idle", label: "" });
+  const [rewardsSyncedAtMs, setRewardsSyncedAtMs] = useState(() => Date.now());
+  const [rewardsTickMs, setRewardsTickMs] = useState(() => Date.now());
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState("deposit");
@@ -178,6 +189,13 @@ export default function MyEarningsPage() {
     if (ready) refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRewardsTickMs(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   async function ensureCorrectChain(nextProvider) {
     try {
@@ -270,6 +288,7 @@ export default function MyEarningsPage() {
         decimals: Number(vaultDecimals) || wbtcDecimals,
       });
       setUserStats({ shares, pendingRewards, walletBalance });
+      setRewardsSyncedAtMs(Date.now());
       setErr("");
     } catch {
       setErr("Could not fetch vault data.");
@@ -393,9 +412,39 @@ export default function MyEarningsPage() {
     () => formatTokenAmount(userStats.walletBalance, wbtcDecimals, 6),
     [userStats.walletBalance, wbtcDecimals]
   );
+  const livePendingRewards = useMemo(() => {
+    const baseline = userStats.pendingRewards || 0n;
+    if (principalRaw <= 0n) return baseline;
+
+    const elapsedSeconds = Math.floor((rewardsTickMs - rewardsSyncedAtMs) / 1000);
+    if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return baseline;
+
+    const principalScale = 10n ** BigInt(vaultStats.decimals || wbtcDecimals);
+    if (principalScale <= 0n) return baseline;
+
+    const rewardScale = 10n ** BigInt(REWARD_DECIMALS);
+    const elapsed = BigInt(elapsedSeconds);
+    const numerator =
+      principalRaw *
+      ASSUMED_WBTC_USD_CENTS *
+      TARGET_APY_BPS *
+      rewardScale *
+      elapsed;
+    const denominator = principalScale * 100n * 10000n * SECONDS_PER_YEAR;
+    if (denominator <= 0n) return baseline;
+
+    return baseline + numerator / denominator;
+  }, [
+    principalRaw,
+    rewardsSyncedAtMs,
+    rewardsTickMs,
+    userStats.pendingRewards,
+    vaultStats.decimals,
+    wbtcDecimals,
+  ]);
   const earningsDisplay = useMemo(
-    () => formatTokenAmount(userStats.pendingRewards, REWARD_DECIMALS, 6, 6),
-    [userStats.pendingRewards]
+    () => formatTokenAmount(livePendingRewards, REWARD_DECIMALS, 6, 6),
+    [livePendingRewards]
   );
   const maxAmountForMode = useMemo(() => {
     if (dialogMode === "deposit") {

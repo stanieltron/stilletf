@@ -25,19 +25,19 @@ export default function ShareModal({
   const [isMobile, setIsMobile] = useState(false);
   const CAPTURE_SAFE_MARGIN = 32;
 
-  const shareUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
+  const qrLink = "https://stilletf.com";
   const shareText = "I created this portfolio on Stillwater - can you do better?";
 
   const shareHost = (() => {
     try {
-      return new URL(shareUrl).hostname.replace(/^www\./, "");
+      return new URL(qrLink).hostname.replace(/^www\./, "");
     } catch {
-      return "sonaetf.com";
+      return "stilletf.com";
     }
   })();
 
   const shareQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(
-    shareUrl
+    qrLink
   )}`;
   const compositionItems = useMemo(() => {
     const rows = (assets || [])

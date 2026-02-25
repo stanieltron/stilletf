@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/core-bundle/snapshots/ingest",
-      "schedule": "*/15 * * * *"
-    }
-  ]
-}

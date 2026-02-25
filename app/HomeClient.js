@@ -23,14 +23,14 @@ const imgCheckShield = "/assets/check-shield.svg";
 const imgFaqArrow = "/icons/faq-arrow.svg";
 
 export default function HomeClient() {
-  const partnerLabels = [
-    "Metamask",
-    "Trezor",
-    "Bitcoin",
-    "Mantle",
-    "Aave",
-    "Lido",
-    "Fluid",
+  const partnerLogos = [
+    { name: "Metamask", src: "/logos/metamask-logo.png" },
+    { name: "Trezor", src: "/logos/trezor-logo.png" },
+    { name: "Bitcoin", src: "/logos/btc-logo.png" },
+    { name: "Mantle", src: "/logos/mantle-logo.png" },
+    { name: "Aave", src: "/logos/aave-logo.png" },
+    { name: "Lido", src: "/logos/lido-logo.png" },
+    { name: "Fluid", src: "/logos/fluid-logo.png" },
   ];
 
   const scrollToFaq = () => {
@@ -318,10 +318,17 @@ export default function HomeClient() {
             <div className="partner-row">
               <div className="partner-marquee">
                 <div className="partner-track">
-                  {[...partnerLabels, ...partnerLabels].map((label, index) => (
-                    <div key={`${label}-${index}`} className="partner-item">
-                      <div className="partner-dot" />
-                      <span>{label}</span>
+                  {[...partnerLogos, ...partnerLogos].map((partner, index) => (
+                    <div key={`${partner.name}-${index}`} className="partner-item">
+                      <div className="h-8 w-8 md:h-10 md:w-10 flex-shrink-0 overflow-hidden">
+                        <img
+                          src={partner.src}
+                          alt={`${partner.name} logo`}
+                          loading="lazy"
+                          className={`h-full w-full object-contain ${partner.name === "Bitcoin" ? "scale-125" : ""}`}
+                        />
+                      </div>
+                      <span>{partner.name}</span>
                     </div>
                   ))}
                 </div>

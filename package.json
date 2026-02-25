@@ -8,7 +8,7 @@
     "deploy:local": "set -a && source .env && set +a && ./scripts/local-fork-deploy.sh",
     "kill_anvil": "pkill -9 -f \"^anvil\" || true",
     "build": "prisma generate && next build",
-    "start": "prisma migrate deploy && node -r ./scripts/core-bundle-snapshot-poller.cjs ./node_modules/next/dist/bin/next start -p 3000",
+    "start": "prisma migrate deploy && node -r ./scripts/core-bundle-snapshot-poller.cjs -r ./scripts/testnet-yield-runner.cjs ./node_modules/next/dist/bin/next start -p 3000",
     "lint": "next lint",
     "test": "forge test",
     "deploy": "forge script script/DeployStakingVault.s.sol:DeployStakingVault --rpc-url https://sepolia.gateway.tenderly.co --broadcast"
@@ -26,10 +26,14 @@
     "recharts": "^3.3.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.17",
+    "@tailwindcss/postcss": "4.1.17",
     "eslint-config-next": "^16.0.3",
     "postcss": "^8.5.6",
     "prisma": "^6.19.0",
-    "tailwindcss": "^4.1.17"
+    "tailwindcss": "4.1.17"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "4.1.17",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.1.17"
   }
 }

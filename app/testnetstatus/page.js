@@ -15,6 +15,7 @@ const ENV_ADDR = {
   vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
   strategy: process.env.NEXT_PUBLIC_YIELD_STRATEGY_ADDRESS || "",
   fluid: process.env.NEXT_PUBLIC_FLUID_VAULT_ADDRESS || "",
+  faucet: process.env.NEXT_PUBLIC_TESTNET_WBTC_FAUCET_ADDRESS || "",
   wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
   usdc: process.env.NEXT_PUBLIC_USDC_ADDRESS || "",
   weth: process.env.NEXT_PUBLIC_WETH_ADDRESS || "",
@@ -98,6 +99,12 @@ function baseToUa(baseAmount, price, uaDecimals, baseUnit) {
   }
 }
 
+function shortHash(hash) {
+  if (!hash) return "-";
+  if (hash.length <= 14) return hash;
+  return `${hash.slice(0, 10)}...${hash.slice(-6)}`;
+}
+
 function SummaryCard({ title, children }) {
   return (
     <div className="sona-card backdrop-blur">
@@ -128,6 +135,7 @@ export default function TestnetStatusPage() {
   const [donating, setDonating] = useState(false);
   const [harvestLoading, setHarvestLoading] = useState(false);
   const [harvestEstimate, setHarvestEstimate] = useState(null);
+  const [runnerManualLoading, setRunnerManualLoading] = useState(false);
 
   const ready = useMemo(
     () =>
@@ -243,7 +251,9 @@ export default function TestnetStatusPage() {
         vaultRes,
         strategyRes,
         poolRes,
+        faucetBalanceRes,
         harvestRes,
+        runnerRes,
       ] = await Promise.allSettled([
         fetchOracle(provider),
         fetchTokens(provider),
@@ -251,7 +261,9 @@ export default function TestnetStatusPage() {
         fetchVault(provider),
         fetchStrategy(provider),
         fetchPool(provider),
+        fetchFaucetBalance(provider),
         estimateHarvest(provider),
+        fetchRunnerStatus(),
       ]);
 
       const oracleData = oracleRes.status === "fulfilled" ? oracleRes.value : null;
@@ -260,7 +272,9 @@ export default function TestnetStatusPage() {
       const vaultData = vaultRes.status === "fulfilled" ? vaultRes.value : null;
       const strategyData = strategyRes.status === "fulfilled" ? strategyRes.value : null;
       const poolData = poolRes.status === "fulfilled" ? poolRes.value : null;
+      const faucetBalance = faucetBalanceRes.status === "fulfilled" ? faucetBalanceRes.value : null;
       const harvestEst = harvestRes.status === "fulfilled" ? harvestRes.value : null;
+      const runnerData = runnerRes.status === "fulfilled" ? runnerRes.value : null;
 
       if (oracleRes.status === "rejected") diag.fetch.oracle = oracleRes.reason?.message || "oracle fetch failed";
       if (tokensRes.status === "rejected") diag.fetch.tokens = tokensRes.reason?.message || "token fetch failed";
@@ -269,6 +283,7 @@ export default function TestnetStatusPage() {
       if (strategyRes.status === "rejected") diag.fetch.strategy = strategyRes.reason?.message || "strategy fetch failed";
       if (poolRes.status === "rejected") diag.fetch.pool = poolRes.reason?.message || "pool fetch failed";
       if (harvestRes.status === "rejected") diag.fetch.harvest = harvestRes.reason?.message || "harvest est failed";
+      if (runnerRes.status === "rejected") diag.fetch.runner = runnerRes.reason?.message || "runner status failed";
 
       if (strategyRes.status === "rejected") {
         diag.probes = diag.probes || {};
@@ -288,6 +303,8 @@ export default function TestnetStatusPage() {
         vault: vaultData,
         strategy: strategyData,
         pool: poolData,
+        faucetBalance,
+        runner: runnerData,
       });
       setHarvestEstimate(harvestEst);
     } catch (e) {
@@ -619,6 +636,56 @@ export default function TestnetStatusPage() {
     }
   }
 
+  async function fetchFaucetBalance(provider) {
+    if (!addresses.faucet || !addresses.wbtc) return null;
+    const wbtc = new Contract(addresses.wbtc, ERC20_ABI, provider);
+    try {
+      return await wbtc.balanceOf(addresses.faucet);
+    } catch {
+      return null;
+    }
+  }
+
+  async function fetchRunnerStatus() {
+    const res = await fetch("/api/testnet-yield-runner-status", {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`runner status ${res.status}`);
+    }
+    const payload = await res.json();
+    return payload?.runner || null;
+  }
+
+  async function triggerRunnerNow() {
+    if (runnerManualLoading) return;
+    try {
+      setRunnerManualLoading(true);
+      setErr("");
+      setTxMessage("Running auto yield runner...");
+      const res = await fetch("/api/testnet-yield-runner-status", {
+        method: "POST",
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload?.error || `Runner trigger failed (${res.status})`);
+      }
+
+      if (payload?.triggered) {
+        setTxMessage("Auto yield runner run completed.");
+      } else {
+        setTxMessage(payload?.reason || "Runner did not execute.");
+      }
+
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setErr(e?.message || "Failed to trigger auto yield runner.");
+    } finally {
+      setRunnerManualLoading(false);
+    }
+  }
+
   async function donateYieldWithEth() {
     if (!signer || !walletAddress) {
       setErr("Connect your wallet to donate yield.");
@@ -871,6 +938,89 @@ export default function TestnetStatusPage() {
             </div>
           </SummaryCard>
 
+          <SummaryCard title="Auto Yield Runner">
+            {data.runner ? (
+              <>
+                <Row label="enabled" value={data.runner.enabled ? "yes" : "no"} />
+                <Row
+                  label="state"
+                  value={
+                    data.runner.inFlight
+                      ? "running"
+                      : data.runner.lastRun?.status || "idle"
+                  }
+                />
+                <Row
+                  label="interval"
+                  value={
+                    data.runner.intervalMs
+                      ? `${Math.round(Number(data.runner.intervalMs) / 60000)} min`
+                      : "-"
+                  }
+                />
+                <Row
+                  label="next scheduled"
+                  value={
+                    data.runner.nextScheduledAt
+                      ? new Date(data.runner.nextScheduledAt).toLocaleString()
+                      : "-"
+                  }
+                />
+                <Row
+                  label="wallet"
+                  value={
+                    data.runner.walletAddress
+                      ? `${data.runner.walletAddress.slice(0, 6)}...${data.runner.walletAddress.slice(-4)}`
+                      : "-"
+                  }
+                />
+                <Row
+                  label="last run"
+                  value={
+                    data.runner.lastRun?.finishedAt
+                      ? new Date(data.runner.lastRun.finishedAt).toLocaleString()
+                      : "-"
+                  }
+                />
+                <Row
+                  label="vault at run (WBTC)"
+                  value={data.runner.lastRun?.vaultTotalAssetsWbtc || "-"}
+                />
+                <Row
+                  label="donation (ETH)"
+                  value={data.runner.lastRun?.donationEth || "-"}
+                />
+                <Row
+                  label="donate tx"
+                  value={shortHash(data.runner.lastRun?.donateTxHash)}
+                />
+                <Row
+                  label="harvest tx"
+                  value={shortHash(data.runner.lastRun?.harvestTxHash)}
+                />
+                {data.runner.lastRun?.reason && (
+                  <Row label="note" value={data.runner.lastRun.reason} />
+                )}
+                {data.runner.lastRun?.error && (
+                  <Row label="error" value={data.runner.lastRun.error} />
+                )}
+                <div className="pt-2">
+                  <button
+                    onClick={triggerRunnerNow}
+                    disabled={runnerManualLoading || data.runner.inFlight}
+                    className="sona-btn sona-btn-ghost disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {runnerManualLoading || data.runner.inFlight
+                      ? "Running..."
+                      : "Run now"}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <span className="text-[var(--muted)]">Unavailable</span>
+            )}
+          </SummaryCard>
+
           <SummaryCard title="Oracle">
             <div className="flex justify-between">
               <span className="text-[var(--muted)]">Base Unit</span>
@@ -1047,6 +1197,21 @@ export default function TestnetStatusPage() {
               </>
             ) : (
               <span className="text-[var(--muted)]">Unavailable</span>
+            )}
+          </SummaryCard>
+
+          <SummaryCard title="WBTC Faucet">
+            {addresses.faucet ? (
+              data.faucetBalance != null ? (
+                <Row
+                  label="balance (WBTC)"
+                  value={fmt(data.faucetBalance, data.tokens?.wbtc?.decimals ?? 8)}
+                />
+              ) : (
+                <span className="text-[var(--muted)]">Unavailable</span>
+              )
+            ) : (
+              <span className="text-[var(--muted)]">Faucet address not configured</span>
             )}
           </SummaryCard>
 

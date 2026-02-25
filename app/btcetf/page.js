@@ -18,6 +18,8 @@ const DEFAULT_WBTC_DECIMALS = Number(process.env.NEXT_PUBLIC_WBTC_DECIMALS || 8)
 const REWARD_DECIMALS = Number(process.env.NEXT_PUBLIC_REWARD_DECIMALS || 6);
 const REWARD_SYMBOL = process.env.NEXT_PUBLIC_REWARD_SYMBOL || "USDC";
 const TARGET_CHAIN_HEX = `0x${Number(DEFAULT_CHAIN_ID).toString(16)}`;
+const ENV_TESTNET_WBTC_FAUCET_ADDRESS =
+  process.env.NEXT_PUBLIC_TESTNET_WBTC_FAUCET_ADDRESS || "";
 const ENV_ADDRESSES = {
   vault: process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "",
   wbtc: process.env.NEXT_PUBLIC_WBTC_ADDRESS || "",
@@ -40,6 +42,12 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) external view returns (uint256)",
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function decimals() external view returns (uint8)",
+];
+
+const TESTNET_WBTC_FAUCET_ABI = [
+  "function claim() external returns (uint256)",
+  "function canClaim(address recipient) external view returns (bool)",
+  "function nextClaimAt(address recipient) external view returns (uint256)",
 ];
 
 function formatBigAmount(value, decimals, options = {}) {
@@ -81,6 +89,9 @@ export default function BTCETFPage() {
   const [err, setErr] = useState("");
   const [networkOk, setNetworkOk] = useState(true);
   const [actionState, setActionState] = useState({ phase: "idle", label: "" });
+  const [faucetBusy, setFaucetBusy] = useState(false);
+  const [faucetStatus, setFaucetStatus] = useState("");
+  const [faucetStatusTone, setFaucetStatusTone] = useState("muted");
 
   const [vaultStats, setVaultStats] = useState({
     totalAssets: 0n,
@@ -182,6 +193,8 @@ export default function BTCETFPage() {
     setVault(null);
     setWbtc(null);
     setNetworkOk(true);
+    setFaucetStatus("");
+    setFaucetStatusTone("muted");
   };
 
   async function ensureCorrectChain(nextProvider) {
@@ -280,6 +293,101 @@ export default function BTCETFPage() {
     } catch (e) {
       console.error(e);
       setErr("Wallet connection was rejected.");
+    }
+  }
+
+  async function requestTestWbtcFromFaucet() {
+    if (faucetBusy || actionBusy) return;
+    if (!ENV_TESTNET_WBTC_FAUCET_ADDRESS) {
+      setFaucetStatusTone("error");
+      setFaucetStatus("Faucet is not configured.");
+      return;
+    }
+
+    try {
+      setFaucetBusy(true);
+      setFaucetStatus("");
+      setFaucetStatusTone("muted");
+      setErr("");
+
+      let recipient = walletAddress;
+      let nextProvider;
+      if (!recipient) {
+        if (typeof window === "undefined" || !window.ethereum) {
+          setErr(getMissingMetaMaskMessage({ opening: true }));
+          if (isLikelyMobileDevice()) {
+            openMetaMaskForCurrentDevice();
+          }
+          return;
+        }
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+        recipient = accounts?.[0] || "";
+        if (!recipient) {
+          setFaucetStatusTone("error");
+          setFaucetStatus("Wallet connection was rejected.");
+          return;
+        }
+        nextProvider = new BrowserProvider(window.ethereum);
+      } else {
+        nextProvider = provider || new BrowserProvider(window.ethereum);
+      }
+
+      const chainReady = await ensureCorrectChain(nextProvider);
+      if (!chainReady) {
+        setFaucetStatusTone("error");
+        setFaucetStatus(`Switch to chain ${DEFAULT_CHAIN_ID} to use faucet.`);
+        return;
+      }
+
+      const faucetRead = new Contract(
+        ENV_TESTNET_WBTC_FAUCET_ADDRESS,
+        TESTNET_WBTC_FAUCET_ABI,
+        nextProvider
+      );
+      const claimAllowed = await safeRead(faucetRead.canClaim(recipient), true);
+
+      if (!claimAllowed) {
+        const nextClaimAt = await safeRead(faucetRead.nextClaimAt(recipient), 0n);
+        const nextTs = Number(nextClaimAt);
+        const nextLabel =
+          Number.isFinite(nextTs) && nextTs > 0
+            ? new Date(nextTs * 1000).toLocaleString()
+            : "after 24 hours";
+        setFaucetStatusTone("error");
+        setFaucetStatus(`You can claim test WBTC once every 24 hours. Next claim: ${nextLabel}.`);
+        return;
+      }
+
+      const nextSigner = await nextProvider.getSigner();
+      const faucet = new Contract(
+        ENV_TESTNET_WBTC_FAUCET_ADDRESS,
+        TESTNET_WBTC_FAUCET_ABI,
+        nextSigner
+      );
+      const tx = await faucet.claim();
+      setFaucetStatusTone("muted");
+      setFaucetStatus(`Claim submitted. Tx ${shorten(tx.hash)}`);
+      await tx.wait();
+
+      setFaucetStatusTone("success");
+      setFaucetStatus(`Faucet sent. Tx ${shorten(tx.hash)}`);
+      await sleep(800);
+      await initializeWallet(recipient);
+      await refresh();
+    } catch (e) {
+      console.error(e);
+      setFaucetStatusTone("error");
+      const message =
+        e?.shortMessage || e?.reason || e?.message || "Faucet request failed.";
+      if (/COOLDOWN_ACTIVE|already claimed|24 hours/i.test(message)) {
+        setFaucetStatus("You can claim test WBTC once every 24 hours.");
+      } else {
+        setFaucetStatus(message);
+      }
+    } finally {
+      setFaucetBusy(false);
     }
   }
 
@@ -474,21 +582,45 @@ export default function BTCETFPage() {
                     {vaultHoldings} BTC
                   </span>
                 </div>
-                <div className="flex gap-3 justify-end">
-                  <button
-                    onClick={() => openDialog("deposit")}
-                    disabled={!ready}
-                    className="sona-btn sona-btn-primary disabled:opacity-50"
-                  >
-                    Add WBTC
-                  </button>
-                  <button
-                    onClick={() => openDialog("withdraw")}
-                    disabled={!ready || userStats.shares === 0n}
-                    className="sona-btn sona-btn-outline disabled:opacity-50"
-                  >
-                    Withdraw
-                  </button>
+                <div className="flex flex-col items-stretch md:items-end gap-2">
+                  <div className="flex gap-3 justify-end flex-wrap">
+                    <button
+                      onClick={requestTestWbtcFromFaucet}
+                      disabled={faucetBusy || actionBusy || !ENV_TESTNET_WBTC_FAUCET_ADDRESS}
+                      className="sona-btn sona-btn-ghost disabled:opacity-50"
+                    >
+                      {faucetBusy
+                        ? "Sending test WBTC..."
+                        : "Get test WBTC to try Stillwater"}
+                    </button>
+                    <button
+                      onClick={() => openDialog("deposit")}
+                      disabled={!ready}
+                      className="sona-btn sona-btn-primary disabled:opacity-50"
+                    >
+                      Add WBTC
+                    </button>
+                    <button
+                      onClick={() => openDialog("withdraw")}
+                      disabled={!ready || userStats.shares === 0n}
+                      className="sona-btn sona-btn-outline disabled:opacity-50"
+                    >
+                      Withdraw
+                    </button>
+                  </div>
+                  {faucetStatus ? (
+                    <p
+                      className={`text-xs ${
+                        faucetStatusTone === "error"
+                          ? "text-rose-700"
+                          : faucetStatusTone === "success"
+                            ? "text-[var(--pos)]"
+                            : "text-[var(--muted)]"
+                      }`}
+                    >
+                      {faucetStatus}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 

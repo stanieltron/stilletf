@@ -44,6 +44,8 @@ const DEFAULT_WBTC_DECIMALS = Number(
 );
 const ENV_VAULT_ADDRESS = process.env.NEXT_PUBLIC_STAKING_VAULT_ADDRESS || "";
 const ENV_WBTC_ADDRESS = process.env.NEXT_PUBLIC_WBTC_ADDRESS || "";
+const ENV_TESTNET_WBTC_FAUCET_ADDRESS =
+  process.env.NEXT_PUBLIC_TESTNET_WBTC_FAUCET_ADDRESS || "";
 
 const STAKING_VAULT_ABI = [
   "function stake(uint256 amountUA) external returns (uint256)",
@@ -54,6 +56,12 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) external view returns (uint256)",
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function decimals() external view returns (uint8)",
+];
+
+const TESTNET_WBTC_FAUCET_ABI = [
+  "function claim() external returns (uint256)",
+  "function canClaim(address recipient) external view returns (bool)",
+  "function nextClaimAt(address recipient) external view returns (uint256)",
 ];
 
 const BUNDLES = [
@@ -104,6 +112,14 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function safeRead(promise, fallback) {
+  try {
+    return await promise;
+  } catch {
+    return fallback;
+  }
+}
+
 function getVaultConfig() {
   const vault = ENV_VAULT_ADDRESS;
   const wbtc = ENV_WBTC_ADDRESS;
@@ -135,6 +151,9 @@ export default function EtfsPage() {
   const [txPhase, setTxPhase] = useState("idle");
   const [txStatus, setTxStatus] = useState("");
   const [txError, setTxError] = useState("");
+  const [faucetBusy, setFaucetBusy] = useState(false);
+  const [faucetMessage, setFaucetMessage] = useState("");
+  const [faucetTone, setFaucetTone] = useState("muted");
 
   useEffect(() => {
     let alive = true;
@@ -393,6 +412,112 @@ export default function EtfsPage() {
         setTxBusy(false);
         setTxPhase("idle");
       }
+    }
+  }
+
+  async function requestTestWbtcFromFaucet() {
+    if (faucetBusy || txBusy) return;
+    if (!ENV_TESTNET_WBTC_FAUCET_ADDRESS) {
+      setFaucetTone("error");
+      setFaucetMessage("Faucet is not configured.");
+      return;
+    }
+    if (!addresses.wbtc) {
+      setFaucetTone("error");
+      setFaucetMessage("WBTC token address is not configured.");
+      return;
+    }
+    if (typeof window === "undefined" || !window.ethereum) {
+      setFaucetTone("error");
+      setFaucetMessage(getMissingMetaMaskMessage({ opening: true }));
+      if (isLikelyMobileDevice()) {
+        openMetaMaskForCurrentDevice();
+      }
+      return;
+    }
+
+    try {
+      setFaucetBusy(true);
+      setFaucetMessage("");
+      setFaucetTone("muted");
+      setTxError("");
+
+      let account = walletAddress;
+      const provider = new BrowserProvider(window.ethereum);
+      const chainReady = await ensureCorrectChain(provider);
+      if (!chainReady) {
+        setFaucetTone("error");
+        setFaucetMessage(`Switch to chain ${DEFAULT_CHAIN_ID} to use faucet.`);
+        return;
+      }
+
+      if (!account) {
+        const accounts = await window.ethereum.request({
+          method: "eth_requestAccounts",
+        });
+        account = accounts?.[0] || "";
+        if (!account) {
+          setFaucetTone("error");
+          setFaucetMessage("Wallet connection was rejected.");
+          return;
+        }
+      }
+
+      const faucetRead = new Contract(
+        ENV_TESTNET_WBTC_FAUCET_ADDRESS,
+        TESTNET_WBTC_FAUCET_ABI,
+        provider
+      );
+      const claimAllowed = await safeRead(faucetRead.canClaim(account), true);
+      if (!claimAllowed) {
+        const nextClaimAt = await safeRead(faucetRead.nextClaimAt(account), 0n);
+        const nextTs = Number(nextClaimAt);
+        const nextLabel =
+          Number.isFinite(nextTs) && nextTs > 0
+            ? new Date(nextTs * 1000).toLocaleString()
+            : "after 24 hours";
+        setFaucetTone("error");
+        setFaucetMessage(`You can claim test WBTC once every 24 hours. Next claim: ${nextLabel}.`);
+        return;
+      }
+
+      const signer = await provider.getSigner();
+      const faucet = new Contract(
+        ENV_TESTNET_WBTC_FAUCET_ADDRESS,
+        TESTNET_WBTC_FAUCET_ABI,
+        signer
+      );
+      const tx = await faucet.claim();
+      setFaucetTone("muted");
+      setFaucetMessage(`Claim submitted. Tx ${shortenAddress(tx.hash)}`);
+      await tx.wait();
+
+      setFaucetTone("success");
+      setFaucetMessage(
+        `Faucet sent. Tx ${shortenAddress(tx.hash)}`
+      );
+
+      const token = new Contract(addresses.wbtc, ERC20_ABI, provider);
+      const [nextBalance, decimalsRaw] = await Promise.all([
+        token.balanceOf(account),
+        token.decimals().catch(() => DEFAULT_WBTC_DECIMALS),
+      ]);
+      const decimals = Number(decimalsRaw);
+      setWbtcDecimals(Number.isFinite(decimals) ? decimals : DEFAULT_WBTC_DECIMALS);
+      setWalletAddress(account);
+      setWalletBalanceRaw(nextBalance);
+    } catch (error) {
+      console.error("faucet request failed", error);
+      setFaucetTone("error");
+      const message =
+        error?.shortMessage || error?.reason || error?.message || "Faucet request failed.";
+      if (/COOLDOWN_ACTIVE|already claimed|24 hours/i.test(message)) {
+        setFaucetMessage("You can claim test WBTC once every 24 hours.");
+      } else {
+        setFaucetMessage(message);
+      }
+    } finally {
+      setFaucetBusy(false);
     }
   }
 
@@ -667,6 +792,30 @@ export default function EtfsPage() {
                           </div>
                         </div>
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={requestTestWbtcFromFaucet}
+                        disabled={faucetBusy || txBusy || !addresses.wbtc || !ENV_TESTNET_WBTC_FAUCET_ADDRESS}
+                        className="w-full h-[52px] rounded-[12px] border border-[#f2ebde] bg-white text-[#201909] text-[14px] font-semibold hover:opacity-90 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {faucetBusy
+                          ? "Sending test WBTC..."
+                          : "Get test WBTC to try Stillwater"}
+                      </button>
+                      {faucetMessage ? (
+                        <p
+                          className={`text-[12px] font-medium ${
+                            faucetTone === "error"
+                              ? "text-rose-700"
+                              : faucetTone === "success"
+                                ? "text-[#009966]"
+                                : "text-[#645c4a]"
+                          }`}
+                        >
+                          {faucetMessage}
+                        </p>
+                      ) : null}
 
                       <button
                         type="button"

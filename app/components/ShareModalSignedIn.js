@@ -30,18 +30,14 @@ export default function ShareModalSignedIn({
   const [portfolioId, setPortfolioId] = useState(null);
   const [shareUrl, setShareUrl] = useState("");
 
-  const baseSiteUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
+  const qrLink = "https://stilletf.com";
   const shareText = "I created this portfolio on Stillwater - can you do better?";
-
-  const qrLink =
-    shareUrl ||
-    (typeof window !== "undefined" ? window.location.origin : baseSiteUrl);
 
   const shareHost = (() => {
     try {
       return new URL(qrLink).hostname.replace(/^www\./, "");
     } catch {
-      return "sonaetf.com";
+      return "stilletf.com";
     }
   })();
 
