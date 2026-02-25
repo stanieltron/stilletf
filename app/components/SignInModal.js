@@ -22,14 +22,12 @@ export default function SignInModal() {
   const fromShareAuth = params.get("shareAuth") === "1";
   const fromVoteAuth = params.get("voteAuth") === "1";
 
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const isAuthed = status === "authenticated";
-
-  const hasUserId = !!session?.user?.id;
-  const userExistsFlag = !!session?.user?.exists;
-  const userExists = hasUserId || userExistsFlag;
-
-  const needsSignup = isAuthed && !userExists;
+  const hasNickname = Boolean(
+    String(session?.user?.nickname || "").trim()
+  );
+  const needsSignup = isAuthed && !hasNickname;
 
   const [open, setOpen] = useState(wantsOpen);
   const [nickname, setNickname] = useState("");
@@ -86,6 +84,7 @@ export default function SignInModal() {
       alert(data?.error || "Registration failed");
       return;
     }
+    try { await update(); } catch {}
     try { await fetch("/api/auth/session?update", { cache: "no-store" }); } catch {}
     try { router.refresh(); } catch {}
     if (typeof window !== "undefined") window.dispatchEvent(new Event("visibilitychange"));

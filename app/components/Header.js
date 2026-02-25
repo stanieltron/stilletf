@@ -11,14 +11,14 @@ const imgLinkedin02 = "/assets/social_linkedin.svg";
 const imgTelegram = "/assets/social_telegram.svg";
 
 export default function Header() {
-  const { data } = useSession();
+  const { data, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const menuRef = useRef(null);
   const [walletAddress, setWalletAddress] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const isAuthed = !!data?.user?.id;
+  const isAuthed = status === "authenticated";
   const isWalletFirstRoute = useMemo(() => {
     const normalized = (pathname || "").toLowerCase();
     return normalized === "/etfs" || normalized === "/my-earnings";
