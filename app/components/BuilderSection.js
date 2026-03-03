@@ -231,7 +231,12 @@ export default function BuilderSection({ keepAssets = true, embedded = false }) 
 
   const showFirstYield = isETFComplete && !yieldEverActivated;
   const hasSecondaryAction = showFirstYield;
-  const shareDisabled = !isETFComplete;
+  const shareDisabled = !isETFComplete || !yieldOn;
+  const shareButtonTitle = !isETFComplete
+    ? "Complete your ETF to share"
+    : !yieldOn
+      ? "Add STILL yield to share"
+      : "Share portfolio";
 
   const builderContent = (
     <div
@@ -629,7 +634,7 @@ export default function BuilderSection({ keepAssets = true, embedded = false }) 
                 shareDisabled ? "opacity-60 cursor-not-allowed" : "hover:opacity-95",
               ].join(" ")}
               aria-disabled={shareDisabled}
-              title={shareDisabled ? "Complete your ETF to share" : "Share portfolio"}
+              title={shareButtonTitle}
             >
               Share your portfolio &amp; earn future rewards!
             </button>
