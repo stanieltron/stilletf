@@ -215,6 +215,12 @@ export default function ShareModalSignedIn({
     return savePromiseRef.current;
   }
 
+  useEffect(() => {
+    if (!open) return;
+    void ensureSaved().catch((e) => setError(e?.message || String(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   async function captureSharePng() {
     if (!captureRef.current) throw new Error("Share preview is not ready yet.");
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -457,8 +463,18 @@ export default function ShareModalSignedIn({
           <div className="flex items-center justify-between gap-4">
             <div>
               <h2 className="text-[24px] font-semibold leading-none m-0">
-                Share your portfolio
+                Portfolio complete.
               </h2>
+              <p className="mt-2 text-sm text-white/75 leading-snug">
+                share to get votes and future rewards, compete on{" "}
+                <a
+                  href="/leaderboard"
+                  className="text-[#f1c255] underline underline-offset-2 hover:text-[#eab444]"
+                >
+                  leaderboard
+                </a>{" "}
+                for more
+              </p>
             </div>
             <button
               type="button"

@@ -4,7 +4,7 @@ import PortfolioDetailClient from "./ClientPortfolioDetail";
 export async function generateMetadata({ params }) {
   const id = params.id;
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sonaetf.com";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://stilletf.com";
 
   let title = "Sona ETF portfolio";
   let description =

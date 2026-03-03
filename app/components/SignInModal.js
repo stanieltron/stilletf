@@ -100,7 +100,7 @@ export default function SignInModal() {
     const url =
       typeof window !== "undefined"
         ? new URL(window.location.href)
-        : new URL("https://sonaetf.com/");
+        : new URL("https://stilletf.com/");
     // keep existing params (like share=1 from Share modal) and mark auth return
     url.searchParams.set("auth", "1");
     const callbackUrl = `${url.pathname}${url.search ? url.search : ""}${url.hash || ""}`;
